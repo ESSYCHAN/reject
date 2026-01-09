@@ -202,6 +202,44 @@
   padding: var(--space-lg);
 }
 
+/* Extracted Info Banner */
+.extracted-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--highlight);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.extracted-company {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text);
+}
+
+.extracted-separator {
+  color: var(--muted);
+}
+
+.extracted-role {
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.extracted-seniority {
+  background: var(--card);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+  margin-left: auto;
+}
+
 .result-header {
   display: flex;
   align-items: center;

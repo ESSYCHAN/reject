@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { DecodeResponse, ATSAssessment, InterviewStage } from '../types';
-import { ApplicationRecord } from '../types/pro';
+import { ApplicationRecord, SeniorityLevel } from '../types/pro';
 import { decodeEmail } from '../utils/api';
 import { canUseFeature, incrementUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
@@ -27,30 +27,151 @@ function getStageColor(stage: ATSAssessment['stage_reached']): string {
   }
 }
 
+// === EMAIL EXTRACTION LOGIC ===
+
+interface ExtractedInfo {
+  company: string | null;
+  role: string | null;
+  seniority: SeniorityLevel;
+}
+
+function extractFromEmail(emailText: string): ExtractedInfo {
+  const text = emailText.trim();
+  let company: string | null = null;
+  let role: string | null = null;
+
+  // Combined patterns for role + company
+  const combinedPatterns = [
+    // "for the Principal Researcher position at Nokia"
+    /for the\s+([A-Za-z0-9\s\-\/&,]+?)\s+(?:position|role|opportunity)\s+(?:at|with)\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\.|,|\s+We|\s+Thank|\s+After)/i,
+    // "your application for Software Engineer at Google"
+    /application\s+(?:for|to)\s+(?:the\s+)?([A-Za-z0-9\s\-\/&,]+?)\s+(?:position\s+)?(?:at|with)\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\.|,|\s+We|\s+Thank|\s+After)/i,
+    // "the Data Scientist role at McKinsey & Company"
+    /the\s+([A-Za-z0-9\s\-\/&,]+?)\s+(?:role|position|opportunity)\s+(?:at|with)\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\.|,|\s+We|\s+Thank|\s+After)/i,
+    // "your interest in the Product Manager position at Stripe"
+    /interest\s+in\s+(?:the\s+)?([A-Za-z0-9\s\-\/&,]+?)\s+(?:position|role|opportunity)\s+(?:at|with)\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\.|,|\s+We|\s+Thank|\s+After)/i,
+  ];
+
+  for (const pattern of combinedPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1] && match[2]) {
+      const extractedRole = cleanRole(match[1]);
+      const extractedCompany = cleanCompany(match[2]);
+      if (isValidRole(extractedRole) && isValidCompany(extractedCompany)) {
+        role = extractedRole;
+        company = extractedCompany;
+        break;
+      }
+    }
+  }
+
+  // Fallback: company only
+  if (!company) {
+    const companyPatterns = [
+      /(?:interest in|applying to|application to)\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\.|,|\s+and|\s+We|\!)/i,
+      /(?:recruitment|hiring|interview)\s+(?:process|team)\s+(?:for|at|with)\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\.|,|\s+We)/i,
+      /\bat\s+([A-Z][A-Za-z0-9\s&.\-']+?),?\s+we\b/i,
+      /([A-Z][A-Za-z0-9\s&.\-']+?)\s+(?:Recruiting|Recruitment|Talent|People|HR|Hiring)\s+(?:Team|Organization|Department)/i,
+    ];
+    for (const pattern of companyPatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const extractedCompany = cleanCompany(match[1]);
+        if (isValidCompany(extractedCompany)) {
+          company = extractedCompany;
+          break;
+        }
+      }
+    }
+  }
+
+  // Fallback: role only
+  if (!role) {
+    const rolePatterns = [
+      /for\s+(?:the\s+)?([A-Za-z0-9\s\-\/&,]+?)\s+(?:position|role|opportunity)(?:\s+at|\.|,)/i,
+      /the\s+([A-Za-z0-9\s\-\/&,]+?)\s+(?:role|position|opportunity)(?:\s+at|\.|,)/i,
+    ];
+    for (const pattern of rolePatterns) {
+      const match = text.match(pattern);
+      if (match && match[1]) {
+        const extractedRole = cleanRole(match[1]);
+        if (isValidRole(extractedRole)) {
+          role = extractedRole;
+          break;
+        }
+      }
+    }
+  }
+
+  return { company, role, seniority: inferSeniority(role) };
+}
+
+function cleanRole(raw: string): string {
+  return raw.trim().replace(/\s+/g, ' ').replace(/^the\s+/i, '').replace(/\s+position$/i, '').replace(/\s+role$/i, '').trim();
+}
+
+function cleanCompany(raw: string): string {
+  return raw.trim().replace(/\s+/g, ' ').replace(/[.,!]+$/, '').replace(/\s+(We|Thank|After|and).*$/i, '').trim();
+}
+
+function isValidRole(role: string): boolean {
+  if (!role || role.length < 3 || role.length > 80) return false;
+  const invalidStarts = ['the job', 'your', 'this', 'that', 'our', 'we ', 'after', 'thank', 'unfortunately', 'however', 'please', 'regarding', 'following'];
+  const lowerRole = role.toLowerCase();
+  for (const invalid of invalidStarts) {
+    if (lowerRole.startsWith(invalid)) return false;
+  }
+  // Should contain role-like word or be short enough to be a title
+  const roleKeywords = ['engineer', 'developer', 'scientist', 'analyst', 'manager', 'designer', 'researcher', 'director', 'lead', 'architect', 'consultant', 'specialist', 'coordinator', 'associate', 'intern', 'administrator', 'officer', 'head', 'vp', 'president', 'chief', 'executive'];
+  const hasRoleKeyword = roleKeywords.some(keyword => lowerRole.includes(keyword));
+  const isShortTitle = role.split(' ').length <= 4;
+  return hasRoleKeyword || isShortTitle;
+}
+
+function isValidCompany(company: string): boolean {
+  if (!company || company.length < 2 || company.length > 60) return false;
+  const invalidCompanies = ['the job', 'the position', 'the role', 'this role', 'the company', 'your application', 'the requirements', 'job requirements', 'thank you', 'unfortunately', 'we regret', 'after careful'];
+  const lowerCompany = company.toLowerCase();
+  for (const invalid of invalidCompanies) {
+    if (lowerCompany.includes(invalid)) return false;
+  }
+  if (!/^[A-Z]/.test(company)) return false;
+  return true;
+}
+
+function inferSeniority(role: string | null): SeniorityLevel {
+  if (!role) return 'mid';
+  const lowerRole = role.toLowerCase();
+  if (/\b(ceo|cto|cfo|coo|cio|chief)\b/.test(lowerRole)) return 'c-level';
+  if (/\b(vp|vice\s*president)\b/.test(lowerRole)) return 'vp';
+  if (/\bdirector\b/.test(lowerRole)) return 'director';
+  if (/\b(principal|distinguished|fellow)\b/.test(lowerRole)) return 'principal';
+  if (/\bstaff\b/.test(lowerRole)) return 'staff';
+  if (/\b(senior|sr\.?|lead|head)\b/.test(lowerRole)) return 'senior';
+  if (/\b(junior|jr\.?|associate|entry)\b/.test(lowerRole)) return 'junior';
+  if (/\b(intern|internship|trainee|apprentice)\b/.test(lowerRole)) return 'intern';
+  return 'mid';
+}
+
+// Map interview stage dropdown to outcome
+function stageToOutcome(stage: InterviewStage): ApplicationRecord['outcome'] {
+  switch (stage) {
+    case 'none': return 'rejected_ats';
+    case 'phone_screen': return 'rejected_recruiter';
+    case 'technical': return 'rejected_hm';
+    case 'onsite': return 'rejected_final';
+    case 'final_round': return 'rejected_final';
+    default: return 'rejected_ats';
+  }
+}
+
 interface DecodedData {
   result: DecodeResponse;
   emailText: string;
   companyName: string | null;
-}
-
-// Try to extract company name from rejection email
-function extractCompanyName(emailText: string): string | null {
-  const patterns = [
-    /(?:at|from|with)\s+([A-Z][A-Za-z0-9\s&.-]+?)(?:\.|,|\s+team|\s+and|\s+we|\s+has)/i,
-    /([A-Z][A-Za-z0-9\s&.-]+?)\s+(?:team|hiring|recruitment|talent)/i,
-    /Thank you for (?:your interest in|applying to)\s+([A-Z][A-Za-z0-9\s&.-]+)/i,
-  ];
-
-  for (const pattern of patterns) {
-    const match = emailText.match(pattern);
-    if (match && match[1]) {
-      const name = match[1].trim();
-      if (name.length >= 2 && name.length <= 50) {
-        return name;
-      }
-    }
-  }
-  return null;
+  roleName: string | null;
+  seniority: SeniorityLevel;
+  outcome: ApplicationRecord['outcome'];
 }
 
 // Normalize company name for fuzzy matching
@@ -114,6 +235,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const [emailText, setEmailText] = useState('');
   const [interviewStage, setInterviewStage] = useState<InterviewStage>('none');
   const [result, setResult] = useState<DecodeResponse | null>(null);
+  const [extracted, setExtracted] = useState<ExtractedInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [addedToTracker, setAddedToTracker] = useState(false);
@@ -142,10 +264,15 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     setLoading(true);
     setError(null);
     setResult(null);
+    setExtracted(null);
     setAddedToTracker(false);
     setLinkResult(null);
     setSelectedAppId('');
     setShowUpgrade(false);
+
+    // Extract company/role while waiting for API
+    const extractedInfo = extractFromEmail(emailText);
+    setExtracted(extractedInfo);
 
     const response = await decodeEmail(emailText, interviewStage);
 
@@ -159,9 +286,8 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
       incrementUsage('decodes_per_month');
 
       // Try to auto-match with an existing application by company name (fuzzy)
-      const extractedCompany = extractCompanyName(emailText);
-      if (extractedCompany && linkableApps.length > 0) {
-        const normalizedExtracted = normalizeCompany(extractedCompany);
+      if (extractedInfo.company && linkableApps.length > 0) {
+        const normalizedExtracted = normalizeCompany(extractedInfo.company);
         const match = linkableApps.find(app => {
           const normalizedApp = normalizeCompany(app.company);
           return normalizedApp === normalizedExtracted ||
@@ -175,13 +301,16 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     }
   };
 
-  const handleAddToTracker = () => {
-    if (result && onAddToTracker) {
-      const companyName = extractCompanyName(emailText);
+  const handleAddToTrackerClick = () => {
+    if (result && onAddToTracker && extracted) {
+      const outcome = stageToOutcome(interviewStage);
       onAddToTracker({
         result,
         emailText,
-        companyName
+        companyName: extracted.company,
+        roleName: extracted.role,
+        seniority: extracted.seniority,
+        outcome
       });
       setAddedToTracker(true);
     }
@@ -266,6 +395,20 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
 
       {result && (
         <div className="decoder-results">
+          {/* Extracted info banner */}
+          {extracted && (extracted.company || extracted.role) && (
+            <div className="extracted-info">
+              <span className="extracted-company">{extracted.company || 'Unknown Company'}</span>
+              {extracted.role && (
+                <>
+                  <span className="extracted-separator">—</span>
+                  <span className="extracted-role">{extracted.role}</span>
+                </>
+              )}
+              <span className="extracted-seniority">{extracted.seniority}</span>
+            </div>
+          )}
+
           <div className="result-header">
             <span className={`category-badge ${getCategoryColor(result.category)}`}>
               {result.category}
@@ -398,7 +541,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                 </div>
               ) : addedToTracker ? (
                 <div className="success-message">
-                  Added to Pro Tracker! Go to Pro Tracker tab to fill in details.
+                  Added: {extracted?.company || 'Unknown'} — {extracted?.role || 'Role from email'}
                 </div>
               ) : (
                 <div className="link-or-add">
@@ -440,9 +583,9 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                   {onAddToTracker && (
                     <button
                       className="btn btn-secondary"
-                      onClick={handleAddToTracker}
+                      onClick={handleAddToTrackerClick}
                     >
-                      + Add as new application
+                      + Add as new: {extracted?.company || 'Unknown'} — {extracted?.role || 'Role'}
                     </button>
                   )}
                 </div>

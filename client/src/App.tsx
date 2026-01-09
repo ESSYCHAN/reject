@@ -7,7 +7,7 @@ import { FAQ } from './components/FAQ';
 import { EmailCapture } from './components/EmailCapture';
 import { AuthButtons, useAuth } from './components/AuthButtons';
 import { DecodeResponse } from './types';
-import { ApplicationRecord, Outcome } from './types/pro';
+import { ApplicationRecord } from './types/pro';
 import { setProStatus } from './utils/usage';
 import './App.css';
 
@@ -46,29 +46,18 @@ function App() {
   };
 
   const handleAddToTracker = (data: DecodedData) => {
-    // Map rejection category to outcome
-    const categoryToOutcome = (category: string): Outcome => {
-      switch (category) {
-        case 'Door Open': return 'rejected_recruiter';
-        case 'Hard No': return 'rejected_ats';
-        case 'Soft No': return 'rejected_recruiter';
-        case 'Template': return 'rejected_ats';
-        case 'Polite Pass': return 'rejected_recruiter';
-        default: return 'rejected_ats';
-      }
-    };
-
     // Create a new application record from decoded rejection
+    // Now using extracted role, seniority, and stage-based outcome
     const newApp: ApplicationRecord = {
       id: crypto.randomUUID(),
       company: data.companyName || 'Unknown Company',
-      role: 'Position from rejection email',
-      seniorityLevel: 'mid',
+      role: data.roleName || 'Position from rejection email',
+      seniorityLevel: data.seniority,
       companySize: 'mid',
       industry: '',
       source: 'other',
       dateApplied: new Date().toISOString().split('T')[0],
-      outcome: categoryToOutcome(data.result.category),
+      outcome: data.outcome,
       daysToResponse: null
     };
 
