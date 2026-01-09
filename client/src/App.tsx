@@ -5,6 +5,7 @@ import { ProTracker } from './components/ProTracker';
 import { ProInsightsV2 } from './components/ProInsightsV2';
 import { RoleFitChecker } from './components/RoleFitChecker';
 import { EmailCapture } from './components/EmailCapture';
+import { AuthButtons } from './components/AuthButtons';
 import { DecodeResponse } from './types';
 import { ApplicationRecord, Outcome } from './types/pro';
 import './App.css';
@@ -126,6 +127,7 @@ function App() {
         <div className="header-content">
           <h1 className="logo">REJECT</h1>
           <nav className="nav">
+            <AuthButtons />
             <button
               className={`nav-btn ${activeTab === 'decoder' ? 'active' : ''}`}
               onClick={() => setActiveTab('decoder')}

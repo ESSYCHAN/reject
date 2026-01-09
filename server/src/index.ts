@@ -7,10 +7,14 @@ import { dirname, join } from 'path';
 import { existsSync } from 'fs';
 import { generalRateLimiter } from './middleware/rateLimiter.js';
 import { errorHandler } from './middleware/errorHandler.js';
+import { authMiddleware } from './middleware/auth.js';
+import { initDatabase } from './db/index.js';
 import healthRouter from './routes/health.js';
 import decodeRouter from './routes/decode.js';
 import subscribeRouter from './routes/subscribe.js';
 import proRouter from './routes/pro.js';
+import userRouter from './routes/user.js';
+import stripeWebhookRouter from './routes/stripe-webhook.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -37,13 +41,22 @@ if (corsOrigin) {
 
 app.use(generalRateLimiter);
 
+// Stripe webhook needs raw body for signature verification
+// Must be before express.json()
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+app.use('/api/stripe', stripeWebhookRouter);
+
 app.use(express.json({ limit: '100kb' }));
+
+// Clerk auth middleware - adds auth info to all requests
+app.use(authMiddleware);
 
 // API Routes
 app.use('/api/health', healthRouter);
 app.use('/api/decode', decodeRouter);
 app.use('/api/subscribe', subscribeRouter);
 app.use('/api/pro', proRouter);
+app.use('/api/user', userRouter);
 
 // In production, serve the Vite build
 if (NODE_ENV === 'production') {
@@ -75,10 +88,28 @@ app.use((req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`Environment: ${NODE_ENV}`);
-  if (NODE_ENV === 'development') {
-    console.log(`CORS enabled for: ${CLIENT_URL}`);
+// Initialize database and start server
+async function start() {
+  try {
+    // Only init DB if DATABASE_URL is set
+    if (process.env.DATABASE_URL) {
+      await initDatabase();
+      console.log('Database connected');
+    } else {
+      console.log('No DATABASE_URL - using in-memory storage');
+    }
+
+    app.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+      console.log(`Environment: ${NODE_ENV}`);
+      if (NODE_ENV === 'development') {
+        console.log(`CORS enabled for: ${CLIENT_URL}`);
+      }
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
   }
-});
+}
+
+start();

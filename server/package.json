@@ -18,6 +18,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@clerk/express": "^1.7.62",
+    "@types/pg": "^8.16.0",
     "better-sqlite3": "^12.5.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -25,6 +27,8 @@
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
     "openai": "^4.28.0",
+    "pg": "^8.16.3",
+    "stripe": "^20.1.2",
     "zod": "^3.22.4"
   },
   "devDependencies": {

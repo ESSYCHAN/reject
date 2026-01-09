@@ -1,0 +1,10 @@
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.auth-buttons .cl-userButtonBox {
+  width: 32px;
+  height: 32px;
+}
