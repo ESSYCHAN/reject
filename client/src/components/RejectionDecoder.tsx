@@ -50,6 +50,12 @@ function extractFromEmail(emailText: string): ExtractedInfo {
     /the\s+([A-Za-z0-9\s\-\/&,]+?)\s+(?:role|position|opportunity)\s+(?:at|with)\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\.|,|\s+We|\s+Thank|\s+After)/i,
     // "your interest in the Product Manager position at Stripe"
     /interest\s+in\s+(?:the\s+)?([A-Za-z0-9\s\-\/&,]+?)\s+(?:position|role|opportunity)\s+(?:at|with)\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\.|,|\s+We|\s+Thank|\s+After)/i,
+    // "regarding your application to Google for the Software Engineer role"
+    /application\s+to\s+([A-Z][A-Za-z0-9\s&.\-']+?)\s+for\s+(?:the\s+)?([A-Za-z0-9\s\-\/&,]+?)(?:\s+role|\s+position)?(?:\.|,|\s+We|\s+Thank|\s+After)/i,
+    // "thank you for interviewing for Senior Developer at Acme Corp"
+    /interviewing\s+(?:for|with)\s+(?:the\s+)?([A-Za-z0-9\s\-\/&,]+?)\s+(?:position\s+)?(?:at|with)\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\.|,|\s+We|\s+Thank|\s+After)/i,
+    // "RE: Software Engineer - Google" or "Subject: Principal Researcher - Nokia"
+    /(?:RE:|Subject:)\s*([A-Za-z0-9\s\-\/&,]+?)\s+-\s+([A-Z][A-Za-z0-9\s&.\-']+?)(?:\s|$)/i,
   ];
 
   for (const pattern of combinedPatterns) {
@@ -116,13 +122,24 @@ function cleanCompany(raw: string): string {
 
 function isValidRole(role: string): boolean {
   if (!role || role.length < 3 || role.length > 80) return false;
-  const invalidStarts = ['the job', 'your', 'this', 'that', 'our', 'we ', 'after', 'thank', 'unfortunately', 'however', 'please', 'regarding', 'following'];
+  const invalidStarts = [
+    'the job', 'your', 'this', 'that', 'our', 'we ', 'after', 'thank',
+    'unfortunately', 'however', 'please', 'regarding', 'following',
+    'position from', 'role from', 'a position', 'an opportunity'
+  ];
+  const invalidContains = [
+    'rejection', 'application', 'resume', 'cv', 'requirements',
+    'qualifications', 'candidates', 'unfortunately', 'regret'
+  ];
   const lowerRole = role.toLowerCase();
   for (const invalid of invalidStarts) {
     if (lowerRole.startsWith(invalid)) return false;
   }
+  for (const invalid of invalidContains) {
+    if (lowerRole.includes(invalid)) return false;
+  }
   // Should contain role-like word or be short enough to be a title
-  const roleKeywords = ['engineer', 'developer', 'scientist', 'analyst', 'manager', 'designer', 'researcher', 'director', 'lead', 'architect', 'consultant', 'specialist', 'coordinator', 'associate', 'intern', 'administrator', 'officer', 'head', 'vp', 'president', 'chief', 'executive'];
+  const roleKeywords = ['engineer', 'developer', 'scientist', 'analyst', 'manager', 'designer', 'researcher', 'director', 'lead', 'architect', 'consultant', 'specialist', 'coordinator', 'associate', 'intern', 'administrator', 'officer', 'head', 'vp', 'president', 'chief', 'executive', 'strategist', 'planner', 'writer', 'editor', 'producer', 'recruiter', 'buyer', 'agent', 'rep', 'sales', 'marketing', 'product', 'program', 'project'];
   const hasRoleKeyword = roleKeywords.some(keyword => lowerRole.includes(keyword));
   const isShortTitle = role.split(' ').length <= 4;
   return hasRoleKeyword || isShortTitle;
@@ -130,7 +147,13 @@ function isValidRole(role: string): boolean {
 
 function isValidCompany(company: string): boolean {
   if (!company || company.length < 2 || company.length > 60) return false;
-  const invalidCompanies = ['the job', 'the position', 'the role', 'this role', 'the company', 'your application', 'the requirements', 'job requirements', 'thank you', 'unfortunately', 'we regret', 'after careful'];
+  const invalidCompanies = [
+    'the job', 'the position', 'the role', 'this role', 'the company',
+    'your application', 'the requirements', 'job requirements', 'the job requirements',
+    'thank you', 'unfortunately', 'we regret', 'after careful', 'however',
+    'we have', 'we are', 'at this time', 'other candidates', 'your resume',
+    'your qualifications', 'your experience', 'your background', 'the team'
+  ];
   const lowerCompany = company.toLowerCase();
   for (const invalid of invalidCompanies) {
     if (lowerCompany.includes(invalid)) return false;
