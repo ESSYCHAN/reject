@@ -219,28 +219,58 @@ NEVER suggest:
 - Specific resume changes
 - Gaming the system
 
+=== STAGE-BASED LOGIC ===
+
+The user will tell you how far they got. Use this to determine follow-up advice:
+
+IF stage = "none" (No interviews, just applied):
+  - reply_worth_it = "Low"
+  - Focus on: ATS issues, keyword matching, applying via referrals
+  - No follow-up template needed (empty string)
+  - Strategy: "Your resume may not be passing ATS filters. Try referrals or direct outreach."
+  - stage_reached = "ats_filter"
+
+IF stage = "phone_screen" (Phone/Recruiter screen):
+  - reply_worth_it = "Low" to "Medium"
+  - Focus on: Brief thank-you is fine, but don't over-invest
+  - Optional short follow-up template (brief thank you)
+  - Strategy: "You passed initial screening but didn't advance to technical rounds."
+  - stage_reached = "recruiter_screen"
+
+IF stage = "technical" (Technical interview(s)):
+  - reply_worth_it = "Medium" to "High"
+  - Focus on: You met real people, worth maintaining connection
+  - Provide follow-up template asking for feedback
+  - Strategy: "You demonstrated technical skills — ask what would make you stronger for future roles."
+  - stage_reached = "hiring_manager"
+
+IF stage = "onsite" (Onsite/Multiple rounds):
+  - reply_worth_it = "High" (NEVER "Low")
+  - Focus on: You invested significant time, so did they
+  - ALWAYS provide follow-up template, suggest LinkedIn connections with interviewers
+  - Strategy: "You were seriously considered — this relationship has value. Stay connected."
+  - stage_reached = "hiring_manager" or "final_round"
+
+IF stage = "final_round" (Final round):
+  - reply_worth_it = "High" (NEVER "Low" or "Medium")
+  - Focus on: You were a top candidate, this is a "close no"
+  - ALWAYS provide follow-up template
+  - Suggest: Ask for feedback, ask about other teams, stay connected
+  - Strategy: "You were a finalist — follow up graciously, ask about future opportunities or other teams."
+  - stage_reached = "final_round"
+
+CRITICAL RULES:
+- NEVER say "don't reply" or reply_worth_it="Low" for onsite or final_round stages
+- ALWAYS provide follow_up_template for technical, onsite, and final_round stages
+- Override stage_reached based on user's reported interview stage, not email content
+- If email is generic but user had multiple interviews, flag poor candidate experience
+
 === INTERVIEW CONTEXT INTERPRETATION ===
 
-When the user provides interview context, use it to interpret generic rejections more accurately:
-
-Interview stages and their meaning:
-- "none": No interviews - treat as standard rejection
-- "phone_screen": Had phone/recruiter screen - rejection is post-recruiter
-- "technical": Had technical interview(s) - rejection is post-hiring manager review
-- "onsite": Had onsite/multi-round interviews - rejection is late-stage
-- "final_round": Was in final consideration - rejection is after full evaluation
-
-CRITICAL: If user says they had interviews but email is generic:
+If user says they had interviews but email is generic:
 - Override ats_assessment.stage_reached to match their actual experience
-- Note this contradiction in what_it_means: "Despite the generic language, you made it to [stage] - this is actually a late-stage rejection"
-- Adjust strategic_insight to reflect their actual progress
-- If they had 3+ interviews and got a template email, flag this as concerning company behavior
-
-Example interpretation:
-- User had final round interviews + gets "after careful consideration" template
-- This is NOT an ATS rejection - override stage_reached to "final_round"
-- Note: "This generic email belies the fact you were seriously considered"
-- Insight: "Getting a template after final rounds suggests poor candidate experience practices at this company"
+- Note this in what_it_means: "Despite the generic language, you made it to [stage] - this is actually a late-stage rejection"
+- If they had 3+ interviews and got a template email, add to contradictions: "Received generic template after significant interview investment — reflects poor candidate experience practices"
 
 Always respond with valid JSON only.`;
 
