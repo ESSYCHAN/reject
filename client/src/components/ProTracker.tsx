@@ -40,10 +40,13 @@ interface ProTrackerProps {
   onApplicationsChange?: (apps: ApplicationRecord[]) => void;
 }
 
+const ITEMS_PER_PAGE = 10;
+
 export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
   const [applications, setApplications] = useState<ApplicationRecord[]>(() => loadProApplications());
   const [showForm, setShowForm] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     company: '',
     role: '',
@@ -130,6 +133,18 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     if (outcome.startsWith('rejected')) return 'outcome-rejected';
     if (outcome === 'pending') return 'outcome-pending';
     return '';
+  };
+
+  // Pagination
+  const totalPages = Math.ceil(applications.length / ITEMS_PER_PAGE);
+  const paginatedApplications = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return applications.slice(start, start + ITEMS_PER_PAGE);
+  }, [applications, currentPage]);
+
+  // Reset to page 1 when applications change significantly
+  const handlePageChange = (page: number) => {
+    setCurrentPage(Math.max(1, Math.min(page, totalPages)));
   };
 
   // Show upgrade prompt if limit reached
@@ -243,43 +258,68 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
             <p>Add applications to unlock pattern analysis and strategic insights.</p>
           </div>
         ) : (
-          applications.map((app) => (
-            <div key={app.id} className="application-card pro-card">
-              <div className="application-main">
-                <div className="application-info">
-                  <h3>{app.company}</h3>
-                  <p className="role">{app.role}</p>
-                  <div className="app-tags">
-                    <span className="tag">{app.seniorityLevel}</span>
-                    <span className="tag">{app.source}</span>
+          <>
+            {paginatedApplications.map((app) => (
+              <div key={app.id} className="application-card pro-card">
+                <div className="application-main">
+                  <div className="application-info">
+                    <h3>{app.company}</h3>
+                    <p className="role">{app.role}</p>
+                    <div className="app-tags">
+                      <span className="tag">{app.seniorityLevel}</span>
+                      <span className="tag">{app.source}</span>
+                    </div>
+                  </div>
+                  <div className="application-meta">
+                    <span className="date">Applied: {app.dateApplied}</span>
+                    {app.daysToResponse !== null && (
+                      <span className="date">{app.daysToResponse} days to response</span>
+                    )}
                   </div>
                 </div>
-                <div className="application-meta">
-                  <span className="date">Applied: {app.dateApplied}</span>
-                  {app.daysToResponse !== null && (
-                    <span className="date">{app.daysToResponse} days to response</span>
-                  )}
+                <div className="application-actions">
+                  <select
+                    className={`status-select ${getOutcomeClass(app.outcome)}`}
+                    value={app.outcome}
+                    onChange={(e) => updateApplication(app.id, { outcome: e.target.value as Outcome })}
+                  >
+                    {OUTCOME_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="btn btn-danger btn-small"
+                    onClick={() => deleteApplication(app.id)}
+                  >
+                    Delete
+                  </button>
                 </div>
               </div>
-              <div className="application-actions">
-                <select
-                  className={`status-select ${getOutcomeClass(app.outcome)}`}
-                  value={app.outcome}
-                  onChange={(e) => updateApplication(app.id, { outcome: e.target.value as Outcome })}
-                >
-                  {OUTCOME_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
+            ))}
+
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+              <div className="pagination">
                 <button
-                  className="btn btn-danger btn-small"
-                  onClick={() => deleteApplication(app.id)}
+                  className="btn btn-secondary btn-small"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
                 >
-                  Delete
+                  Previous
+                </button>
+                <span className="pagination-info">
+                  Page {currentPage} of {totalPages} ({applications.length} applications)
+                </span>
+                <button
+                  className="btn btn-secondary btn-small"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
                 </button>
               </div>
-            </div>
-          ))
+            )}
+          </>
         )}
       </div>
     </div>
