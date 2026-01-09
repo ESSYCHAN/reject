@@ -1,0 +1,27 @@
+{
+  "name": "reject",
+  "version": "1.0.0",
+  "description": "Rejection Intelligence Platform - Turn every no into a next step",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev",
+    "build": "cd client && npm install && npm run build && cd ../server && npm install && npm run build",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "start": "cd server && npm start",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "clean": "rm -rf client/dist server/dist"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": ["rejection", "job-search", "career", "ai"],
+  "author": "",
+  "license": "MIT"
+}

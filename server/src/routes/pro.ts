@@ -1,0 +1,110 @@
+import { Router, Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import {
+  ApplicationRecordSchema,
+  SeniorityLevelSchema
+} from '../types/pro.js';
+import { assessRoleFitV2 } from '../services/roleFitV2.js';
+import { inferProfile } from '../services/profileInference.js';
+import { analyzeApplications } from '../services/unifiedAnalytics.js';
+import { decodeRateLimiter } from '../middleware/rateLimiter.js';
+
+const router = Router();
+
+// Minimal profile schema for v2 endpoints
+const MinimalProfileSchema = z.object({
+  yearsExperience: z.number().min(0).max(50),
+  currentSeniority: SeniorityLevelSchema
+});
+
+// Unified analysis request schema
+const AnalyzeRequestSchema = z.object({
+  profile: MinimalProfileSchema,
+  applications: z.array(ApplicationRecordSchema)
+});
+
+/**
+ * POST /api/pro/analyze
+ * Unified pattern analysis + strategic guidance with inferred profile
+ */
+router.post(
+  '/analyze',
+  decodeRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validation = AnalyzeRequestSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const errorDetails = validation.error.errors
+          .map(e => `${e.path.join('.')}: ${e.message}`)
+          .join(', ');
+        console.log('[pro/analyze] Validation error:', errorDetails);
+        res.status(400).json({
+          error: 'Validation error',
+          details: errorDetails
+        });
+        return;
+      }
+
+      const { profile, applications } = validation.data;
+      console.log(`[pro/analyze] Analyzing ${applications.length} applications`);
+
+      const result = await analyzeApplications(profile, applications);
+
+      console.log(`[pro/analyze] Complete - ${result.analysis.insights.length} insights generated`);
+      res.json({ data: result });
+    } catch (error) {
+      console.error('[pro/analyze] Error:', error);
+      next(error);
+    }
+  }
+);
+
+// Role Fit V2 request schema
+const RoleFitV2RequestSchema = z.object({
+  jobDescription: z.string().min(50, 'Job description must be at least 50 characters'),
+  profile: MinimalProfileSchema,
+  applications: z.array(ApplicationRecordSchema)
+});
+
+/**
+ * POST /api/pro/role-fit-v2
+ * Improved role fit with sample-size awareness and constructive messaging
+ */
+router.post(
+  '/role-fit-v2',
+  decodeRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validation = RoleFitV2RequestSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const errorDetails = validation.error.errors
+          .map(e => `${e.path.join('.')}: ${e.message}`)
+          .join(', ');
+        res.status(400).json({
+          error: 'Validation error',
+          details: errorDetails
+        });
+        return;
+      }
+
+      const { jobDescription, profile, applications } = validation.data;
+
+      console.log(`[role-fit-v2] Assessing fit (${applications.length} apps, ${profile.yearsExperience} yrs exp)`);
+
+      // Build full profile from minimal profile + applications
+      const fullProfile = inferProfile(profile, applications);
+
+      const result = await assessRoleFitV2(jobDescription, fullProfile);
+
+      console.log(`[role-fit-v2] Complete - verdict: ${result.verdict}, company: ${result.company}`);
+      res.json({ data: result });
+    } catch (error) {
+      console.error('[role-fit-v2] Error:', error);
+      next(error);
+    }
+  }
+);
+
+export default router;

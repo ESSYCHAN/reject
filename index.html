@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rejected. | Decode Your Rejection Emails</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --black: #0a0a0a;
+            --white: #f5f5f5;
+            --yellow: #e4ff1a;
+            --gray: #888;
+            --dark-gray: #1a1a1a;
+            --border: #333;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--black);
+            color: var(--white);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Header */
+        header {
+            padding: 1.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+
+        .logo span {
+            color: var(--yellow);
+        }
+
+        .beta-tag {
+            font-size: 0.65rem;
+            background: var(--yellow);
+            color: var(--black);
+            padding: 0.2rem 0.5rem;
+            margin-left: 0.5rem;
+            vertical-align: super;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 4rem 0 3rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .hero h1 {
+            font-family: 'Syne', sans-serif;
+            font-size: clamp(2.5rem, 8vw, 4.5rem);
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 1.5rem;
+            letter-spacing: -0.04em;
+        }
+
+        .hero h1 span {
+            color: var(--yellow);
+        }
+
+        .hero p {
+            color: var(--gray);
+            max-width: 500px;
+            margin: 0 auto 2rem;
+            font-size: 0.95rem;
+        }
+
+        /* Main Tool */
+        .tool-section {
+            padding: 3rem 0;
+        }
+
+        .tool-container {
+            background: var(--dark-gray);
+            border: 1px solid var(--border);
+            padding: 2rem;
+        }
+
+        .tool-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .tool-header .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--yellow);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .input-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--gray);
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .email-input {
+            width: 100%;
+            min-height: 200px;
+            background: var(--black);
+            border: 1px solid var(--border);
+            color: var(--white);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            padding: 1.25rem;
+            resize: vertical;
+            margin-bottom: 1.5rem;
+        }
+
+        .email-input::placeholder {
+            color: var(--gray);
+            opacity: 0.6;
+        }
+
+        .email-input:focus {
+            outline: none;
+            border-color: var(--yellow);
+        }
+
+        .decode-btn {
+            width: 100%;
+            background: var(--yellow);
+            color: var(--black);
+            border: none;
+            padding: 1rem 2rem;
+            font-family: 'Syne', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .decode-btn:hover {
+            background: var(--white);
+            transform: translateY(-2px);
+        }
+
+        .decode-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Results */
+        .results {
+            display: none;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .results.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .result-type {
+            font-size: 0.75rem;
+            padding: 0.4rem 0.8rem;
+            background: transparent;
+            border: 1px solid;
+        }
+
+        .result-type.hard { border-color: #ff4444; color: #ff4444; }
+        .result-type.soft { border-color: #ffaa00; color: #ffaa00; }
+        .result-type.template { border-color: var(--gray); color: var(--gray); }
+        .result-type.ghost { border-color: #666; color: #666; }
+
+        .analysis-grid {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .analysis-item {
+            background: var(--black);
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+        }
+
+        .analysis-item h4 {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--yellow);
+            margin-bottom: 0.75rem;
+        }
+
+        .analysis-item p {
+            font-size: 0.9rem;
+            color: var(--white);
+        }
+
+        .action-box {
+            background: var(--yellow);
+            color: var(--black);
+            padding: 1.5rem;
+        }
+
+        .action-box h4 {
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .action-box p {
+            font-size: 0.9rem;
+        }
+
+        /* Tracker Section */
+        .tracker-section {
+            padding: 3rem 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .tracker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+
+        .tracker-header h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .add-btn {
+            background: transparent;
+            border: 1px solid var(--yellow);
+            color: var(--yellow);
+            padding: 0.5rem 1rem;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-btn:hover {
+            background: var(--yellow);
+            color: var(--black);
+        }
+
+        .tracker-list {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .tracker-item {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 1rem;
+            align-items: center;
+            padding: 1.25rem;
+            background: var(--dark-gray);
+            border: 1px solid var(--border);
+        }
+
+        .tracker-item-info h4 {
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .tracker-item-info p {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .tracker-status {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.3rem 0.6rem;
+            border: 1px solid;
+        }
+
+        .tracker-status.rejected { border-color: #ff4444; color: #ff4444; }
+        .tracker-status.pending { border-color: #ffaa00; color: #ffaa00; }
+        .tracker-status.ghosted { border-color: #666; color: #666; }
+
+        .tracker-date {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        .tracker-empty {
+            text-align: center;
+            padding: 3rem;
+            border: 1px dashed var(--border);
+            color: var(--gray);
+        }
+
+        .tracker-empty p {
+            margin-bottom: 1rem;
+        }
+
+        /* Insights */
+        .insights-section {
+            padding: 3rem 0;
+            border-top: 1px solid var(--border);
+        }
+
+        .insights-section h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+        }
+
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+
+        .insight-card {
+            background: var(--dark-gray);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            text-align: center;
+        }
+
+        .insight-number {
+            font-family: 'Syne', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: var(--yellow);
+            line-height: 1;
+            margin-bottom: 0.5rem;
+        }
+
+        .insight-label {
+            font-size: 0.8rem;
+            color: var(--gray);
+        }
+
+        /* CTA */
+        .cta-section {
+            padding: 4rem 0;
+            text-align: center;
+            border-top: 1px solid var(--border);
+        }
+
+        .cta-section h2 {
+            font-family: 'Syne', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .cta-section p {
+            color: var(--gray);
+            margin-bottom: 2rem;
+            max-width: 400px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .email-signup {
+            display: flex;
+            gap: 0;
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        .email-signup input {
+            flex: 1;
+            background: var(--dark-gray);
+            border: 1px solid var(--border);
+            border-right: none;
+            color: var(--white);
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            padding: 1rem;
+        }
+
+        .email-signup input:focus {
+            outline: none;
+            border-color: var(--yellow);
+        }
+
+        .email-signup button {
+            background: var(--yellow);
+            color: var(--black);
+            border: 1px solid var(--yellow);
+            padding: 1rem 1.5rem;
+            font-family: 'Syne', sans-serif;
+            font-weight: 700;
+            font-size: 0.9rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        .email-signup button:hover {
+            background: var(--white);
+            border-color: var(--white);
+        }
+
+        /* Footer */
+        footer {
+            padding: 2rem 0;
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--gray);
+            border-top: 1px solid var(--border);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .insights-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .tracker-item {
+                grid-template-columns: 1fr;
+                gap: 0.75rem;
+            }
+
+            .email-signup {
+                flex-direction: column;
+            }
+
+            .email-signup input {
+                border-right: 1px solid var(--border);
+                border-bottom: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-inner">
+            <div class="logo">Rejected<span>.</span><span class="beta-tag">BETA</span></div>
+        </div>
+    </header>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Decode your<br><span>rejection</span></h1>
+            <p>Paste your rejection email. Get the truth about what it means, what to do next, and track your job search patterns.</p>
+        </div>
+    </section>
+
+    <section class="tool-section">
+        <div class="container">
+            <div class="tool-container">
+                <div class="tool-header">
+                    <span class="dot"></span>
+                    <span>rejection decoder active</span>
+                </div>
+                
+                <label class="input-label">Paste your rejection email</label>
+                <textarea class="email-input" id="emailInput" placeholder="Dear [Name],
+
+Thank you for taking the time to apply for the [Position] role at [Company]. After careful consideration, we have decided to move forward with other candidates whose qualifications more closely match our current needs.
+
+We will keep your resume on file for future opportunities..."></textarea>
+                
+                <button class="decode-btn" id="decodeBtn" onclick="decodeEmail()">Decode This Rejection</button>
+
+                <div class="results" id="results">
+                    <div class="result-header">
+                        <span class="result-title">Analysis Complete</span>
+                        <span class="result-type template" id="resultType">TEMPLATE</span>
+                    </div>
+
+                    <div class="analysis-grid">
+                        <div class="analysis-item">
+                            <h4>What this means</h4>
+                            <p id="meaning">This is a standard automated rejection template. You were likely filtered out early in the process—possibly by ATS software before a human even saw your application.</p>
+                        </div>
+                        <div class="analysis-item">
+                            <h4>The "keep on file" promise</h4>
+                            <p id="filePromise">Almost certainly meaningless. Only 3% of companies actually resurface candidates from previous applications. Don't count on hearing from them.</p>
+                        </div>
+                        <div class="analysis-item">
+                            <h4>Response worthiness</h4>
+                            <p id="responseWorth">Low. This came from an automated system. A reply is unlikely to reach a human or get any response.</p>
+                        </div>
+                    </div>
+
+                    <div class="action-box">
+                        <h4>→ Your move</h4>
+                        <p id="actionAdvice">Don't waste energy on follow-up. Instead, find someone who works there on LinkedIn and send a brief, personalized connection request for future roles. That's 10x more effective than replying to this email.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="tracker-section">
+        <div class="container">
+            <div class="tracker-header">
+                <h2>Your rejection tracker</h2>
+                <button class="add-btn" onclick="showAddForm()">+ Add Application</button>
+            </div>
+
+            <div class="tracker-list" id="trackerList">
+                <div class="tracker-item">
+                    <div class="tracker-item-info">
+                        <h4>Senior Data Scientist</h4>
+                        <p>Monzo • Applied via LinkedIn</p>
+                    </div>
+                    <span class="tracker-status rejected">Rejected</span>
+                    <span class="tracker-date">Dec 15</span>
+                </div>
+                <div class="tracker-item">
+                    <div class="tracker-item-info">
+                        <h4>ML Engineer</h4>
+                        <p>Deliveroo • Applied via website</p>
+                    </div>
+                    <span class="tracker-status ghosted">Ghosted</span>
+                    <span class="tracker-date">Dec 3</span>
+                </div>
+                <div class="tracker-item">
+                    <div class="tracker-item-info">
+                        <h4>Research Scientist</h4>
+                        <p>DeepMind • Referral</p>
+                    </div>
+                    <span class="tracker-status pending">Pending</span>
+                    <span class="tracker-date">Jan 2</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="insights-section">
+        <div class="container">
+            <h2>Your patterns</h2>
+            <div class="insights-grid">
+                <div class="insight-card">
+                    <div class="insight-number">12</div>
+                    <div class="insight-label">Applications tracked</div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-number">67%</div>
+                    <div class="insight-label">Rejection rate</div>
+                </div>
+                <div class="insight-card">
+                    <div class="insight-number">4</div>
+                    <div class="insight-label">Companies ghosted you</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta-section">
+        <div class="container">
+            <h2>Get smarter about rejection</h2>
+            <p>Weekly insights on what your rejection patterns reveal—and how to break them.</p>
+            <div class="email-signup">
+                <input type="email" placeholder="your@email.com">
+                <button>Subscribe</button>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            Built by someone who's been rejected too. © 2025
+        </div>
+    </footer>
+
+    <script>
+        function decodeEmail() {
+            const input = document.getElementById('emailInput').value.trim();
+            const results = document.getElementById('results');
+            const btn = document.getElementById('decodeBtn');
+            
+            if (!input) {
+                alert('Paste a rejection email first');
+                return;
+            }
+
+            // Simulate processing
+            btn.disabled = true;
+            btn.textContent = 'Analyzing...';
+
+            setTimeout(() => {
+                // Simple keyword analysis
+                const lowerInput = input.toLowerCase();
+                
+                let type = 'template';
+                let typeClass = 'template';
+                let meaning = '';
+                let filePromise = '';
+                let responseWorth = '';
+                let action = '';
+
+                // Check for personalization signals
+                const hasPersonalDetails = lowerInput.includes('interview') || 
+                                          lowerInput.includes('meeting') || 
+                                          lowerInput.includes('conversation') ||
+                                          lowerInput.includes('impressed');
+                
+                const hasGenericPhrases = lowerInput.includes('after careful consideration') ||
+                                         lowerInput.includes('other candidates') ||
+                                         lowerInput.includes('keep your resume on file') ||
+                                         lowerInput.includes('current needs');
+
+                const hasFeedback = lowerInput.includes('feedback') ||
+                                   lowerInput.includes('however') ||
+                                   lowerInput.includes('suggest') ||
+                                   lowerInput.includes('recommend');
+
+                const hasEncouragement = lowerInput.includes('encourage you to apply') ||
+                                        lowerInput.includes('stay in touch') ||
+                                        lowerInput.includes('reach out');
+
+                if (hasPersonalDetails && hasFeedback) {
+                    type = 'SOFT NO';
+                    typeClass = 'soft';
+                    meaning = "This is a genuine soft rejection. Someone actually reviewed your application and took time to respond personally. You made it past initial screening but weren't the final choice.";
+                    filePromise = "More credible than most. If they mentioned specific feedback or encouraged reapplying, there's a real chance they'd consider you for future roles.";
+                    responseWorth = "High. A thoughtful thank-you note could keep this door open. Ask if they'd be open to connecting on LinkedIn.";
+                    action = "Send a brief, gracious reply thanking them for the feedback. Ask one specific question about what would make you a stronger candidate. This turns a rejection into a relationship.";
+                } else if (hasPersonalDetails && !hasFeedback) {
+                    type = 'POLITE PASS';
+                    typeClass = 'soft';
+                    meaning = "You got further than most—they remember interacting with you. But something didn't click. Could be fit, timing, or an internal candidate.";
+                    filePromise = "50/50. They know who you are, which matters. But without specific encouragement, don't expect proactive outreach.";
+                    responseWorth = "Medium. A reply won't hurt and might help if you're genuine and brief.";
+                    action = "Reply with a short thank-you. Mention something specific from your interaction to stay memorable. Connect on LinkedIn with a personalized note.";
+                } else if (hasGenericPhrases && !hasPersonalDetails) {
+                    type = 'TEMPLATE';
+                    typeClass = 'template';
+                    meaning = "This is a standard automated rejection template. You were likely filtered out early—possibly by ATS software before a human saw your application.";
+                    filePromise = "Almost certainly meaningless. Only ~3% of companies resurface candidates from previous applications. Don't count on hearing from them.";
+                    responseWorth = "Low. This came from an automated system. A reply is unlikely to reach a human or get any response.";
+                    action = "Don't waste energy on follow-up. Find someone who works there on LinkedIn and send a brief, personalized connection request for future roles. That's 10x more effective than replying to this email.";
+                } else if (hasEncouragement) {
+                    type = 'DOOR OPEN';
+                    typeClass = 'soft';
+                    meaning = "They're signaling genuine interest in you for future roles. This could be timing, headcount, or a very close decision that went to someone else.";
+                    filePromise = "Higher than average. The explicit encouragement suggests they actually mean it—rare in rejection emails.";
+                    responseWorth = "High. They've invited continued contact. Take them up on it.";
+                    action = "Reply thanking them and ask what timeline might make sense for future roles. Set a reminder to check back in 2-3 months. Connect with the hiring manager on LinkedIn now while the interaction is fresh.";
+                } else {
+                    type = 'HARD NO';
+                    typeClass = 'hard';
+                    meaning = "Short, impersonal, no softening language. They're closing this door firmly. Could be a mismatch in experience level, skills, or you were flagged for some reason.";
+                    filePromise = "Non-existent. They didn't even include the standard platitude, which suggests they're not thinking about future engagement.";
+                    responseWorth = "Very low. Move on and focus your energy elsewhere.";
+                    action = "Don't reply. Review the job posting again—was there a clear mismatch you missed? Use this as data to refine which roles you target. Sometimes a hard no is useful information.";
+                }
+
+                // Update UI
+                document.getElementById('resultType').textContent = type;
+                document.getElementById('resultType').className = 'result-type ' + typeClass;
+                document.getElementById('meaning').textContent = meaning;
+                document.getElementById('filePromise').textContent = filePromise;
+                document.getElementById('responseWorth').textContent = responseWorth;
+                document.getElementById('actionAdvice').textContent = action;
+
+                results.classList.add('active');
+                btn.disabled = false;
+                btn.textContent = 'Decode This Rejection';
+
+                // Scroll to results
+                results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }, 1500);
+        }
+
+        function showAddForm() {
+            alert('In the full version, this opens a form to log a new application. For now, this is a prototype!');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# Editor directories
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Misc
+.cache/
+coverage/
+
+# Data files (SQLite, local storage)
+server/data/
+server/subscribers.json
+*.db
+*.db-wal
+*.db-shm
+
+# Server env specifically
+server/.env
