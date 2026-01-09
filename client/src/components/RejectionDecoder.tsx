@@ -188,6 +188,18 @@ function stageToOutcome(stage: InterviewStage): ApplicationRecord['outcome'] {
   }
 }
 
+// Short label for outcome badge
+function getShortOutcomeLabel(stage: InterviewStage): string {
+  switch (stage) {
+    case 'none': return 'ATS';
+    case 'phone_screen': return 'Recruiter';
+    case 'technical': return 'Technical';
+    case 'onsite': return 'Final';
+    case 'final_round': return 'Final';
+    default: return 'ATS';
+  }
+}
+
 interface DecodedData {
   result: DecodeResponse;
   emailText: string;
@@ -604,12 +616,17 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
 
                   {/* Add as new application */}
                   {onAddToTracker && (
-                    <button
-                      className="btn btn-secondary"
-                      onClick={handleAddToTrackerClick}
-                    >
-                      + Add as new: {extracted?.company || 'Unknown'} — {extracted?.role || 'Role'}
-                    </button>
+                    <div className="add-new-section">
+                      <button
+                        className="btn btn-secondary"
+                        onClick={handleAddToTrackerClick}
+                      >
+                        + Add: {extracted?.company || 'Unknown'} — {extracted?.role || 'Role'}
+                      </button>
+                      <span className={`outcome-preview outcome-${stageToOutcome(interviewStage)}`}>
+                        Stage: {getShortOutcomeLabel(interviewStage)}
+                      </span>
+                    </div>
                   )}
                 </div>
               )}

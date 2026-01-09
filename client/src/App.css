@@ -637,6 +637,42 @@
   text-transform: uppercase;
 }
 
+.add-new-section {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+}
+
+.outcome-preview {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--muted);
+}
+
+.outcome-preview.outcome-rejected_ats {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.outcome-preview.outcome-rejected_recruiter {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.outcome-preview.outcome-rejected_hm {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.outcome-preview.outcome-rejected_final {
+  background: rgba(139, 92, 246, 0.15);
+  color: #8b5cf6;
+}
+
 /* Tracker */
 .tracker {
   display: flex;
