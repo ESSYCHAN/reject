@@ -6,17 +6,26 @@ import { JDAnalyzer } from './components/JDAnalyzer';
 import { FAQ } from './components/FAQ';
 import { EmailCapture } from './components/EmailCapture';
 import { AuthButtons, useAuth } from './components/AuthButtons';
+import { LandingHero, PromoStrip } from './components/LandingHero';
 import { DecodeResponse } from './types';
 import { ApplicationRecord } from './types/pro';
-import { setProStatus, syncProStatusFromServer } from './utils/usage';
+import { setProStatus, syncProStatusFromServer, loadUsage } from './utils/usage';
 import './App.css';
 
 type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'faq';
+
+// Check if user has used the app before
+function hasUsedAppBefore(): boolean {
+  const usage = loadUsage();
+  // User has interacted if they've decoded anything or have applications
+  return usage.decodes_per_month > 0 || usage.applications > 0;
+}
 
 function App() {
   const { isSignedIn } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('decoder');
   const [showProWelcome, setShowProWelcome] = useState(false);
+  const [showLanding, setShowLanding] = useState(() => !hasUsedAppBefore());
 
   // Check for successful payment redirect from Stripe
   useEffect(() => {
@@ -204,6 +213,15 @@ function App() {
               Welcome to Pro! You now have unlimited access to all features.
             </div>
           )}
+
+          {/* Show landing hero for first-time visitors on decoder tab */}
+          {showLanding && activeTab === 'decoder' && (
+            <>
+              <LandingHero onGetStarted={() => setShowLanding(false)} />
+              <PromoStrip />
+            </>
+          )}
+
           {activeTab === 'decoder' && (
             <RejectionDecoder
               onAddToTracker={handleAddToTracker}

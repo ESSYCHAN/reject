@@ -1,0 +1,246 @@
+/* Landing Hero Section */
+.landing-hero {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-xl);
+  align-items: center;
+  padding: var(--space-xl) 0;
+  margin-bottom: var(--space-xl);
+}
+
+@media (max-width: 900px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+    text-align: center;
+  }
+}
+
+/* Hero Content */
+.hero-content {
+  max-width: 540px;
+}
+
+@media (max-width: 900px) {
+  .hero-content {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+}
+
+.hero-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  margin-bottom: var(--space-md);
+  letter-spacing: -0.02em;
+}
+
+@media (max-width: 600px) {
+  .hero-title {
+    font-size: 2rem;
+  }
+}
+
+.hero-subtitle {
+  font-size: 1.25rem;
+  color: var(--muted);
+  margin-bottom: var(--space-xl);
+  line-height: 1.5;
+}
+
+/* Features */
+.hero-features {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.feature {
+  display: flex;
+  gap: var(--space-md);
+  text-align: left;
+}
+
+@media (max-width: 900px) {
+  .feature {
+    justify-content: flex-start;
+  }
+}
+
+.feature-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.feature strong {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: var(--text);
+}
+
+.feature p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+/* CTA */
+.hero-cta {
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  width: 100%;
+  max-width: 320px;
+}
+
+@media (max-width: 900px) {
+  .hero-cta {
+    max-width: 100%;
+  }
+}
+
+.hero-note {
+  margin-top: var(--space-sm);
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* Demo Card */
+.hero-demo {
+  display: flex;
+  justify-content: center;
+}
+
+@media (max-width: 900px) {
+  .hero-demo {
+    display: none;
+  }
+}
+
+.demo-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.demo-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  margin-bottom: var(--space-md);
+}
+
+.demo-category {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.demo-category .confidence {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.demo-insight {
+  background: var(--highlight);
+  padding: var(--space-md);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-md);
+}
+
+.demo-insight strong {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.demo-insight p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.demo-stage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.demo-stage .stage-note {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+/* Stage badges matching existing styles */
+.stage-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.stage-badge.stage-recruiter {
+  background: rgba(251, 191, 36, 0.15);
+  color: #f59e0b;
+}
+
+/* Category badge for demo */
+.category-badge.category-soft-no {
+  background: rgba(251, 191, 36, 0.15);
+  color: #f59e0b;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Promo Strip */
+.promo-strip {
+  background: var(--highlight);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: var(--space-sm) var(--space-md);
+  margin: 0 calc(-1 * var(--space-lg));
+  margin-bottom: var(--space-xl);
+}
+
+.promo-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.promo-stat {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.promo-divider {
+  color: var(--border);
+}
+
+@media (max-width: 600px) {
+  .promo-content {
+    font-size: 0.8rem;
+    gap: var(--space-sm);
+  }
+
+  .promo-divider {
+    display: none;
+  }
+
+  .promo-content {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
