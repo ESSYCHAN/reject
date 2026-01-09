@@ -211,7 +211,7 @@ function App() {
       {!isSignedIn && <EmailCapture />}
 
       <footer className="footer">
-        <p>REJECT &mdash; Turn every no into a next step.</p>
+        <p>REJECT &mdash; Decode what hiring systems don't tell you.</p>
       </footer>
     </div>
   );
