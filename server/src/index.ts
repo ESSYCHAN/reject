@@ -24,6 +24,11 @@ const PORT = process.env.PORT || 8787;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 
+// Trust proxy for Railway/production deployments (needed for rate limiter)
+if (NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // In production, serve from same origin; in dev, allow Vite dev server
 const corsOrigin = NODE_ENV === 'production' ? false : CLIENT_URL;
 

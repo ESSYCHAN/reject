@@ -11,7 +11,16 @@ declare global {
 }
 
 // Basic Clerk middleware - adds auth info to all requests
-export const authMiddleware = clerkMiddleware();
+// Wraps in error handler to prevent crashes
+export const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const middleware = clerkMiddleware();
+    middleware(req, res, next);
+  } catch (error) {
+    console.error('Clerk middleware error:', error);
+    next(); // Continue without auth if Clerk fails
+  }
+};
 
 // Middleware that requires authentication
 export const requireAuthentication = requireAuth();

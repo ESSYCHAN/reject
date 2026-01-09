@@ -26,8 +26,11 @@ export function errorHandler(
   const statusCode = err.statusCode || 500;
   const message = err.isOperational ? err.message : 'An unexpected error occurred';
 
+  // In development or for debugging, include more details
+  const isDev = process.env.NODE_ENV !== 'production';
   res.status(statusCode).json({
-    error: message
+    error: message,
+    ...(isDev && { details: err.message, stack: err.stack })
   });
 }
 
