@@ -127,6 +127,22 @@ function App() {
     };
   };
 
+  // Add application from JD Analyzer (pre-filled from job description)
+  const handleAddFromJD = (appData: Omit<ApplicationRecord, 'id'>) => {
+    const STORAGE_KEY = 'reject_pro_applications';
+    const newApp: ApplicationRecord = {
+      ...appData,
+      id: crypto.randomUUID()
+    };
+
+    const updatedApps = [newApp, ...proApplications];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, applications: updatedApps }));
+    setProApplications(updatedApps);
+
+    // Switch to Tracker tab
+    setActiveTab('pro-tracker');
+  };
+
   return (
     <div className="app">
       <header className="header">
@@ -186,7 +202,7 @@ function App() {
             <ProTracker onApplicationsChange={handleProApplicationsChange} />
           )}
           {activeTab === 'insights' && <ProInsightsV2 applications={proApplications} />}
-          {activeTab === 'jd-check' && <JDAnalyzer />}
+          {activeTab === 'jd-check' && <JDAnalyzer onAddToTracker={handleAddFromJD} />}
           {activeTab === 'faq' && <FAQ />}
         </div>
       </main>

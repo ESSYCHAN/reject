@@ -49,6 +49,20 @@
 
 .jd-result .result-header {
   margin-bottom: var(--space-lg);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-md);
+}
+
+.result-actions {
+  flex-shrink: 0;
+}
+
+.added-confirmation {
+  color: #22c55e;
+  font-weight: 500;
+  padding: var(--space-sm) var(--space-md);
 }
 
 .jd-result .role-info h3 {

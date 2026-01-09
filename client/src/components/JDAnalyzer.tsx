@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ApplicationRecord, SeniorityLevel, CompanySize } from '../types/pro';
 import { canUseFeature, incrementUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import './JDAnalyzer.css';
@@ -56,12 +57,42 @@ async function analyzeJD(jobDescription: string): Promise<JDAnalysis> {
   return data.data;
 }
 
-export function JDAnalyzer() {
+// Map JD seniority string to our SeniorityLevel type
+function mapSeniority(seniority: string): SeniorityLevel {
+  const lower = seniority.toLowerCase();
+  if (lower.includes('intern')) return 'intern';
+  if (lower.includes('junior') || lower.includes('entry')) return 'junior';
+  if (lower.includes('senior')) return 'senior';
+  if (lower.includes('staff')) return 'staff';
+  if (lower.includes('principal') || lower.includes('lead')) return 'principal';
+  if (lower.includes('director')) return 'director';
+  if (lower.includes('vp') || lower.includes('vice president')) return 'vp';
+  if (lower.includes('c-level') || lower.includes('chief') || lower.includes('cto') || lower.includes('ceo')) return 'c-level';
+  return 'mid';
+}
+
+// Map JD company size string to our CompanySize type
+function mapCompanySize(size: string): CompanySize {
+  const lower = size.toLowerCase();
+  if (lower.includes('startup')) return 'startup';
+  if (lower.includes('small')) return 'small';
+  if (lower.includes('mid')) return 'mid';
+  if (lower.includes('large')) return 'large';
+  if (lower.includes('enterprise') || lower.includes('fortune')) return 'enterprise';
+  return 'mid';
+}
+
+interface JDAnalyzerProps {
+  onAddToTracker?: (app: Omit<ApplicationRecord, 'id'>) => void;
+}
+
+export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
   const [jobDescription, setJobDescription] = useState('');
   const [result, setResult] = useState<JDAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [addedToTracker, setAddedToTracker] = useState(false);
 
   const handleAnalyze = async () => {
     if (jobDescription.length < 50) {
@@ -80,6 +111,7 @@ export function JDAnalyzer() {
     setError(null);
     setResult(null);
     setShowUpgrade(false);
+    setAddedToTracker(false);
 
     try {
       const data = await analyzeJD(jobDescription);
@@ -99,6 +131,25 @@ export function JDAnalyzer() {
       case 'minor': return 'severity-minor';
       default: return '';
     }
+  };
+
+  const handleAddToTracker = () => {
+    if (!result || !onAddToTracker) return;
+
+    const newApp: Omit<ApplicationRecord, 'id'> = {
+      company: result.company,
+      role: result.role_title,
+      seniorityLevel: mapSeniority(result.seniority),
+      companySize: mapCompanySize(result.company_size),
+      industry: '',
+      source: 'other',
+      dateApplied: new Date().toISOString().split('T')[0],
+      outcome: 'pending',
+      daysToResponse: null
+    };
+
+    onAddToTracker(newApp);
+    setAddedToTracker(true);
   };
 
   // Show upgrade prompt if limit reached
@@ -155,6 +206,17 @@ export function JDAnalyzer() {
                 <span className="tag">{result.remote_policy}</span>
               </div>
             </div>
+            {onAddToTracker && (
+              <div className="result-actions">
+                {addedToTracker ? (
+                  <span className="added-confirmation">Added to Tracker</span>
+                ) : (
+                  <button className="btn btn-primary" onClick={handleAddToTracker}>
+                    + Add to Tracker
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           {/* TL;DR */}
