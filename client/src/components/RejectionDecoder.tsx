@@ -283,9 +283,39 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     app.outcome === 'pending' || app.outcome === 'ghosted'
   );
 
+  // Detect if text looks like a job description rather than a rejection email
+  const looksLikeJobDescription = (text: string): boolean => {
+    const lower = text.toLowerCase();
+    const jdIndicators = [
+      'responsibilities:', 'qualifications:', 'requirements:',
+      'about the role', 'what you\'ll do', 'what we\'re looking for',
+      'years of experience', 'bachelor\'s degree', 'must have',
+      'nice to have', 'benefits:', 'compensation:', 'salary range',
+      'apply now', 'job description', 'about us', 'we are looking for',
+      'join our team', 'this position', 'the ideal candidate'
+    ];
+    const rejectionIndicators = [
+      'unfortunately', 'regret to inform', 'not moving forward',
+      'other candidates', 'decided not to', 'thank you for applying',
+      'after careful', 'we will not', 'position has been filled',
+      'not selected', 'moved forward with', 'appreciate your interest'
+    ];
+
+    const jdScore = jdIndicators.filter(ind => lower.includes(ind)).length;
+    const rejectionScore = rejectionIndicators.filter(ind => lower.includes(ind)).length;
+
+    return jdScore >= 2 && rejectionScore < 2;
+  };
+
   const handleDecode = async () => {
     if (emailText.trim().length < 10) {
       setError('Please enter at least 10 characters');
+      return;
+    }
+
+    // Detect if user pasted a JD instead of rejection email
+    if (looksLikeJobDescription(emailText)) {
+      setError('This looks like a job description, not a rejection email. Try the JD Check tab instead.');
       return;
     }
 

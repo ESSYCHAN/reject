@@ -95,9 +95,37 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
   const [addedToTracker, setAddedToTracker] = useState(false);
   const [selectedSource, setSelectedSource] = useState<ApplicationSource>('linkedin');
 
+  // Detect if text looks like a rejection email rather than a job description
+  const looksLikeRejectionEmail = (text: string): boolean => {
+    const lower = text.toLowerCase();
+    const rejectionIndicators = [
+      'unfortunately', 'regret to inform', 'not moving forward',
+      'other candidates', 'decided not to', 'thank you for applying',
+      'after careful', 'we will not', 'position has been filled',
+      'not selected', 'moved forward with', 'appreciate your interest',
+      'wish you the best', 'keep your resume on file'
+    ];
+    const jdIndicators = [
+      'responsibilities:', 'qualifications:', 'requirements:',
+      'about the role', 'what you\'ll do', 'years of experience',
+      'benefits:', 'salary', 'we are looking for', 'join our team'
+    ];
+
+    const rejectionScore = rejectionIndicators.filter(ind => lower.includes(ind)).length;
+    const jdScore = jdIndicators.filter(ind => lower.includes(ind)).length;
+
+    return rejectionScore >= 2 && jdScore < 2;
+  };
+
   const handleAnalyze = async () => {
     if (jobDescription.length < 50) {
       setError('Please paste a longer job description (at least 50 characters)');
+      return;
+    }
+
+    // Detect if user pasted a rejection email instead of JD
+    if (looksLikeRejectionEmail(jobDescription)) {
+      setError('This looks like a rejection email, not a job description. Try the Decoder tab instead.');
       return;
     }
 
