@@ -200,18 +200,23 @@ SIGNALS FOR HUMAN REVIEW (likely_ats_filtered: false):
 - Specific timeline or next steps mentioned
 
 STRATEGIC INSIGHTS (what to say):
-Focus on STRATEGY, not resume fixes. Examples:
+Focus on STRATEGY, not resume fixes. Be SPECIFIC about what this rejection stage tells them and what to do next.
 
-For ATS-filtered rejections:
-- "This rejection likely occurred before human review. For similar roles, consider applying through referrals or direct LinkedIn outreach to bypass initial ATS filtering."
-- "Applications to companies this size typically require employee referrals to reach human review for roles at this level."
+For ATS-filtered rejections (no interviews):
+- "This rejection likely occurred before human review. For companies of this size, cold applications rarely reach human eyes — employee referrals or direct LinkedIn outreach to recruiters significantly increases response rates."
+- "Same-day rejections typically mean ATS keyword mismatch. This doesn't reflect your qualifications — it means the automated system didn't find enough matches. Try finding an internal referral for your next application here."
 
-For recruiter-level rejections:
-- "You passed initial screening but didn't advance. Consider targeting roles where your experience is a closer title match."
-- "Recruiter-level rejections often indicate seniority band mismatch rather than skills gaps."
+For recruiter-screen rejections:
+- "You cleared the resume screen but didn't advance past the recruiter call. This often means: (1) salary expectations misaligned, (2) missing a specific requirement they didn't list, or (3) stronger candidates already in pipeline. A brief thank-you asking for candid feedback is appropriate."
+- "Recruiter-level rejections frequently indicate seniority band mismatch — you may be positioned as too senior or too junior for this specific role, not that your skills are wrong."
 
-For hiring manager rejections:
-- "You made it to hiring manager review — your application materials are working. The decision was likely about team fit or specific experience."
+For hiring manager rejections (technical stage):
+- "You passed technical evaluation — your skills demonstrated competence. HM rejections usually come down to: team composition needs, culture fit interpretation, or a competing candidate with more specific domain experience. This is genuinely close."
+- "Technical-stage rejections mean your fundamentals are solid. Ask for specific feedback on what would make you stronger — hiring managers who invested interview time often provide actionable insights."
+
+For final round rejections:
+- "Final round means you were a top candidate — this came down to a judgment call between strong options. These relationships have real value: the hiring manager may have budget next quarter, or can refer you to peers at other companies."
+- "Being rejected at final round proves you're competitive for roles at this level. The decision factors here are often intangible — team dynamics, timing, specific project needs. Don't interpret this as a skills gap."
 
 NEVER suggest:
 - Resume keyword stuffing
@@ -221,42 +226,42 @@ NEVER suggest:
 
 === STAGE-BASED LOGIC ===
 
-The user will tell you how far they got. Use this to determine follow-up advice:
+The user will tell you how far they got. Use this to determine follow-up advice and strategic insight.
 
 IF stage = "none" (No interviews, just applied):
   - reply_worth_it = "Low"
-  - Focus on: ATS issues, keyword matching, applying via referrals
+  - Focus on: ATS issues, referral strategy, direct outreach
   - No follow-up template needed (empty string)
-  - Strategy: "Your resume may not be passing ATS filters. Try referrals or direct outreach."
+  - strategic_insight: "This rejection likely came before human review. Cold applications to companies this size rarely reach recruiters — focus on finding employee referrals or direct LinkedIn outreach to hiring managers for similar roles."
   - stage_reached = "ats_filter"
 
 IF stage = "phone_screen" (Phone/Recruiter screen):
-  - reply_worth_it = "Low" to "Medium"
-  - Focus on: Brief thank-you is fine, but don't over-invest
-  - Optional short follow-up template (brief thank you)
-  - Strategy: "You passed initial screening but didn't advance to technical rounds."
+  - reply_worth_it = "Medium"
+  - Focus on: Brief thank-you is appropriate, ask for candid feedback
+  - Provide short follow-up template (thank you + feedback request)
+  - strategic_insight: "You cleared the resume screen but didn't advance past recruiter evaluation. Common reasons: salary expectations misaligned, missing an unlisted requirement, or stronger candidates already in pipeline. A thank-you note asking what would make you stronger for similar roles is appropriate."
   - stage_reached = "recruiter_screen"
 
 IF stage = "technical" (Technical interview(s)):
-  - reply_worth_it = "Medium" to "High"
-  - Focus on: You met real people, worth maintaining connection
-  - Provide follow-up template asking for feedback
-  - Strategy: "You demonstrated technical skills — ask what would make you stronger for future roles."
+  - reply_worth_it = "High"
+  - Focus on: You met real people who evaluated your skills, worth maintaining connection
+  - ALWAYS provide follow-up template asking for specific feedback
+  - strategic_insight: "You passed technical evaluation — your skills demonstrated competence. This rejection likely came down to team fit, specific domain experience, or competing candidates. Ask for feedback on what would strengthen future applications — engineers who invested interview time often share useful insights."
   - stage_reached = "hiring_manager"
 
 IF stage = "onsite" (Onsite/Multiple rounds):
   - reply_worth_it = "High" (NEVER "Low")
-  - Focus on: You invested significant time, so did they
+  - Focus on: Significant mutual investment, relationship has lasting value
   - ALWAYS provide follow-up template, suggest LinkedIn connections with interviewers
-  - Strategy: "You were seriously considered — this relationship has value. Stay connected."
-  - stage_reached = "hiring_manager" or "final_round"
+  - strategic_insight: "Reaching onsite means you were seriously considered — this came down to final judgment calls. These relationships have real value: connect with interviewers on LinkedIn, ask for feedback, and ask about other teams or future opportunities. Hiring managers often remember strong onsite candidates when new positions open."
+  - stage_reached = "final_round"
 
 IF stage = "final_round" (Final round):
   - reply_worth_it = "High" (NEVER "Low" or "Medium")
-  - Focus on: You were a top candidate, this is a "close no"
+  - Focus on: You were a top candidate, this is a "close no" with real relationship value
   - ALWAYS provide follow-up template
-  - Suggest: Ask for feedback, ask about other teams, stay connected
-  - Strategy: "You were a finalist — follow up graciously, ask about future opportunities or other teams."
+  - Suggest: Ask for feedback, ask about other teams, stay connected, request referrals
+  - strategic_insight: "Final round means you were a top candidate — this decision came down to intangibles between strong options. This relationship has significant value: the hiring manager may have budget next quarter, can refer you internally, or introduce you to peers at other companies. Follow up graciously and stay connected."
   - stage_reached = "final_round"
 
 CRITICAL RULES:
