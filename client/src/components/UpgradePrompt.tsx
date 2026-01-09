@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { UsageAction, getLimitLabel, canUseFeature, setProStatus, syncProStatusFromServer } from '../utils/usage';
+import { UsageAction, getLimitLabel, canUseFeature, syncProStatusFromServer } from '../utils/usage';
+import { useAuth } from './AuthButtons';
 import './UpgradePrompt.css';
 
 const STRIPE_LINKS = {
@@ -15,22 +16,28 @@ interface UpgradePromptProps {
 export function UpgradePrompt({ action, onClose }: UpgradePromptProps) {
   const { remaining, limit } = canUseFeature(action);
   const label = getLimitLabel(action);
+  const { isSignedIn } = useAuth();
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
 
-  // Handle "I already paid" - verify from server first
+  // Handle "I already paid" - verify from server (only works if signed in)
   const handleVerifyPurchase = async () => {
+    if (!isSignedIn) {
+      setVerifyError('Please sign in first to verify your purchase.');
+      return;
+    }
+
     setVerifying(true);
     setVerifyError(null);
 
     try {
       const isPro = await syncProStatusFromServer();
       if (isPro) {
-        // Successfully verified - reload to apply
+        // Successfully verified from server - reload to apply
         window.location.reload();
       } else {
-        // Not found in server - might not be signed in or payment not processed
-        setVerifyError('Pro status not found. Make sure you\'re signed in with the same account you used to pay. If you just paid, wait a moment and try again.');
+        // Not found in server database
+        setVerifyError('No active subscription found for your account. If you just paid, wait a moment and try again.');
       }
     } catch {
       setVerifyError('Could not verify. Please try again or contact support.');
@@ -101,15 +108,19 @@ export function UpgradePrompt({ action, onClose }: UpgradePromptProps) {
           </button>
         )}
 
-        <button
-          className="btn-link already-paid"
-          onClick={handleVerifyPurchase}
-          disabled={verifying}
-        >
-          {verifying ? 'Verifying...' : 'I already paid - verify & activate Pro'}
-        </button>
-        {verifyError && (
-          <p className="verify-error">{verifyError}</p>
+        {isSignedIn && (
+          <>
+            <button
+              className="btn-link already-paid"
+              onClick={handleVerifyPurchase}
+              disabled={verifying}
+            >
+              {verifying ? 'Verifying...' : 'I already paid - verify purchase'}
+            </button>
+            {verifyError && (
+              <p className="verify-error">{verifyError}</p>
+            )}
+          </>
         )}
       </div>
     </div>
