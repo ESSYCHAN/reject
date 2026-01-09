@@ -1,16 +1,11 @@
-import { UsageAction, getLimitLabel, canUseFeature, setProStatus } from '../utils/usage';
+import { useState } from 'react';
+import { UsageAction, getLimitLabel, canUseFeature, setProStatus, syncProStatusFromServer } from '../utils/usage';
 import './UpgradePrompt.css';
 
 const STRIPE_LINKS = {
   monthly: 'https://buy.stripe.com/3cI14p8Ra9Mp9w0aiJ2kw00', // $12/month
   yearly: 'https://buy.stripe.com/bJe14pgjC4s58rWduV2kw01',   // $99/year
 };
-
-// Handle "I already paid" activation
-function handleActivatePro() {
-  setProStatus(true);
-  window.location.reload();
-}
 
 interface UpgradePromptProps {
   action: UsageAction;
@@ -20,6 +15,29 @@ interface UpgradePromptProps {
 export function UpgradePrompt({ action, onClose }: UpgradePromptProps) {
   const { remaining, limit } = canUseFeature(action);
   const label = getLimitLabel(action);
+  const [verifying, setVerifying] = useState(false);
+  const [verifyError, setVerifyError] = useState<string | null>(null);
+
+  // Handle "I already paid" - verify from server first
+  const handleVerifyPurchase = async () => {
+    setVerifying(true);
+    setVerifyError(null);
+
+    try {
+      const isPro = await syncProStatusFromServer();
+      if (isPro) {
+        // Successfully verified - reload to apply
+        window.location.reload();
+      } else {
+        // Not found in server - might not be signed in or payment not processed
+        setVerifyError('Pro status not found. Make sure you\'re signed in with the same account you used to pay. If you just paid, wait a moment and try again.');
+      }
+    } catch {
+      setVerifyError('Could not verify. Please try again or contact support.');
+    } finally {
+      setVerifying(false);
+    }
+  };
 
   return (
     <div className="upgrade-prompt">
@@ -85,10 +103,14 @@ export function UpgradePrompt({ action, onClose }: UpgradePromptProps) {
 
         <button
           className="btn-link already-paid"
-          onClick={handleActivatePro}
+          onClick={handleVerifyPurchase}
+          disabled={verifying}
         >
-          I already paid - activate Pro
+          {verifying ? 'Verifying...' : 'I already paid - verify & activate Pro'}
         </button>
+        {verifyError && (
+          <p className="verify-error">{verifyError}</p>
+        )}
       </div>
     </div>
   );

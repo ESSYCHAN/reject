@@ -8,7 +8,7 @@ import { EmailCapture } from './components/EmailCapture';
 import { AuthButtons, useAuth } from './components/AuthButtons';
 import { DecodeResponse } from './types';
 import { ApplicationRecord } from './types/pro';
-import { setProStatus } from './utils/usage';
+import { setProStatus, syncProStatusFromServer } from './utils/usage';
 import './App.css';
 
 type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'faq';
@@ -31,6 +31,19 @@ function App() {
       setTimeout(() => setShowProWelcome(false), 5000);
     }
   }, []);
+
+  // Sync Pro status from server when user is signed in
+  // This ensures payment is reflected even if redirect failed
+  useEffect(() => {
+    if (isSignedIn) {
+      syncProStatusFromServer().then(isPro => {
+        if (isPro && !showProWelcome) {
+          // User is Pro but didn't come from payment redirect - silently update
+          console.log('Pro status verified from server');
+        }
+      });
+    }
+  }, [isSignedIn]);
   const [proApplications, setProApplications] = useState<ApplicationRecord[]>(() => {
     try {
       const stored = localStorage.getItem('reject_pro_applications');

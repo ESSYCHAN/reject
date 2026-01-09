@@ -109,6 +109,36 @@ export function setProStatus(isPro: boolean): void {
   saveUsage(usage);
 }
 
+// Fetch Pro status from server and sync to localStorage
+export async function syncProStatusFromServer(): Promise<boolean> {
+  try {
+    const response = await fetch('/api/user/me', {
+      credentials: 'include'
+    });
+
+    if (!response.ok) {
+      // User not authenticated or error - keep local status
+      return loadUsage().isPro;
+    }
+
+    const data = await response.json();
+    const serverIsPro = data.subscription?.isPro === true;
+
+    // Update local storage with server status
+    const usage = loadUsage();
+    if (usage.isPro !== serverIsPro) {
+      usage.isPro = serverIsPro;
+      saveUsage(usage);
+      console.log(`Pro status synced from server: ${serverIsPro}`);
+    }
+
+    return serverIsPro;
+  } catch (error) {
+    console.error('Failed to sync Pro status from server:', error);
+    return loadUsage().isPro;
+  }
+}
+
 // Get human-readable limit name
 export function getLimitLabel(action: UsageAction): string {
   const labels: Record<UsageAction, string> = {
