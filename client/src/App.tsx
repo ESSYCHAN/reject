@@ -14,7 +14,7 @@ import './App.css';
 type Tab = 'decoder' | 'tracker' | 'pro-tracker' | 'insights' | 'role-fit';
 
 function App() {
-  const { isSignedIn, email } = useAuth();
+  const { isSignedIn } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('decoder');
   const [showProWelcome, setShowProWelcome] = useState(false);
 
