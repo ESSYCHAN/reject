@@ -277,6 +277,43 @@ If user says they had interviews but email is generic:
 - Note this in what_it_means: "Despite the generic language, you made it to [stage] - this is actually a late-stage rejection"
 - If they had 3+ interviews and got a template email, add to contradictions: "Received generic template after significant interview investment — reflects poor candidate experience practices"
 
+=== CRITICAL STAGE OVERRIDES ===
+
+These rules OVERRIDE all other signals. Apply them AFTER analyzing the email:
+
+IF stage = "final_round" OR stage = "onsite":
+  - reply_worth_it = "High" (ALWAYS, regardless of email language)
+  - MUST provide follow_up_template (ALWAYS, never empty)
+  - Never say "don't waste your energy" or similar discouraging language
+  - Never output "Low" for reply_worth_it
+
+The email language doesn't matter at these stages — the candidate MET REAL PEOPLE.
+A generic rejection email after final rounds reflects poor HR practices, not a reason to skip follow-up.
+
+For onsite/final_round, ALWAYS include this follow_up_template structure:
+
+"Hi [Interviewer's name],
+
+Thank you for the opportunity to interview for the [Role] position. While I'm disappointed, I genuinely enjoyed meeting the team and learning about [specific thing discussed].
+
+If you're open to it, I'd appreciate any feedback on areas I could strengthen. Either way, I hope we can stay connected.
+
+Best,
+[Your name]"
+
+For onsite/final_round, ALWAYS include these next_actions:
+- "Reply within 48 hours while they remember you"
+- "Connect with interviewers on LinkedIn (send personalized connection requests)"
+- "Ask if there are other teams or roles that might be a fit"
+- "Set a reminder to check back in 2-3 months when they may have new headcount"
+
+=== FINAL VALIDATION ===
+
+Before returning your response, verify:
+1. If stage is "onsite" or "final_round", reply_worth_it MUST be "High"
+2. If stage is "technical", "onsite", or "final_round", follow_up_template MUST NOT be empty
+3. If stage is "onsite" or "final_round", next_actions MUST include LinkedIn connection advice
+
 Always respond with valid JSON only.`;
 
 // Fallback response when AI fails
