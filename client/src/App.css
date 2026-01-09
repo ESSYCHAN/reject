@@ -406,6 +406,22 @@
   color: var(--accent);
 }
 
+/* Silver lining section - subtle positive highlight */
+.silver-lining {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+}
+
+.silver-lining h3 {
+  color: #15803d;
+}
+
+.silver-lining p {
+  color: #166534;
+}
+
 /* Contradictions section - warm warning style */
 .contradictions-section {
   background: #fef3e7;

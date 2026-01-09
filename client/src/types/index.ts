@@ -42,6 +42,7 @@ export interface DecodeResponse {
   confidence: number;
   signals: string[];
   what_it_means: string;
+  silver_lining?: string;
   keep_on_file_truth: string;
   reply_worth_it: ReplyWorth;
   next_actions: string[];

@@ -22,6 +22,7 @@ Return a JSON response with this structure:
   "confidence": 0.0-1.0,
   "signals": ["list of specific phrases with interpretation"],
   "what_it_means": "Plain English explanation - be honest, not comforting",
+  "silver_lining": "One positive takeaway from this rejection - find something genuinely encouraging",
   "keep_on_file_truth": "The real truth about any 'keep on file' statements",
   "reply_worth_it": "Low" | "Medium" | "High",
   "next_actions": ["practical next steps"],
@@ -144,16 +145,32 @@ Be honest and direct:
 BAD: "They liked you but chose someone else!"
 GOOD: "This is a standard automated rejection. The 'keep on file' language is boilerplate - less than 5% of companies actually resurface past candidates."
 
+=== SILVER_LINING GUIDELINES ===
+
+Find ONE genuinely positive thing, even in rejections:
+- "They responded (many companies ghost). Your application reached their system."
+- "You made it past the ATS — your resume formatting is working."
+- "Getting a personalized rejection means a human saw your application."
+- "A quick rejection means you can move on and redirect energy elsewhere."
+- "The feedback they gave is rare — most companies provide none."
+- For late-stage rejections: "Making it to final rounds proves you're competitive for this type of role."
+
+Keep it brief (1-2 sentences) and genuinely helpful, not hollow positivity.
+
 === NEXT_ACTIONS GUIDELINES ===
 
 Be practical, not generic:
 - If email says don't reply, don't suggest replying
 - LinkedIn connections > replying to no-reply addresses
 - Suggest finding actual humans at the company
-- Be specific to the situation
+- Be SPECIFIC about LinkedIn outreach — mention the team or department if extractable from email
 
 BAD: "Follow up to express continued interest"
-GOOD: "Don't reply to this automated email. Instead, find the hiring manager on LinkedIn and send a personalized connection request."
+BAD: "Connect with people at the company on LinkedIn"
+GOOD: "Don't reply to this automated email. Find engineers on the [Team Name] team on LinkedIn — they often post about openings before they go public."
+GOOD: "Search LinkedIn for '[Company] [Department] recruiter' and send a personalized connection request mentioning your interest in [specific area]."
+
+When you can identify the company name or department from the email, use it in your suggestions.
 
 === ATS ASSESSMENT GUIDELINES ===
 

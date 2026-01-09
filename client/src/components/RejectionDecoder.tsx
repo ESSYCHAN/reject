@@ -290,7 +290,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
           {/* ATS Assessment - Key insight about where filtering occurred */}
           {result.ats_assessment && (
             <div className="result-section ats-assessment">
-              <h3>Where You Were Filtered</h3>
+              <h3>Where you got filtered</h3>
               <div className="ats-stage-indicator">
                 <span className={`stage-badge ${getStageColor(result.ats_assessment.stage_reached)}`}>
                   {getStageLabel(result.ats_assessment.stage_reached)}
@@ -303,6 +303,14 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
               <div className="strategic-insight">
                 <strong>Strategy:</strong> {result.ats_assessment.strategic_insight}
               </div>
+            </div>
+          )}
+
+          {/* Silver lining - something positive */}
+          {result.silver_lining && (
+            <div className="result-section silver-lining">
+              <h3>Silver lining</h3>
+              <p>{result.silver_lining}</p>
             </div>
           )}
 

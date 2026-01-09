@@ -26,6 +26,7 @@ export const DecodeResponseSchema = z.object({
   confidence: z.number().min(0).max(1),
   signals: z.array(z.string()),
   what_it_means: z.string(),
+  silver_lining: z.string().optional(),
   keep_on_file_truth: z.string(),
   reply_worth_it: ReplyWorthSchema,
   next_actions: z.array(z.string()),
