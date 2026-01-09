@@ -277,6 +277,8 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const [linkResult, setLinkResult] = useState<LinkResult | null>(null);
   const [selectedAppId, setSelectedAppId] = useState<string>('');
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [editedCompany, setEditedCompany] = useState<string>('');
+  const [editedRole, setEditedRole] = useState<string>('');
 
   // Filter to show only pending/interviewing applications (ones that could receive rejections)
   const linkableApps = applications.filter(app =>
@@ -338,6 +340,9 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     // Extract company/role while waiting for API
     const extractedInfo = extractFromEmail(emailText);
     setExtracted(extractedInfo);
+    // Initialize editable fields with extracted values (or empty for user to fill)
+    setEditedCompany(extractedInfo.company || '');
+    setEditedRole(extractedInfo.role || '');
 
     const response = await decodeEmail(emailText, interviewStage);
 
@@ -369,11 +374,14 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const handleAddToTrackerClick = () => {
     if (result && onAddToTracker && extracted) {
       const outcome = stageToOutcome(interviewStage);
+      // Use edited values (which may have been modified by user)
+      const finalCompany = editedCompany.trim() || 'Unknown Company';
+      const finalRole = editedRole.trim() || 'Position from rejection email';
       onAddToTracker({
         result,
         emailText,
-        companyName: extracted.company,
-        roleName: extracted.role,
+        companyName: finalCompany,
+        roleName: finalRole,
         seniority: extracted.seniority,
         outcome
       });
@@ -460,15 +468,31 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
 
       {result && (
         <div className="decoder-results">
-          {/* Extracted info banner */}
-          {extracted && (extracted.company || extracted.role) && (
+          {/* Extracted info banner - editable when unknown */}
+          {extracted && (
             <div className="extracted-info">
-              <span className="extracted-company">{extracted.company || 'Unknown Company'}</span>
-              {extracted.role && (
-                <>
-                  <span className="extracted-separator">—</span>
-                  <span className="extracted-role">{extracted.role}</span>
-                </>
+              {extracted.company ? (
+                <span className="extracted-company">{extracted.company}</span>
+              ) : (
+                <input
+                  type="text"
+                  className="extracted-company-input"
+                  value={editedCompany}
+                  onChange={(e) => setEditedCompany(e.target.value)}
+                  placeholder="Enter company name"
+                />
+              )}
+              <span className="extracted-separator">—</span>
+              {extracted.role ? (
+                <span className="extracted-role">{extracted.role}</span>
+              ) : (
+                <input
+                  type="text"
+                  className="extracted-role-input"
+                  value={editedRole}
+                  onChange={(e) => setEditedRole(e.target.value)}
+                  placeholder="Enter role"
+                />
               )}
               <span className="extracted-seniority">{extracted.seniority}</span>
             </div>
@@ -606,7 +630,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                 </div>
               ) : addedToTracker ? (
                 <div className="success-message">
-                  Added: {extracted?.company || 'Unknown'} — {extracted?.role || 'Role from email'}
+                  Added: {editedCompany || 'Unknown'} — {editedRole || 'Role from email'}
                 </div>
               ) : (
                 <div className="link-or-add">
@@ -651,7 +675,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                         className="btn btn-secondary"
                         onClick={handleAddToTrackerClick}
                       >
-                        + Add: {extracted?.company || 'Unknown'} — {extracted?.role || 'Role'}
+                        + Add: {editedCompany || 'Unknown'} — {editedRole || 'Role'}
                       </button>
                       <span className={`outcome-preview outcome-${stageToOutcome(interviewStage)}`}>
                         Stage: {getShortOutcomeLabel(interviewStage)}
