@@ -59,10 +59,12 @@ app.use(generalRateLimiter);
 
 // Stripe webhook needs raw body for signature verification
 // Must be before express.json()
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
-app.use('/api/stripe', stripeWebhookRouter);
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripeWebhookRouter);
 
 app.use(express.json({ limit: '100kb' }));
+
+// Other Stripe routes (after JSON parsing)
+app.use('/api/stripe', stripeWebhookRouter);
 
 // Clerk auth middleware - adds auth info to all requests
 app.use(authMiddleware);
