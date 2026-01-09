@@ -82,6 +82,25 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.price-option.clickable {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.price-option.clickable:hover {
+  border-color: var(--accent);
+  background: var(--highlight);
+}
+
+.price-option.yearly.clickable:hover {
+  border-color: #22c55e;
 }
 
 .price-option .price {
@@ -117,10 +136,13 @@
 }
 
 .btn-upgrade {
+  display: block;
   width: 100%;
   padding: 0.875rem;
   font-size: 1rem;
   margin-bottom: 0.75rem;
+  text-decoration: none;
+  text-align: center;
 }
 
 /* Usage Badge */

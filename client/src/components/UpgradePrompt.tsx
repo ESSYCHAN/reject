@@ -1,6 +1,11 @@
 import { UsageAction, getLimitLabel, canUseFeature } from '../utils/usage';
 import './UpgradePrompt.css';
 
+const STRIPE_LINKS = {
+  monthly: 'https://buy.stripe.com/3cI14p8Ra9Mp9w0aiJ2kw00', // $12/month
+  yearly: 'https://buy.stripe.com/bJe14pgjC4s58rWduV2kw01',   // $99/year
+};
+
 interface UpgradePromptProps {
   action: UsageAction;
   onClose?: () => void;
@@ -35,21 +40,36 @@ export function UpgradePrompt({ action, onClose }: UpgradePromptProps) {
         </div>
 
         <div className="upgrade-pricing">
-          <div className="price-option">
+          <a
+            href={STRIPE_LINKS.monthly}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="price-option clickable"
+          >
             <span className="price">$12</span>
             <span className="period">/month</span>
-          </div>
+          </a>
           <div className="price-divider">or</div>
-          <div className="price-option yearly">
+          <a
+            href={STRIPE_LINKS.yearly}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="price-option yearly clickable"
+          >
             <span className="price">$99</span>
             <span className="period">/year</span>
             <span className="savings">Save 31%</span>
-          </div>
+          </a>
         </div>
 
-        <button className="btn btn-primary btn-upgrade">
+        <a
+          href={STRIPE_LINKS.yearly}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-primary btn-upgrade"
+        >
           Upgrade to Pro
-        </button>
+        </a>
 
         {onClose && (
           <button className="btn btn-secondary btn-small" onClick={onClose}>
@@ -99,7 +119,9 @@ export function LimitWarning({ action }: LimitWarningProps) {
     return (
       <div className="limit-warning limit-reached">
         <strong>Limit reached.</strong> You've used all {limit} free {label} this month.
-        <button className="btn btn-small btn-accent">Upgrade</button>
+        <a href={STRIPE_LINKS.yearly} target="_blank" rel="noopener noreferrer" className="btn btn-small btn-accent">
+          Upgrade
+        </a>
       </div>
     );
   }
@@ -107,7 +129,9 @@ export function LimitWarning({ action }: LimitWarningProps) {
   return (
     <div className="limit-warning">
       <strong>{remaining} {label} remaining</strong> this month.
-      <button className="btn btn-small btn-secondary">Upgrade for unlimited</button>
+      <a href={STRIPE_LINKS.yearly} target="_blank" rel="noopener noreferrer" className="btn btn-small btn-secondary">
+        Upgrade for unlimited
+      </a>
     </div>
   );
 }
