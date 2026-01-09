@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DecodeResponse, ATSAssessment } from '../types';
+import { DecodeResponse, ATSAssessment, InterviewStage } from '../types';
 import { ApplicationRecord } from '../types/pro';
 import { decodeEmail } from '../utils/api';
 import { canUseFeature, incrementUsage } from '../utils/usage';
@@ -112,6 +112,7 @@ interface RejectionDecoderProps {
 
 export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applications = [] }: RejectionDecoderProps) {
   const [emailText, setEmailText] = useState('');
+  const [interviewStage, setInterviewStage] = useState<InterviewStage>('none');
   const [result, setResult] = useState<DecodeResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -146,7 +147,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     setSelectedAppId('');
     setShowUpgrade(false);
 
-    const response = await decodeEmail(emailText);
+    const response = await decodeEmail(emailText, interviewStage);
 
     setLoading(false);
 
@@ -235,6 +236,21 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
           maxLength={10000}
           disabled={loading}
         />
+        <div className="interview-context">
+          <label htmlFor="interview-stage">How far did you get?</label>
+          <select
+            id="interview-stage"
+            value={interviewStage}
+            onChange={(e) => setInterviewStage(e.target.value as InterviewStage)}
+            disabled={loading}
+          >
+            <option value="none">No interviews (just applied)</option>
+            <option value="phone_screen">Phone/Recruiter screen</option>
+            <option value="technical">Technical interview(s)</option>
+            <option value="onsite">Onsite/Multiple rounds</option>
+            <option value="final_round">Final round</option>
+          </select>
+        </div>
         <div className="decoder-actions">
           <span className="char-count">{emailText.length}/10,000</span>
           <button

@@ -19,13 +19,13 @@ router.post(
       );
     }
 
-    const { emailText } = validation.data;
+    const { emailText, interviewStage } = validation.data;
 
     // Log request metadata only - never log the actual email content
-    console.log(`[decode] Request received - ${emailText.length} chars`);
+    console.log(`[decode] Request received - ${emailText.length} chars, interview stage: ${interviewStage || 'not specified'}`);
 
     try {
-      const result = await decodeRejectionEmail(emailText);
+      const result = await decodeRejectionEmail(emailText, interviewStage);
       console.log(`[decode] Success - category: ${result.category}, confidence: ${result.confidence}`);
       res.json({ data: result });
     } catch (error) {

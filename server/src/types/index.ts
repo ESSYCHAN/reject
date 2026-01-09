@@ -38,11 +38,15 @@ export type RejectionCategory = z.infer<typeof RejectionCategorySchema>;
 export type ReplyWorth = z.infer<typeof ReplyWorthSchema>;
 export type DecodeResponse = z.infer<typeof DecodeResponseSchema>;
 
+export const InterviewStageSchema = z.enum(['none', 'phone_screen', 'technical', 'onsite', 'final_round']);
+export type InterviewStage = z.infer<typeof InterviewStageSchema>;
+
 export const DecodeRequestSchema = z.object({
   emailText: z.string()
     .min(10, 'Email text must be at least 10 characters')
     .max(8000, 'Email text must be under 8,000 characters')
-    .transform(text => text.trim())
+    .transform(text => text.trim()),
+  interviewStage: InterviewStageSchema.optional()
 });
 
 export type DecodeRequest = z.infer<typeof DecodeRequestSchema>;

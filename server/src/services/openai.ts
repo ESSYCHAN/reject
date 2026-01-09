@@ -1,5 +1,5 @@
 import OpenAI from 'openai';
-import { DecodeResponse, DecodeResponseSchema } from '../types/index.js';
+import { DecodeResponse, DecodeResponseSchema, InterviewStage } from '../types/index.js';
 
 let openai: OpenAI | null = null;
 
@@ -202,6 +202,29 @@ NEVER suggest:
 - Specific resume changes
 - Gaming the system
 
+=== INTERVIEW CONTEXT INTERPRETATION ===
+
+When the user provides interview context, use it to interpret generic rejections more accurately:
+
+Interview stages and their meaning:
+- "none": No interviews - treat as standard rejection
+- "phone_screen": Had phone/recruiter screen - rejection is post-recruiter
+- "technical": Had technical interview(s) - rejection is post-hiring manager review
+- "onsite": Had onsite/multi-round interviews - rejection is late-stage
+- "final_round": Was in final consideration - rejection is after full evaluation
+
+CRITICAL: If user says they had interviews but email is generic:
+- Override ats_assessment.stage_reached to match their actual experience
+- Note this contradiction in what_it_means: "Despite the generic language, you made it to [stage] - this is actually a late-stage rejection"
+- Adjust strategic_insight to reflect their actual progress
+- If they had 3+ interviews and got a template email, flag this as concerning company behavior
+
+Example interpretation:
+- User had final round interviews + gets "after careful consideration" template
+- This is NOT an ATS rejection - override stage_reached to "final_round"
+- Note: "This generic email belies the fact you were seriously considered"
+- Insight: "Getting a template after final rounds suggests poor candidate experience practices at this company"
+
 Always respond with valid JSON only.`;
 
 // Fallback response when AI fails
@@ -230,7 +253,18 @@ function createFallbackResponse(): DecodeResponse {
   };
 }
 
-export async function decodeRejectionEmail(emailText: string): Promise<DecodeResponse> {
+function getInterviewStageLabel(stage: InterviewStage): string {
+  switch (stage) {
+    case 'none': return 'No interviews';
+    case 'phone_screen': return 'Phone/Recruiter screen';
+    case 'technical': return 'Technical interview(s)';
+    case 'onsite': return 'Onsite/Multi-round interviews';
+    case 'final_round': return 'Final round interviews';
+    default: return 'Unknown';
+  }
+}
+
+export async function decodeRejectionEmail(emailText: string, interviewStage?: InterviewStage): Promise<DecodeResponse> {
   const client = getOpenAIClient();
 
   // Pre-process: detect obvious signals before sending to AI
@@ -245,6 +279,12 @@ export async function decodeRejectionEmail(emailText: string): Promise<DecodeRes
                      lowerText.includes('cannot respond to this email') ||
                      lowerText.includes("can't respond to this email");
 
+  // Build interview context note
+  let interviewContext = '';
+  if (interviewStage && interviewStage !== 'none') {
+    interviewContext = `\n\nIMPORTANT CONTEXT: The candidate reports they had: ${getInterviewStageLabel(interviewStage)}. Factor this into your stage_reached assessment - if they had interviews, this is NOT an ATS rejection regardless of how generic the email appears.`;
+  }
+
   try {
     const response = await client.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -252,7 +292,7 @@ export async function decodeRejectionEmail(emailText: string): Promise<DecodeRes
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `Analyze this rejection email:\n\n${emailText}\n\n${hasNoReply ? 'NOTE: This email contains no-reply indicators. Factor this into your analysis.' : ''}`
+          content: `Analyze this rejection email:\n\n${emailText}\n\n${hasNoReply ? 'NOTE: This email contains no-reply indicators. Factor this into your analysis.' : ''}${interviewContext}`
         }
       ],
       temperature: 0.15, // Lower temperature for more consistent classification

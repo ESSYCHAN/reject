@@ -149,6 +149,39 @@
   color: var(--muted);
 }
 
+.interview-context {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--highlight);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.interview-context label {
+  font-size: 0.875rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.interview-context select {
+  flex: 1;
+  max-width: 280px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.875rem;
+}
+
+.interview-context select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .decoder-actions {
   display: flex;
   justify-content: space-between;

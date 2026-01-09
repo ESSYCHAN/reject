@@ -4,6 +4,7 @@ export type RejectionCategory = 'Template' | 'Soft No' | 'Hard No' | 'Door Open'
 export type ReplyWorth = 'Low' | 'Medium' | 'High';
 export type ApplicationStatus = 'pending' | 'rejected' | 'ghosted' | 'interviewing' | 'offer';
 export type ATSStage = 'ats_filter' | 'recruiter_screen' | 'hiring_manager' | 'final_round' | 'unknown';
+export type InterviewStage = 'none' | 'phone_screen' | 'technical' | 'onsite' | 'final_round';
 
 // ATS Assessment - interpretation of where in the process filtering occurred
 export interface ATSAssessment {
@@ -77,8 +78,11 @@ export interface SubscribeResponse {
   message: string;
 }
 
+export const InterviewStageSchema = z.enum(['none', 'phone_screen', 'technical', 'onsite', 'final_round']);
+
 export const DecodeRequestSchema = z.object({
-  emailText: z.string().min(10, 'Email text must be at least 10 characters').max(10000, 'Email text too long')
+  emailText: z.string().min(10, 'Email text must be at least 10 characters').max(10000, 'Email text too long'),
+  interviewStage: InterviewStageSchema.optional()
 });
 
 export const SubscribeRequestSchema = z.object({

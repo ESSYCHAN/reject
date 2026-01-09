@@ -1,15 +1,15 @@
-import { ApiResponse, DecodeResponse, SubscribeResponse } from '../types';
+import { ApiResponse, DecodeResponse, SubscribeResponse, InterviewStage } from '../types';
 
 const API_BASE = '/api';
 
-export async function decodeEmail(emailText: string): Promise<ApiResponse<DecodeResponse>> {
+export async function decodeEmail(emailText: string, interviewStage?: InterviewStage): Promise<ApiResponse<DecodeResponse>> {
   try {
     const response = await fetch(`${API_BASE}/decode`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ emailText })
+      body: JSON.stringify({ emailText, interviewStage })
     });
 
     const data = await response.json();

@@ -4,6 +4,7 @@ import { Tracker } from './components/Tracker';
 import { ProTracker } from './components/ProTracker';
 import { ProInsightsV2 } from './components/ProInsightsV2';
 import { RoleFitChecker } from './components/RoleFitChecker';
+import { FAQ } from './components/FAQ';
 import { EmailCapture } from './components/EmailCapture';
 import { AuthButtons, useAuth } from './components/AuthButtons';
 import { DecodeResponse } from './types';
@@ -11,7 +12,7 @@ import { ApplicationRecord, Outcome } from './types/pro';
 import { setProStatus } from './utils/usage';
 import './App.css';
 
-type Tab = 'decoder' | 'tracker' | 'pro-tracker' | 'insights' | 'role-fit';
+type Tab = 'decoder' | 'tracker' | 'pro-tracker' | 'insights' | 'role-fit' | 'faq';
 
 function App() {
   const { isSignedIn } = useAuth();
@@ -175,6 +176,12 @@ function App() {
             >
               Role Fit
             </button>
+            <button
+              className={`nav-btn ${activeTab === 'faq' ? 'active' : ''}`}
+              onClick={() => setActiveTab('faq')}
+            >
+              FAQ
+            </button>
           </nav>
           <AuthButtons />
         </div>
@@ -200,6 +207,7 @@ function App() {
           )}
           {activeTab === 'insights' && <ProInsightsV2 applications={proApplications} />}
           {activeTab === 'role-fit' && <RoleFitChecker applications={proApplications} />}
+          {activeTab === 'faq' && <FAQ />}
         </div>
       </main>
 
