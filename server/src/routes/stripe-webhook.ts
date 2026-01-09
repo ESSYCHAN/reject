@@ -137,34 +137,55 @@ router.post('/webhook', async (req: Request, res: Response) => {
   res.json({ received: true });
 });
 
+// List all users (for debugging)
+router.get('/list-users', async (_req: Request, res: Response) => {
+  try {
+    const result = await db.query('SELECT id, email, created_at FROM users ORDER BY created_at DESC LIMIT 20');
+    res.json({ users: result.rows });
+  } catch (error) {
+    console.error('Error listing users:', error);
+    res.status(500).json({ error: 'Failed to list users' });
+  }
+});
+
 // Manual subscription activation (for admin use when webhook missed)
 router.post('/activate-pro', async (req: Request, res: Response) => {
-  const { email, planType } = req.body;
+  const { email, planType, userId: directUserId } = req.body;
 
-  if (!email) {
-    return res.status(400).json({ error: 'Email required' });
+  if (!email && !directUserId) {
+    return res.status(400).json({ error: 'Email or userId required' });
   }
 
   try {
-    // Find user by email
-    const userResult = await db.query(
-      'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
-      [email]
-    );
+    let userId = directUserId;
 
-    if (!userResult.rows[0]) {
-      return res.status(404).json({ error: 'User not found with that email' });
+    // Find user by email if no direct userId provided
+    if (!userId && email) {
+      const userResult = await db.query(
+        'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
+        [email]
+      );
+
+      if (!userResult.rows[0]) {
+        // List available users for debugging
+        const allUsers = await db.query('SELECT id, email FROM users LIMIT 10');
+        return res.status(404).json({
+          error: 'User not found with that email',
+          searchedEmail: email,
+          availableUsers: allUsers.rows
+        });
+      }
+
+      userId = userResult.rows[0].id;
     }
-
-    const userId = userResult.rows[0].id;
 
     await db.updateSubscription(userId, {
       status: 'active',
       planType: planType || 'yearly'
     });
 
-    console.log(`Manually activated Pro for ${email} (${userId})`);
-    res.json({ success: true, userId, message: `Pro activated for ${email}` });
+    console.log(`Manually activated Pro for ${email || userId} (${userId})`);
+    res.json({ success: true, userId, message: `Pro activated for ${email || userId}` });
   } catch (error) {
     console.error('Error activating Pro:', error);
     res.status(500).json({ error: 'Failed to activate Pro' });
