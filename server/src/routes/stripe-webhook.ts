@@ -49,9 +49,22 @@ router.post('/webhook', async (req: Request, res: Response) => {
         const session = event.data.object as Stripe.Checkout.Session;
 
         // Get user ID from client_reference_id (set when creating checkout)
-        const userId = session.client_reference_id;
+        let userId = session.client_reference_id;
         const customerId = session.customer as string;
         const subscriptionId = session.subscription as string;
+        const customerEmail = session.customer_details?.email || session.customer_email;
+
+        // If no client_reference_id, try to find user by email
+        if (!userId && customerEmail) {
+          const userResult = await db.query(
+            'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
+            [customerEmail]
+          );
+          if (userResult.rows[0]) {
+            userId = userResult.rows[0].id;
+            console.log(`Found user by email: ${customerEmail} -> ${userId}`);
+          }
+        }
 
         if (userId) {
           // Determine plan type from the amount
@@ -66,6 +79,9 @@ router.post('/webhook', async (req: Request, res: Response) => {
           });
 
           console.log(`User ${userId} upgraded to Pro (${planType})`);
+        } else {
+          // Store the payment info anyway, can be linked later
+          console.log(`Payment received but no user found. Email: ${customerEmail}, Customer: ${customerId}`);
         }
         break;
       }
@@ -119,6 +135,40 @@ router.post('/webhook', async (req: Request, res: Response) => {
   }
 
   res.json({ received: true });
+});
+
+// Manual subscription activation (for admin use when webhook missed)
+router.post('/activate-pro', async (req: Request, res: Response) => {
+  const { email, planType } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Email required' });
+  }
+
+  try {
+    // Find user by email
+    const userResult = await db.query(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1)',
+      [email]
+    );
+
+    if (!userResult.rows[0]) {
+      return res.status(404).json({ error: 'User not found with that email' });
+    }
+
+    const userId = userResult.rows[0].id;
+
+    await db.updateSubscription(userId, {
+      status: 'active',
+      planType: planType || 'yearly'
+    });
+
+    console.log(`Manually activated Pro for ${email} (${userId})`);
+    res.json({ success: true, userId, message: `Pro activated for ${email}` });
+  } catch (error) {
+    console.error('Error activating Pro:', error);
+    res.status(500).json({ error: 'Failed to activate Pro' });
+  }
 });
 
 // Create checkout session with user ID
