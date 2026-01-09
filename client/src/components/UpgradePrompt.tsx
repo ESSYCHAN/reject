@@ -152,9 +152,14 @@ export function LimitWarning({ action }: LimitWarningProps) {
     return (
       <div className="limit-warning limit-reached">
         <strong>Limit reached.</strong> You've used all {limit} free {label} this month.
-        <a href={STRIPE_LINKS.yearly} target="_blank" rel="noopener noreferrer" className="btn btn-small btn-accent">
-          Upgrade
-        </a>
+        <div className="limit-warning-buttons">
+          <a href={STRIPE_LINKS.monthly} target="_blank" rel="noopener noreferrer" className="btn btn-small btn-secondary">
+            $12/mo
+          </a>
+          <a href={STRIPE_LINKS.yearly} target="_blank" rel="noopener noreferrer" className="btn btn-small btn-accent">
+            $99/yr
+          </a>
+        </div>
       </div>
     );
   }
@@ -162,9 +167,14 @@ export function LimitWarning({ action }: LimitWarningProps) {
   return (
     <div className="limit-warning">
       <strong>{remaining} {label} remaining</strong> this month.
-      <a href={STRIPE_LINKS.yearly} target="_blank" rel="noopener noreferrer" className="btn btn-small btn-secondary">
-        Upgrade for unlimited
-      </a>
+      <div className="limit-warning-buttons">
+        <a href={STRIPE_LINKS.monthly} target="_blank" rel="noopener noreferrer" className="btn btn-small btn-secondary">
+          $12/mo
+        </a>
+        <a href={STRIPE_LINKS.yearly} target="_blank" rel="noopener noreferrer" className="btn btn-small btn-accent">
+          $99/yr
+        </a>
+      </div>
     </div>
   );
 }

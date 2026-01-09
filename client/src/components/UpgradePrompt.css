@@ -151,6 +151,12 @@
   flex-shrink: 0;
 }
 
+.limit-warning-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .btn-accent {
   background: var(--accent);
   color: white;
