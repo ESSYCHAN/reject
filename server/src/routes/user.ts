@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { requireAuth, getAuth } from '@clerk/express';
+import { requireAuth, getAuth, clerkClient } from '@clerk/express';
 import * as db from '../db/index.js';
 
 const router = Router();
@@ -152,15 +152,27 @@ router.get('/can-use/:action', requireAuth(), async (req: Request, res: Response
 // Sync user from Clerk (called on first API request)
 router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
   const { userId } = getAuth(req);
-  const { email } = req.body;
 
   if (!userId) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   try {
-    await db.upsertUser(userId, email);
-    res.json({ success: true });
+    // Get email from Clerk
+    let email = req.body.email;
+
+    if (!email) {
+      // Fetch from Clerk API if not provided
+      try {
+        const user = await clerkClient.users.getUser(userId);
+        email = user.emailAddresses?.[0]?.emailAddress;
+      } catch (clerkError) {
+        console.error('Failed to get user from Clerk:', clerkError);
+      }
+    }
+
+    await db.upsertUser(userId, email || '');
+    res.json({ success: true, userId, email });
   } catch (error) {
     console.error('Error syncing user:', error);
     res.status(500).json({ error: 'Failed to sync user' });

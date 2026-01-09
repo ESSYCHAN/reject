@@ -64,3 +64,20 @@ export function useAuth() {
     };
   }
 }
+
+// Sync the current user to our database
+export async function syncUserToServer(): Promise<void> {
+  try {
+    const response = await fetch('/api/user/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({})
+    });
+    if (response.ok) {
+      console.log('User synced to database');
+    }
+  } catch (error) {
+    console.error('Failed to sync user:', error);
+  }
+}

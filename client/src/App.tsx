@@ -5,7 +5,7 @@ import { ProInsightsV2 } from './components/ProInsightsV2';
 import { JDAnalyzer } from './components/JDAnalyzer';
 import { FAQ } from './components/FAQ';
 import { EmailCapture } from './components/EmailCapture';
-import { AuthButtons, useAuth } from './components/AuthButtons';
+import { AuthButtons, useAuth, syncUserToServer } from './components/AuthButtons';
 import { LandingHero, PromoStrip } from './components/LandingHero';
 import { DecodeResponse } from './types';
 import { ApplicationRecord } from './types/pro';
@@ -41,13 +41,14 @@ function App() {
     }
   }, []);
 
-  // Sync Pro status from server when user is signed in
-  // This ensures payment is reflected even if redirect failed
+  // Sync user to database and check Pro status when signed in
   useEffect(() => {
     if (isSignedIn) {
-      syncProStatusFromServer().then(isPro => {
+      // First sync user to database, then check Pro status
+      syncUserToServer().then(() => {
+        return syncProStatusFromServer();
+      }).then(isPro => {
         if (isPro && !showProWelcome) {
-          // User is Pro but didn't come from payment redirect - silently update
           console.log('Pro status verified from server');
         }
       });
