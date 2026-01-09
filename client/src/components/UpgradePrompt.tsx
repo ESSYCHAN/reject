@@ -70,37 +70,24 @@ export function UpgradePrompt({ action, onClose }: UpgradePromptProps) {
           </ul>
         </div>
 
-        <div className="upgrade-pricing">
+        <div className="upgrade-buttons">
           <a
             href={STRIPE_LINKS.monthly}
             target="_blank"
             rel="noopener noreferrer"
-            className="price-option clickable"
+            className="btn btn-secondary btn-upgrade"
           >
-            <span className="price">$12</span>
-            <span className="period">/month</span>
+            $12/month
           </a>
-          <div className="price-divider">or</div>
           <a
             href={STRIPE_LINKS.yearly}
             target="_blank"
             rel="noopener noreferrer"
-            className="price-option yearly clickable"
+            className="btn btn-primary btn-upgrade btn-yearly"
           >
-            <span className="price">$99</span>
-            <span className="period">/year</span>
-            <span className="savings">Save 31%</span>
+            $99/year <span className="savings-badge">Save 31%</span>
           </a>
         </div>
-
-        <a
-          href={STRIPE_LINKS.yearly}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="btn btn-primary btn-upgrade"
-        >
-          Upgrade to Pro
-        </a>
 
         {onClose && (
           <button className="btn btn-secondary btn-small" onClick={onClose}>

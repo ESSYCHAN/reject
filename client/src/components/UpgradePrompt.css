@@ -70,69 +70,12 @@
   font-weight: bold;
 }
 
-.upgrade-pricing {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.price-option {
+/* Upgrade buttons - two clear options */
+.upgrade-buttons {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-decoration: none;
-  color: inherit;
-}
-
-.price-option.clickable {
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  border: 2px solid transparent;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.price-option.clickable:hover {
-  border-color: var(--accent);
-  background: var(--highlight);
-}
-
-.price-option.yearly.clickable:hover {
-  border-color: #22c55e;
-}
-
-.price-option .price {
-  font-family: var(--font-heading);
-  font-size: 1.75rem;
-  font-weight: 700;
-}
-
-.price-option .period {
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-
-.price-option.yearly {
-  position: relative;
-}
-
-.price-option .savings {
-  position: absolute;
-  top: -8px;
-  right: -20px;
-  background: #22c55e;
-  color: white;
-  font-size: 0.65rem;
-  font-weight: 600;
-  padding: 2px 6px;
-  border-radius: 10px;
-}
-
-.price-divider {
-  color: var(--muted);
-  font-size: 0.85rem;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
 }
 
 .btn-upgrade {
@@ -140,9 +83,25 @@
   width: 100%;
   padding: 0.875rem;
   font-size: 1rem;
-  margin-bottom: 0.75rem;
   text-decoration: none;
   text-align: center;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
+.btn-upgrade.btn-yearly {
+  position: relative;
+}
+
+.btn-upgrade .savings-badge {
+  display: inline-block;
+  background: #22c55e;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  margin-left: 0.5rem;
 }
 
 /* Usage Badge */
