@@ -196,7 +196,12 @@ export function inferProfile(
 
   // Calculate overall stats
   const succeeded = applications.filter(app => isSuccess(app.outcome)).length;
+
+  // Ghost rate should only count resolved applications (not pending)
+  const resolvedApps = applications.filter(app => app.outcome !== 'pending');
   const ghosted = applications.filter(app => app.outcome === 'ghosted').length;
+
+  // Days to response - only for apps with responses
   const withResponse = applications.filter(app => app.daysToResponse != null && app.daysToResponse > 0);
   const avgDays = withResponse.length > 0
     ? Math.round(withResponse.reduce((sum, app) => sum + (app.daysToResponse || 0), 0) / withResponse.length)
@@ -279,7 +284,8 @@ export function inferProfile(
 
     totalApplications: total,
     overallSuccessRate: total > 0 ? Math.round((succeeded / total) * 100) : 0,
-    overallGhostRate: total > 0 ? Math.round((ghosted / total) * 100) : 0,
+    // Ghost rate is ghosted / resolved (excluding pending apps)
+    overallGhostRate: resolvedApps.length > 0 ? Math.round((ghosted / resolvedApps.length) * 100) : 0,
     avgDaysToResponse: avgDays
   };
 }

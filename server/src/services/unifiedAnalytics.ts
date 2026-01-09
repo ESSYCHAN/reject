@@ -107,6 +107,8 @@ OUTPUT JSON:
 - "Shift 50% of applications to referrals" > "Network more"
 - "Target mid-size companies" > "Consider company fit"
 - Give specific percentages and targets
+- ALWAYS use numbered steps in recommendations. Example:
+  "Try: (1) Find 3 contacts at target companies on LinkedIn, (2) Apply directly on company career pages instead of job boards, (3) Follow up with a personalized note after applying"
 
 4. AVOID THESE:
 - Never suggest improving resume/CV content
@@ -132,7 +134,7 @@ GOOD:
   "title": "Referrals convert 4x better than LinkedIn",
   "explanation": "Your referral applications have a 40% response rate vs 10% for LinkedIn applications. Yet 70% of your applications go through LinkedIn.",
   "evidence": ["Referrals: 4/10 responses (40%)", "LinkedIn: 3/30 responses (10%)"],
-  "recommendation": "Target 50% of next month's applications through referrals. Reach out to 5 contacts at target companies this week.",
+  "recommendation": "Shift to referrals: (1) List 5 companies you want to work at, (2) Search LinkedIn for 2nd-degree connections at each, (3) Send personalized connection requests mentioning specific roles, (4) Ask for a referral once connected.",
   "priority": "high",
   "confidence": 0.75
 }
@@ -163,10 +165,10 @@ Analyze success rates by seniority level. Example:
 - This indicates the SENIORITY BAND where they're competitive
 
 STRATEGIC RECOMMENDATIONS (what to say):
-Focus on STRATEGY, not resume fixes:
-- "For senior roles, consider referrals to bypass ATS — your direct applications rarely reach human review"
-- "Your mid-level applications show good human review rates. The rejections happen at hiring manager stage, suggesting fit issues rather than ATS problems"
-- "Companies this size rely heavily on ATS ranking — employee referrals increase human review chances significantly"
+Focus on STRATEGY, not resume fixes. Use numbered action steps:
+- "For senior roles: (1) Identify 3 target companies, (2) Find employees on LinkedIn, (3) Request informational chats, (4) Ask for referrals after building rapport"
+- "Your mid-level applications show good human review rates. The rejections happen at hiring manager stage: (1) Research the hiring manager before interviews, (2) Prepare specific examples of relevant work, (3) Ask about team dynamics to show genuine interest"
+- "Companies this size rely heavily on ATS ranking: (1) Focus on companies where you have a connection, (2) Apply within 48 hours of job posting, (3) Follow up with the recruiter on LinkedIn"
 
 NEVER recommend:
 - Resume keyword optimization
