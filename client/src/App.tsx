@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { RejectionDecoder, DecodedData, LinkResult, categoryToOutcome, getOutcomeLabel } from './components/RejectionDecoder';
-import { Tracker } from './components/Tracker';
 import { ProTracker } from './components/ProTracker';
 import { ProInsightsV2 } from './components/ProInsightsV2';
 import { RoleFitChecker } from './components/RoleFitChecker';
@@ -12,7 +11,7 @@ import { ApplicationRecord, Outcome } from './types/pro';
 import { setProStatus } from './utils/usage';
 import './App.css';
 
-type Tab = 'decoder' | 'tracker' | 'pro-tracker' | 'insights' | 'role-fit' | 'faq';
+type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'role-fit' | 'faq';
 
 function App() {
   const { isSignedIn } = useAuth();
@@ -152,17 +151,10 @@ function App() {
               Decoder
             </button>
             <button
-              className={`nav-btn ${activeTab === 'tracker' ? 'active' : ''}`}
-              onClick={() => setActiveTab('tracker')}
-            >
-              Tracker
-            </button>
-            <span className="nav-divider">|</span>
-            <button
-              className={`nav-btn pro ${activeTab === 'pro-tracker' ? 'active' : ''}`}
+              className={`nav-btn ${activeTab === 'pro-tracker' ? 'active' : ''}`}
               onClick={() => setActiveTab('pro-tracker')}
             >
-              Pro Tracker
+              Tracker
             </button>
             <button
               className={`nav-btn pro ${activeTab === 'insights' ? 'active' : ''}`}
@@ -201,7 +193,6 @@ function App() {
               applications={proApplications}
             />
           )}
-          {activeTab === 'tracker' && <Tracker />}
           {activeTab === 'pro-tracker' && (
             <ProTracker onApplicationsChange={handleProApplicationsChange} />
           )}

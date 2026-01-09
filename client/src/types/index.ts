@@ -2,7 +2,6 @@ import { z } from 'zod';
 
 export type RejectionCategory = 'Template' | 'Soft No' | 'Hard No' | 'Door Open' | 'Polite Pass';
 export type ReplyWorth = 'Low' | 'Medium' | 'High';
-export type ApplicationStatus = 'pending' | 'rejected' | 'ghosted' | 'interviewing' | 'offer';
 export type ATSStage = 'ats_filter' | 'recruiter_screen' | 'hiring_manager' | 'final_round' | 'unknown';
 export type InterviewStage = 'none' | 'phone_screen' | 'technical' | 'onsite' | 'final_round';
 
@@ -51,23 +50,6 @@ export interface DecodeResponse {
   ats_assessment?: ATSAssessment;
 }
 
-export interface Application {
-  id: string;
-  company: string;
-  role: string;
-  source: string;
-  dateApplied: string;
-  status: ApplicationStatus;
-  outcomeDate?: string;
-}
-
-export interface TrackerStats {
-  total: number;
-  rejectionRate: number;
-  ghostingRate: number;
-  avgDaysToOutcome: number | null;
-}
-
 export interface ApiResponse<T> {
   data?: T;
   error?: string;
@@ -89,11 +71,3 @@ export const DecodeRequestSchema = z.object({
 export const SubscribeRequestSchema = z.object({
   email: z.string().email('Invalid email address')
 });
-
-export const STORAGE_KEY = 'reject_applications';
-export const STORAGE_VERSION = 1;
-
-export interface StoredData {
-  version: number;
-  applications: Application[];
-}
