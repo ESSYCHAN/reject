@@ -5,10 +5,28 @@ import {
   SignedOut,
   UserButton,
   useUser,
+  useClerk,
 } from '@clerk/clerk-react';
 import './AuthButtons.css';
 
+// Check if Clerk is available
+function useClerkAvailable() {
+  try {
+    const clerk = useClerk();
+    return !!clerk.loaded || clerk.loaded === undefined;
+  } catch {
+    return false;
+  }
+}
+
 export function AuthButtons() {
+  const clerkAvailable = useClerkAvailable();
+
+  if (!clerkAvailable) {
+    // Clerk not configured - show nothing or a placeholder
+    return null;
+  }
+
   return (
     <div className="auth-buttons">
       <SignedOut>
@@ -28,12 +46,21 @@ export function AuthButtons() {
 }
 
 export function useAuth() {
-  const { isSignedIn, user, isLoaded } = useUser();
-
-  return {
-    isSignedIn: !!isSignedIn,
-    userId: user?.id,
-    email: user?.primaryEmailAddress?.emailAddress,
-    isLoaded,
-  };
+  try {
+    const { isSignedIn, user, isLoaded } = useUser();
+    return {
+      isSignedIn: !!isSignedIn,
+      userId: user?.id,
+      email: user?.primaryEmailAddress?.emailAddress,
+      isLoaded,
+    };
+  } catch {
+    // Clerk not available
+    return {
+      isSignedIn: false,
+      userId: undefined,
+      email: undefined,
+      isLoaded: true,
+    };
+  }
 }
