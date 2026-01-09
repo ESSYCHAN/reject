@@ -13,6 +13,7 @@ export function errorHandler(
   _next: NextFunction
 ): void {
   console.error('Error:', err.message);
+  console.error('Stack:', err.stack);
 
   if (err instanceof ZodError) {
     res.status(400).json({

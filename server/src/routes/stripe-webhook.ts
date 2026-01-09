@@ -4,8 +4,18 @@ import * as db from '../db/index.js';
 
 const router = Router();
 
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+// Initialize Stripe lazily to avoid startup errors when env var is missing
+let stripeInstance: Stripe | null = null;
+function getStripe(): Stripe {
+  if (!stripeInstance) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error('STRIPE_SECRET_KEY not configured');
+    }
+    stripeInstance = new Stripe(key);
+  }
+  return stripeInstance;
+}
 
 // Stripe webhook endpoint
 // Note: This needs raw body, so it should be mounted before express.json()
@@ -22,7 +32,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
   try {
     // req.body should be raw buffer for webhook signature verification
-    event = stripe.webhooks.constructEvent(
+    event = getStripe().webhooks.constructEvent(
       req.body,
       sig as string,
       webhookSecret
@@ -120,7 +130,7 @@ router.post('/create-checkout', async (req: Request, res: Response) => {
   }
 
   try {
-    const session = await stripe.checkout.sessions.create({
+    const session = await getStripe().checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
