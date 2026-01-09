@@ -267,7 +267,15 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                     <p className="role">{app.role}</p>
                     <div className="app-tags">
                       <span className="tag">{app.seniorityLevel}</span>
-                      <span className="tag">{app.source}</span>
+                      <select
+                        className="source-tag-select"
+                        value={app.source}
+                        onChange={(e) => updateApplication(app.id, { source: e.target.value as ApplicationSource })}
+                      >
+                        {SOURCE_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
                   <div className="application-meta">

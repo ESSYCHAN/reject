@@ -134,8 +134,31 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
     }
   };
 
+  // Check if this job already exists in tracker
+  const isDuplicate = (company: string, role: string): boolean => {
+    const STORAGE_KEY = 'reject_pro_applications';
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (!stored) return false;
+      const data = JSON.parse(stored);
+      const apps: ApplicationRecord[] = data.applications || [];
+      return apps.some(app =>
+        app.company.toLowerCase() === company.toLowerCase() &&
+        app.role.toLowerCase() === role.toLowerCase()
+      );
+    } catch {
+      return false;
+    }
+  };
+
   const handleAddToTracker = () => {
     if (!result || !onAddToTracker) return;
+
+    // Check for duplicates
+    if (isDuplicate(result.company, result.role_title)) {
+      setError(`${result.company} - ${result.role_title} is already in your tracker`);
+      return;
+    }
 
     const newApp: Omit<ApplicationRecord, 'id'> = {
       company: result.company,

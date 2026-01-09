@@ -1069,6 +1069,20 @@
   color: var(--muted);
 }
 
+.pro-card .source-tag-select {
+  background: var(--highlight);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.pro-card .source-tag-select:hover {
+  border-color: var(--accent);
+}
+
 /* Muted outcome colors */
 .outcome-offer {
   border-color: var(--accent) !important;
