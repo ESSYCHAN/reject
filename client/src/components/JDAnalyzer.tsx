@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ApplicationRecord, SeniorityLevel, CompanySize } from '../types/pro';
+import { ApplicationRecord, SeniorityLevel, CompanySize, ApplicationSource, SOURCE_OPTIONS } from '../types/pro';
 import { canUseFeature, incrementUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import './JDAnalyzer.css';
@@ -93,6 +93,7 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
   const [error, setError] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [addedToTracker, setAddedToTracker] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<ApplicationSource>('linkedin');
 
   const handleAnalyze = async () => {
     if (jobDescription.length < 50) {
@@ -142,7 +143,7 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
       seniorityLevel: mapSeniority(result.seniority),
       companySize: mapCompanySize(result.company_size),
       industry: '',
-      source: 'other',
+      source: selectedSource,
       dateApplied: new Date().toISOString().split('T')[0],
       outcome: 'pending',
       daysToResponse: null
@@ -211,9 +212,20 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
                 {addedToTracker ? (
                   <span className="added-confirmation">Added to Tracker</span>
                 ) : (
-                  <button className="btn btn-primary" onClick={handleAddToTracker}>
-                    + Add to Tracker
-                  </button>
+                  <div className="add-to-tracker-form">
+                    <select
+                      value={selectedSource}
+                      onChange={(e) => setSelectedSource(e.target.value as ApplicationSource)}
+                      className="source-select"
+                    >
+                      {SOURCE_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                    <button className="btn btn-primary" onClick={handleAddToTracker}>
+                      + Add to Tracker
+                    </button>
+                  </div>
                 )}
               </div>
             )}

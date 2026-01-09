@@ -65,6 +65,21 @@
   padding: var(--space-sm) var(--space-md);
 }
 
+.add-to-tracker-form {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.source-select {
+  padding: var(--space-sm) var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
 .jd-result .role-info h3 {
   font-size: 1.5rem;
   margin-bottom: var(--space-xs);
