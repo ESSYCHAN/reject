@@ -5,6 +5,7 @@ import {
   SeniorityLevelSchema
 } from '../types/pro.js';
 import { assessRoleFitV2 } from '../services/roleFitV2.js';
+import { analyzeJobDescription } from '../services/jdAnalyzer.js';
 import { inferProfile } from '../services/profileInference.js';
 import { analyzeApplications } from '../services/unifiedAnalytics.js';
 import { decodeRateLimiter } from '../middleware/rateLimiter.js';
@@ -102,6 +103,48 @@ router.post(
       res.json({ data: result });
     } catch (error) {
       console.error('[role-fit-v2] Error:', error);
+      next(error);
+    }
+  }
+);
+
+// JD Analyzer request schema
+const JDAnalyzeRequestSchema = z.object({
+  jobDescription: z.string().min(50, 'Job description must be at least 50 characters')
+});
+
+/**
+ * POST /api/pro/jd-analyze
+ * Analyze a job description for red flags, requirements, and application strategy
+ */
+router.post(
+  '/jd-analyze',
+  decodeRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validation = JDAnalyzeRequestSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const errorDetails = validation.error.errors
+          .map(e => `${e.path.join('.')}: ${e.message}`)
+          .join(', ');
+        res.status(400).json({
+          error: 'Validation error',
+          details: errorDetails
+        });
+        return;
+      }
+
+      const { jobDescription } = validation.data;
+
+      console.log(`[jd-analyze] Analyzing JD (${jobDescription.length} chars)`);
+
+      const result = await analyzeJobDescription(jobDescription);
+
+      console.log(`[jd-analyze] Complete - ${result.company} / ${result.role_title}, ${result.red_flags.length} red flags`);
+      res.json({ data: result });
+    } catch (error) {
+      console.error('[jd-analyze] Error:', error);
       next(error);
     }
   }

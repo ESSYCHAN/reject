@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { RejectionDecoder, DecodedData, LinkResult, categoryToOutcome, getOutcomeLabel } from './components/RejectionDecoder';
 import { ProTracker } from './components/ProTracker';
 import { ProInsightsV2 } from './components/ProInsightsV2';
-import { RoleFitChecker } from './components/RoleFitChecker';
+import { JDAnalyzer } from './components/JDAnalyzer';
 import { FAQ } from './components/FAQ';
 import { EmailCapture } from './components/EmailCapture';
 import { AuthButtons, useAuth } from './components/AuthButtons';
@@ -11,7 +11,7 @@ import { ApplicationRecord } from './types/pro';
 import { setProStatus } from './utils/usage';
 import './App.css';
 
-type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'role-fit' | 'faq';
+type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'faq';
 
 function App() {
   const { isSignedIn } = useAuth();
@@ -152,10 +152,10 @@ function App() {
               Insights
             </button>
             <button
-              className={`nav-btn pro ${activeTab === 'role-fit' ? 'active' : ''}`}
-              onClick={() => setActiveTab('role-fit')}
+              className={`nav-btn pro ${activeTab === 'jd-check' ? 'active' : ''}`}
+              onClick={() => setActiveTab('jd-check')}
             >
-              Role Fit
+              JD Check
             </button>
             <button
               className={`nav-btn ${activeTab === 'faq' ? 'active' : ''}`}
@@ -186,7 +186,7 @@ function App() {
             <ProTracker onApplicationsChange={handleProApplicationsChange} />
           )}
           {activeTab === 'insights' && <ProInsightsV2 applications={proApplications} />}
-          {activeTab === 'role-fit' && <RoleFitChecker applications={proApplications} />}
+          {activeTab === 'jd-check' && <JDAnalyzer />}
           {activeTab === 'faq' && <FAQ />}
         </div>
       </main>
