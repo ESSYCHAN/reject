@@ -76,11 +76,20 @@ export async function initDatabase() {
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Subscribers table (for newsletter/email collection)
+      CREATE TABLE IF NOT EXISTS subscribers (
+        id SERIAL PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        subscribed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        source TEXT DEFAULT 'website'
+      );
+
       -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
       CREATE INDEX IF NOT EXISTS idx_usage_user_month ON usage(user_id, month_key);
       CREATE INDEX IF NOT EXISTS idx_rejection_company ON rejection_data(company_name);
       CREATE INDEX IF NOT EXISTS idx_applications_user ON applications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_subscribers_email ON subscribers(email);
     `);
     console.log('Database schema initialized');
   } finally {
