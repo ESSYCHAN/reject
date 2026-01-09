@@ -33,7 +33,18 @@ if (NODE_ENV === 'production') {
 const corsOrigin = NODE_ENV === 'production' ? false : CLIENT_URL;
 
 app.use(helmet({
-  contentSecurityPolicy: NODE_ENV === 'production' ? undefined : false
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com"],
+      connectSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://api.clerk.com"],
+      frameSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com"],
+      imgSrc: ["'self'", "data:", "https://*.clerk.com", "https://*.clerk.accounts.dev"],
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      workerSrc: ["'self'", "blob:"],
+    }
+  }
 }));
 
 if (corsOrigin) {
