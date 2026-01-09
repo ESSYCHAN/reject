@@ -17,6 +17,15 @@ function getOpenAIClient(): OpenAI {
 
 // ============ ROLE FIT SCHEMA ============
 
+// ATS-aware assessment - will direct applications reach human review?
+export const ATSFitAssessmentSchema = z.object({
+  direct_application_odds: z.enum(['likely_reviewed', 'uncertain', 'likely_filtered']),
+  reasoning: z.string(),
+  bypass_strategy: z.string().nullable()
+});
+
+export type ATSFitAssessment = z.infer<typeof ATSFitAssessmentSchema>;
+
 export const RoleFitResultV2Schema = z.object({
   verdict: z.enum(['good_match', 'worth_trying', 'long_shot', 'insufficient_data']),
   confidence: z.number().min(0).max(1),
@@ -33,7 +42,8 @@ export const RoleFitResultV2Schema = z.object({
     applied_to_this_company_before: z.boolean()
   }),
   recommendation: z.string(),
-  if_you_apply: z.array(z.string())
+  if_you_apply: z.array(z.string()),
+  ats_fit: ATSFitAssessmentSchema.optional()
 });
 
 export type RoleFitResultV2 = z.infer<typeof RoleFitResultV2Schema>;
@@ -66,7 +76,12 @@ First, extract:
     "applied_to_this_company_before": boolean
   },
   "recommendation": "specific actionable recommendation",
-  "if_you_apply": ["tactical tip 1", "tactical tip 2"]
+  "if_you_apply": ["tactical tip 1", "tactical tip 2"],
+  "ats_fit": {
+    "direct_application_odds": "likely_reviewed" | "uncertain" | "likely_filtered",
+    "reasoning": "Why direct applications may or may not reach human review",
+    "bypass_strategy": "Strategy to increase human review odds, or null if direct is fine"
+  }
 }
 
 === VERDICT LOGIC ===
@@ -189,6 +204,32 @@ BAD (never do this):
   "recommendation": "Consider gaining more experience before applying to similar roles."
 }
 
+=== ATS FIT ASSESSMENT ===
+
+The ats_fit field tells the candidate whether a DIRECT APPLICATION is likely to reach human review, based on their historical patterns.
+
+direct_application_odds values:
+- "likely_reviewed": Candidate's history shows direct apps to similar roles/companies get human attention
+- "uncertain": Not enough data to predict, or mixed results
+- "likely_filtered": Candidate's history shows direct apps at this level/company size often get ATS filtered
+
+HOW TO DETERMINE:
+- If candidate consistently gets template/auto rejections at this seniority → likely_filtered
+- If candidate has interview mentions or personalized feedback at this level → likely_reviewed
+- If fewer than 5 similar applications → uncertain
+
+bypass_strategy should be:
+- null if direct_application_odds is "likely_reviewed"
+- Specific strategy if likely_filtered, e.g.:
+  - "Your referral applications have 3x the response rate. Check for connections at [Company]."
+  - "For companies this size, consider reaching out to the hiring manager on LinkedIn before applying."
+  - "Your direct applications to senior roles rarely reach human review. Target mid-level, or apply via referral."
+
+NEVER suggest:
+- Resume keyword optimization
+- ATS formatting tricks
+- Skills to add
+
 === FINAL RULES ===
 
 1. Always find something constructive to say
@@ -197,6 +238,7 @@ BAD (never do this):
 4. Normal rejection rates are not failures
 5. Small samples = uncertainty, not doom
 6. Every candidate deserves encouragement to keep trying
+7. ATS assessment is about STRATEGY (how to apply), not OPTIMIZATION (what to change)
 
 Respond with valid JSON only.`;
 
@@ -279,7 +321,12 @@ Remember: Be helpful, not discouraging. Use "insufficient_data" if sample size i
         applied_to_this_company_before: false
       },
       recommendation: 'Track more applications to unlock detailed fit analysis.',
-      if_you_apply: ['Research the company and role', 'Check for referral opportunities']
+      if_you_apply: ['Research the company and role', 'Check for referral opportunities'],
+      ats_fit: {
+        direct_application_odds: 'uncertain',
+        reasoning: 'Not enough application data to predict whether direct applications will reach human review.',
+        bypass_strategy: 'Check if you have any connections at this company for a referral.'
+      }
     };
   }
 

@@ -10,6 +10,17 @@ export const RejectionCategorySchema = z.enum([
 
 export const ReplyWorthSchema = z.enum(['Low', 'Medium', 'High']);
 
+// ATS Impact assessment
+export const ATSAssessmentSchema = z.object({
+  likely_ats_filtered: z.boolean(),
+  confidence: z.number().min(0).max(1),
+  reasoning: z.string(),
+  stage_reached: z.enum(['ats_filter', 'recruiter_screen', 'hiring_manager', 'final_round', 'unknown']),
+  strategic_insight: z.string()
+});
+
+export type ATSAssessment = z.infer<typeof ATSAssessmentSchema>;
+
 export const DecodeResponseSchema = z.object({
   category: RejectionCategorySchema,
   confidence: z.number().min(0).max(1),
@@ -19,7 +30,8 @@ export const DecodeResponseSchema = z.object({
   reply_worth_it: ReplyWorthSchema,
   next_actions: z.array(z.string()),
   follow_up_template: z.string(),
-  contradictions: z.array(z.string()).optional()
+  contradictions: z.array(z.string()).optional(),
+  ats_assessment: ATSAssessmentSchema.optional()
 });
 
 export type RejectionCategory = z.infer<typeof RejectionCategorySchema>;

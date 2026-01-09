@@ -26,7 +26,14 @@ Return a JSON response with this structure:
   "reply_worth_it": "Low" | "Medium" | "High",
   "next_actions": ["practical next steps"],
   "follow_up_template": "Template ONLY if replying makes sense, otherwise empty string",
-  "contradictions": ["any conflicting signals detected"]
+  "contradictions": ["any conflicting signals detected"],
+  "ats_assessment": {
+    "likely_ats_filtered": true/false,
+    "confidence": 0.0-1.0,
+    "reasoning": "Brief explanation of why you believe this was or wasn't filtered before human review",
+    "stage_reached": "ats_filter" | "recruiter_screen" | "hiring_manager" | "final_round" | "unknown",
+    "strategic_insight": "Actionable strategic guidance (not resume fixes)"
+  }
 }
 
 === CATEGORY DEFINITIONS ===
@@ -148,6 +155,53 @@ Be practical, not generic:
 BAD: "Follow up to express continued interest"
 GOOD: "Don't reply to this automated email. Instead, find the hiring manager on LinkedIn and send a personalized connection request."
 
+=== ATS ASSESSMENT GUIDELINES ===
+
+The ats_assessment tells the candidate WHERE in the hiring process they were filtered. This is INTERPRETATION, not optimization advice.
+
+stage_reached values:
+- "ats_filter": Rejection likely occurred before any human saw the application
+- "recruiter_screen": A recruiter saw the application but rejected before hiring manager
+- "hiring_manager": Made it to hiring manager review but was rejected
+- "final_round": Made it to final interviews before rejection
+- "unknown": Not enough signals to determine
+
+SIGNALS FOR ATS FILTERING (likely_ats_filtered: true):
+- Very fast rejection (same day or next day after applying)
+- Completely generic language with no personalization
+- No mention of any interview, call, or conversation
+- Automated sender (no-reply, careers@, recruiting@)
+- Template rejection with no role-specific details
+- "After careful review of your application" without specifics
+
+SIGNALS FOR HUMAN REVIEW (likely_ats_filtered: false):
+- References to specific interviews, calls, or conversations
+- Named person sending the rejection
+- Mentions specific skills, projects, or discussion topics
+- Feedback about fit or timing
+- "We enjoyed meeting you" or similar personal touches
+- Specific timeline or next steps mentioned
+
+STRATEGIC INSIGHTS (what to say):
+Focus on STRATEGY, not resume fixes. Examples:
+
+For ATS-filtered rejections:
+- "This rejection likely occurred before human review. For similar roles, consider applying through referrals or direct LinkedIn outreach to bypass initial ATS filtering."
+- "Applications to companies this size typically require employee referrals to reach human review for roles at this level."
+
+For recruiter-level rejections:
+- "You passed initial screening but didn't advance. Consider targeting roles where your experience is a closer title match."
+- "Recruiter-level rejections often indicate seniority band mismatch rather than skills gaps."
+
+For hiring manager rejections:
+- "You made it to hiring manager review — your application materials are working. The decision was likely about team fit or specific experience."
+
+NEVER suggest:
+- Resume keyword stuffing
+- ATS formatting tricks
+- Specific resume changes
+- Gaming the system
+
 Always respond with valid JSON only.`;
 
 // Fallback response when AI fails
@@ -165,7 +219,14 @@ function createFallbackResponse(): DecodeResponse {
       'Move on and focus energy on new applications'
     ],
     follow_up_template: '',
-    contradictions: []
+    contradictions: [],
+    ats_assessment: {
+      likely_ats_filtered: true,
+      confidence: 0.6,
+      reasoning: 'Standard template rejection typically indicates automated filtering before human review.',
+      stage_reached: 'ats_filter',
+      strategic_insight: 'For similar roles, consider applying through referrals or direct outreach to increase your chances of human review.'
+    }
   };
 }
 
@@ -195,7 +256,7 @@ export async function decodeRejectionEmail(emailText: string): Promise<DecodeRes
         }
       ],
       temperature: 0.15, // Lower temperature for more consistent classification
-      max_tokens: 1200,
+      max_tokens: 1500, // Increased for ATS assessment
       response_format: { type: 'json_object' }
     });
 

@@ -139,6 +139,155 @@
   text-align: center;
 }
 
+/* ATS Boundary Section */
+.ats-boundary-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 1.5rem;
+}
+
+.ats-boundary-section h4 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+.ats-boundary-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.boundary-bar {
+  display: grid;
+  grid-template-columns: 180px 1fr 50px;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.bar-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.bar-container {
+  height: 24px;
+  background: var(--highlight);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width 0.5s ease;
+}
+
+.bar-ats {
+  background: linear-gradient(90deg, #fee2e2, #ef4444);
+}
+
+.bar-human {
+  background: linear-gradient(90deg, #d1fae5, #10b981);
+}
+
+.bar-value {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  text-align: right;
+}
+
+.ats-interpretation {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text);
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: var(--highlight);
+  border-radius: var(--radius-sm);
+}
+
+.seniority-bands {
+  margin-bottom: 1rem;
+}
+
+.seniority-bands h5 {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.bands-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.band-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--background);
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+
+.band-level {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.band-rate {
+  font-size: 0.85rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-weight: 500;
+}
+
+.band-rate.good {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.band-rate.fair {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.band-rate.poor {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.band-sample {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.ats-strategic-rec {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.ats-strategic-rec strong {
+  color: var(--accent);
+}
+
 /* Biggest Issue */
 .biggest-issue {
   background: #fef3e7;

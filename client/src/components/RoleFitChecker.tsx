@@ -4,6 +4,13 @@ import { canUseFeature, incrementUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import './RoleFitChecker.css';
 
+// ATS Fit assessment - will direct applications reach human review?
+interface ATSFitAssessment {
+  direct_application_odds: 'likely_reviewed' | 'uncertain' | 'likely_filtered';
+  reasoning: string;
+  bypass_strategy: string | null;
+}
+
 // Types matching server schema
 interface RoleFitResultV2 {
   verdict: 'good_match' | 'worth_trying' | 'long_shot' | 'insufficient_data';
@@ -22,6 +29,7 @@ interface RoleFitResultV2 {
   };
   recommendation: string;
   if_you_apply: string[];
+  ats_fit?: ATSFitAssessment;
 }
 
 interface MinimalProfile {
@@ -273,6 +281,26 @@ export function RoleFitChecker({ applications }: RoleFitCheckerProps) {
               <p className="applied-before">You've applied to this company before</p>
             )}
           </div>
+
+          {/* ATS Fit Assessment */}
+          {result.ats_fit && (
+            <div className={`ats-fit-section ats-${result.ats_fit.direct_application_odds}`}>
+              <h4>Will Your Application Reach Human Review?</h4>
+              <div className="ats-fit-verdict">
+                <span className={`ats-odds-badge ${result.ats_fit.direct_application_odds}`}>
+                  {result.ats_fit.direct_application_odds === 'likely_reviewed' && 'Likely Yes'}
+                  {result.ats_fit.direct_application_odds === 'uncertain' && 'Uncertain'}
+                  {result.ats_fit.direct_application_odds === 'likely_filtered' && 'Likely No'}
+                </span>
+              </div>
+              <p className="ats-reasoning">{result.ats_fit.reasoning}</p>
+              {result.ats_fit.bypass_strategy && (
+                <div className="ats-bypass-strategy">
+                  <strong>Strategy:</strong> {result.ats_fit.bypass_strategy}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Recommendation */}
           <div className="recommendation">

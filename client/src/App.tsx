@@ -1,19 +1,36 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { RejectionDecoder, DecodedData, LinkResult, categoryToOutcome, getOutcomeLabel } from './components/RejectionDecoder';
 import { Tracker } from './components/Tracker';
 import { ProTracker } from './components/ProTracker';
 import { ProInsightsV2 } from './components/ProInsightsV2';
 import { RoleFitChecker } from './components/RoleFitChecker';
 import { EmailCapture } from './components/EmailCapture';
-import { AuthButtons } from './components/AuthButtons';
+import { AuthButtons, useAuth } from './components/AuthButtons';
 import { DecodeResponse } from './types';
 import { ApplicationRecord, Outcome } from './types/pro';
+import { setProStatus } from './utils/usage';
 import './App.css';
 
 type Tab = 'decoder' | 'tracker' | 'pro-tracker' | 'insights' | 'role-fit';
 
 function App() {
+  const { isSignedIn, email } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('decoder');
+  const [showProWelcome, setShowProWelcome] = useState(false);
+
+  // Check for successful payment redirect from Stripe
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('success') === 'true') {
+      // Mark as Pro in localStorage
+      setProStatus(true);
+      setShowProWelcome(true);
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+      // Hide welcome after 5 seconds
+      setTimeout(() => setShowProWelcome(false), 5000);
+    }
+  }, []);
   const [proApplications, setProApplications] = useState<ApplicationRecord[]>(() => {
     try {
       const stored = localStorage.getItem('reject_pro_applications');
@@ -127,7 +144,6 @@ function App() {
         <div className="header-content">
           <h1 className="logo">REJECT</h1>
           <nav className="nav">
-            <AuthButtons />
             <button
               className={`nav-btn ${activeTab === 'decoder' ? 'active' : ''}`}
               onClick={() => setActiveTab('decoder')}
@@ -160,11 +176,17 @@ function App() {
               Role Fit
             </button>
           </nav>
+          <AuthButtons />
         </div>
       </header>
 
       <main className="main">
         <div className="container">
+          {showProWelcome && (
+            <div className="pro-welcome-banner">
+              Welcome to Pro! You now have unlimited access to all features.
+            </div>
+          )}
           {activeTab === 'decoder' && (
             <RejectionDecoder
               onAddToTracker={handleAddToTracker}
@@ -181,7 +203,8 @@ function App() {
         </div>
       </main>
 
-      <EmailCapture />
+      {/* Only show newsletter signup for non-authenticated visitors */}
+      {!isSignedIn && <EmailCapture />}
 
       <footer className="footer">
         <p>REJECT &mdash; Turn every no into a next step.</p>

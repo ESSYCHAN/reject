@@ -1,10 +1,16 @@
-import { UsageAction, getLimitLabel, canUseFeature } from '../utils/usage';
+import { UsageAction, getLimitLabel, canUseFeature, setProStatus } from '../utils/usage';
 import './UpgradePrompt.css';
 
 const STRIPE_LINKS = {
   monthly: 'https://buy.stripe.com/3cI14p8Ra9Mp9w0aiJ2kw00', // $12/month
   yearly: 'https://buy.stripe.com/bJe14pgjC4s58rWduV2kw01',   // $99/year
 };
+
+// Handle "I already paid" activation
+function handleActivatePro() {
+  setProStatus(true);
+  window.location.reload();
+}
 
 interface UpgradePromptProps {
   action: UsageAction;
@@ -76,6 +82,13 @@ export function UpgradePrompt({ action, onClose }: UpgradePromptProps) {
             Maybe later
           </button>
         )}
+
+        <button
+          className="btn-link already-paid"
+          onClick={handleActivatePro}
+        >
+          I already paid - activate Pro
+        </button>
       </div>
     </div>
   );

@@ -299,6 +299,82 @@
   color: #e65100;
 }
 
+/* ATS Fit Section */
+.ats-fit-section {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ats-fit-section h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+}
+
+.ats-fit-verdict {
+  margin-bottom: 0.75rem;
+}
+
+.ats-odds-badge {
+  display: inline-block;
+  padding: 0.4rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.ats-odds-badge.likely_reviewed {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.ats-odds-badge.uncertain {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ats-odds-badge.likely_filtered {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ats-fit-section .ats-reasoning {
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text);
+  margin-bottom: 0.75rem;
+}
+
+.ats-bypass-strategy {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.ats-bypass-strategy strong {
+  color: var(--accent);
+}
+
+.ats-fit-section.ats-likely_filtered {
+  background: #fef2f2;
+  border-left: 3px solid #ef4444;
+}
+
+.ats-fit-section.ats-likely_reviewed {
+  background: #f0fdf4;
+  border-left: 3px solid #10b981;
+}
+
+.ats-fit-section.ats-uncertain {
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+}
+
 /* Recommendation */
 .role-fit-v2 .recommendation {
   padding: 1.25rem 1.5rem;

@@ -30,11 +30,27 @@ export const UnifiedInsightSchema = z.object({
 
 export type UnifiedInsight = z.infer<typeof UnifiedInsightSchema>;
 
+// ATS Boundary Mapping - where is the candidate being filtered?
+export const ATSBoundarySchema = z.object({
+  ats_filter_rate: z.number().min(0).max(100),
+  human_review_rate: z.number().min(0).max(100),
+  interpretation: z.string(),
+  seniority_bands: z.array(z.object({
+    level: z.string(),
+    ats_pass_rate: z.number(),
+    sample_size: z.number()
+  })),
+  strategic_recommendation: z.string()
+});
+
+export type ATSBoundary = z.infer<typeof ATSBoundarySchema>;
+
 export const UnifiedAnalysisResponseSchema = z.object({
   summary: z.string(),
   insights: z.array(UnifiedInsightSchema),
   quick_wins: z.array(z.string()),
-  biggest_issue: z.string().nullable()
+  biggest_issue: z.string().nullable(),
+  ats_boundary: ATSBoundarySchema.optional()
 });
 
 export type UnifiedAnalysisResponse = z.infer<typeof UnifiedAnalysisResponseSchema>;
@@ -53,7 +69,7 @@ OUTPUT JSON:
   "summary": "2-3 sentence executive summary of their situation",
   "insights": [
     {
-      "insight_type": "seniority_mismatch" | "source_optimization" | "company_size_fit" | "ghost_pattern" | "timing_issue" | "application_volume" | "success_pattern",
+      "insight_type": "seniority_mismatch" | "source_optimization" | "company_size_fit" | "ghost_pattern" | "timing_issue" | "application_volume" | "success_pattern" | "ats_boundary",
       "title": "Short headline (e.g., 'Referrals outperform cold applications 3x')",
       "explanation": "Factual, data-backed explanation",
       "evidence": ["specific data point 1", "specific data point 2"],
@@ -63,7 +79,16 @@ OUTPUT JSON:
     }
   ],
   "quick_wins": ["Immediate action 1", "Immediate action 2"],
-  "biggest_issue": "The single most impactful thing to fix, or null if doing well"
+  "biggest_issue": "The single most impactful thing to fix, or null if doing well",
+  "ats_boundary": {
+    "ats_filter_rate": 0-100,
+    "human_review_rate": 0-100,
+    "interpretation": "Plain English explanation of where they're being filtered",
+    "seniority_bands": [
+      {"level": "junior/mid/senior/etc", "ats_pass_rate": 0-100, "sample_size": number}
+    ],
+    "strategic_recommendation": "Strategy to improve human review rate (not resume fixes)"
+  }
 }
 
 === RULES ===
@@ -123,6 +148,31 @@ BAD:
   "confidence": 0.5
 }
 
+=== ATS BOUNDARY ANALYSIS ===
+
+The ats_boundary section tells the candidate WHERE in the process they're being filtered. This is INTERPRETATION of their rejection patterns.
+
+HOW TO DETERMINE ATS vs HUMAN FILTERING:
+- ATS filtered (before human review): Fast rejections (same/next day), template rejections, no interview mentions, no personalization
+- Human reviewed: Interview mentions, personalized feedback, named sender, specific role/project references
+
+SENIORITY BANDS:
+Analyze success rates by seniority level. Example:
+- "You pass ATS for mid-level roles 60% of the time"
+- "You pass ATS for senior roles only 15% of the time"
+- This indicates the SENIORITY BAND where they're competitive
+
+STRATEGIC RECOMMENDATIONS (what to say):
+Focus on STRATEGY, not resume fixes:
+- "For senior roles, consider referrals to bypass ATS — your direct applications rarely reach human review"
+- "Your mid-level applications show good human review rates. The rejections happen at hiring manager stage, suggesting fit issues rather than ATS problems"
+- "Companies this size rely heavily on ATS ranking — employee referrals increase human review chances significantly"
+
+NEVER recommend:
+- Resume keyword optimization
+- ATS formatting tricks
+- Skill additions
+
 === SPECIAL CASES ===
 
 If fewer than 3 applications:
@@ -130,6 +180,7 @@ If fewer than 3 applications:
 - insights = []
 - quick_wins = ["Track at least 5 more applications to unlock pattern analysis"]
 - biggest_issue = null
+- ats_boundary = null (not enough data)
 
 If no clear patterns:
 - Be honest: "No significant patterns detected yet"

@@ -202,6 +202,25 @@
   background: var(--accent-hover);
 }
 
+/* Already paid link */
+.already-paid {
+  display: block;
+  width: 100%;
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  transition: color 0.2s;
+}
+
+.already-paid:hover {
+  color: var(--text);
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .upgrade-prompt {

@@ -4,6 +4,31 @@
   gap: 0.5rem;
 }
 
+.auth-link {
+  color: var(--muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.auth-link:hover {
+  color: var(--text);
+}
+
+.auth-link-primary {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.auth-link-primary:hover {
+  color: #9a4d38;
+}
+
+.auth-divider {
+  color: var(--border);
+  font-size: 0.875rem;
+}
+
 .auth-buttons .cl-userButtonBox {
   width: 32px;
   height: 32px;

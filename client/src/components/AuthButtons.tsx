@@ -13,10 +13,11 @@ export function AuthButtons() {
     <div className="auth-buttons">
       <SignedOut>
         <SignInButton mode="modal">
-          <button className="btn btn-secondary btn-small">Sign In</button>
+          <span className="auth-link">Sign In</span>
         </SignInButton>
+        <span className="auth-divider">/</span>
         <SignUpButton mode="modal">
-          <button className="btn btn-primary btn-small">Sign Up</button>
+          <span className="auth-link auth-link-primary">Sign Up</span>
         </SignUpButton>
       </SignedOut>
       <SignedIn>

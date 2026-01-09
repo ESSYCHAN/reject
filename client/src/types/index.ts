@@ -3,8 +3,26 @@ import { z } from 'zod';
 export type RejectionCategory = 'Template' | 'Soft No' | 'Hard No' | 'Door Open' | 'Polite Pass';
 export type ReplyWorth = 'Low' | 'Medium' | 'High';
 export type ApplicationStatus = 'pending' | 'rejected' | 'ghosted' | 'interviewing' | 'offer';
+export type ATSStage = 'ats_filter' | 'recruiter_screen' | 'hiring_manager' | 'final_round' | 'unknown';
+
+// ATS Assessment - interpretation of where in the process filtering occurred
+export interface ATSAssessment {
+  likely_ats_filtered: boolean;
+  confidence: number;
+  reasoning: string;
+  stage_reached: ATSStage;
+  strategic_insight: string;
+}
 
 // Zod schema for validation
+export const ATSAssessmentSchema = z.object({
+  likely_ats_filtered: z.boolean(),
+  confidence: z.number().min(0).max(1),
+  reasoning: z.string(),
+  stage_reached: z.enum(['ats_filter', 'recruiter_screen', 'hiring_manager', 'final_round', 'unknown']),
+  strategic_insight: z.string()
+});
+
 export const DecodeResponseSchema = z.object({
   category: z.enum(['Template', 'Soft No', 'Hard No', 'Door Open', 'Polite Pass']),
   confidence: z.number().min(0).max(1),
@@ -14,7 +32,8 @@ export const DecodeResponseSchema = z.object({
   reply_worth_it: z.enum(['Low', 'Medium', 'High']),
   next_actions: z.array(z.string()),
   follow_up_template: z.string(),
-  contradictions: z.array(z.string()).optional().default([])
+  contradictions: z.array(z.string()).optional().default([]),
+  ats_assessment: ATSAssessmentSchema.optional()
 });
 
 export interface DecodeResponse {
@@ -27,6 +46,7 @@ export interface DecodeResponse {
   next_actions: string[];
   follow_up_template: string;
   contradictions?: string[];
+  ats_assessment?: ATSAssessment;
 }
 
 export interface Application {

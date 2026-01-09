@@ -15,11 +15,27 @@ interface UnifiedInsight {
   confidence: number;
 }
 
+// ATS Boundary mapping - where is the user being filtered?
+interface SeniorityBand {
+  level: string;
+  ats_pass_rate: number;
+  sample_size: number;
+}
+
+interface ATSBoundary {
+  ats_filter_rate: number;
+  human_review_rate: number;
+  interpretation: string;
+  seniority_bands: SeniorityBand[];
+  strategic_recommendation: string;
+}
+
 interface UnifiedAnalysisResponse {
   summary: string;
   insights: UnifiedInsight[];
   quick_wins: string[];
   biggest_issue: string | null;
+  ats_boundary?: ATSBoundary;
 }
 
 interface FullProfile {
@@ -246,6 +262,58 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                 )}
               </div>
             </div>
+
+            {/* ATS Boundary Mapping - Where are you being filtered? */}
+            {result.analysis.ats_boundary && (
+              <div className="ats-boundary-section">
+                <h4>Where You're Being Filtered</h4>
+                <div className="ats-boundary-bars">
+                  <div className="boundary-bar">
+                    <div className="bar-label">ATS Filtered (Before Human Review)</div>
+                    <div className="bar-container">
+                      <div
+                        className="bar-fill bar-ats"
+                        style={{ width: `${result.analysis.ats_boundary.ats_filter_rate}%` }}
+                      />
+                    </div>
+                    <div className="bar-value">{result.analysis.ats_boundary.ats_filter_rate}%</div>
+                  </div>
+                  <div className="boundary-bar">
+                    <div className="bar-label">Reached Human Review</div>
+                    <div className="bar-container">
+                      <div
+                        className="bar-fill bar-human"
+                        style={{ width: `${result.analysis.ats_boundary.human_review_rate}%` }}
+                      />
+                    </div>
+                    <div className="bar-value">{result.analysis.ats_boundary.human_review_rate}%</div>
+                  </div>
+                </div>
+
+                <p className="ats-interpretation">{result.analysis.ats_boundary.interpretation}</p>
+
+                {result.analysis.ats_boundary.seniority_bands.length > 0 && (
+                  <div className="seniority-bands">
+                    <h5>Success by Seniority Level</h5>
+                    <div className="bands-grid">
+                      {result.analysis.ats_boundary.seniority_bands.map((band, i) => (
+                        <div key={i} className="band-item">
+                          <span className="band-level">{band.level}</span>
+                          <span className={`band-rate ${band.ats_pass_rate >= 50 ? 'good' : band.ats_pass_rate >= 25 ? 'fair' : 'poor'}`}>
+                            {band.ats_pass_rate}% pass ATS
+                          </span>
+                          <span className="band-sample">({band.sample_size} apps)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="ats-strategic-rec">
+                  <strong>Strategy:</strong> {result.analysis.ats_boundary.strategic_recommendation}
+                </div>
+              </div>
+            )}
 
             {/* Biggest Issue */}
             {result.analysis.biggest_issue && (

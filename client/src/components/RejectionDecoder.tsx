@@ -1,9 +1,31 @@
 import { useState } from 'react';
-import { DecodeResponse } from '../types';
+import { DecodeResponse, ATSAssessment } from '../types';
 import { ApplicationRecord } from '../types/pro';
 import { decodeEmail } from '../utils/api';
 import { canUseFeature, incrementUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
+
+// Helper to get human-readable stage label
+function getStageLabel(stage: ATSAssessment['stage_reached']): string {
+  switch (stage) {
+    case 'ats_filter': return 'ATS Filter';
+    case 'recruiter_screen': return 'Recruiter Screen';
+    case 'hiring_manager': return 'Hiring Manager';
+    case 'final_round': return 'Final Round';
+    case 'unknown': return 'Unknown Stage';
+  }
+}
+
+// Helper to get stage color class
+function getStageColor(stage: ATSAssessment['stage_reached']): string {
+  switch (stage) {
+    case 'ats_filter': return 'stage-ats';
+    case 'recruiter_screen': return 'stage-recruiter';
+    case 'hiring_manager': return 'stage-hm';
+    case 'final_round': return 'stage-final';
+    case 'unknown': return 'stage-unknown';
+  }
+}
 
 interface DecodedData {
   result: DecodeResponse;
@@ -246,6 +268,25 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                   <li key={i}>{contradiction}</li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* ATS Assessment - Key insight about where filtering occurred */}
+          {result.ats_assessment && (
+            <div className="result-section ats-assessment">
+              <h3>Where You Were Filtered</h3>
+              <div className="ats-stage-indicator">
+                <span className={`stage-badge ${getStageColor(result.ats_assessment.stage_reached)}`}>
+                  {getStageLabel(result.ats_assessment.stage_reached)}
+                </span>
+                {result.ats_assessment.likely_ats_filtered && (
+                  <span className="ats-filtered-badge">Before Human Review</span>
+                )}
+              </div>
+              <p className="ats-reasoning">{result.ats_assessment.reasoning}</p>
+              <div className="strategic-insight">
+                <strong>Strategy:</strong> {result.ats_assessment.strategic_insight}
+              </div>
             </div>
           )}
 
