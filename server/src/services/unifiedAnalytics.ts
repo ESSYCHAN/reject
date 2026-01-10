@@ -1,9 +1,65 @@
 import OpenAI from 'openai';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { ApplicationRecord } from '../types/pro.js';
 import { MinimalProfile, FullProfile, inferProfile, profileToPromptContext } from './profileInference.js';
 
 let openai: OpenAI | null = null;
+
+// ============ ANALYSIS CACHE ============
+// Cache results to avoid repeated API calls for unchanged data
+
+interface CacheEntry {
+  result: { profile: FullProfile; analysis: UnifiedAnalysisResponse };
+  timestamp: number;
+}
+
+const analysisCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+function generateCacheKey(profile: MinimalProfile, applications: ApplicationRecord[]): string {
+  // Create a hash of the input data
+  const data = JSON.stringify({
+    profile,
+    // Only include fields that affect analysis
+    apps: applications.map(a => ({
+      id: a.id,
+      seniorityLevel: a.seniorityLevel,
+      companySize: a.companySize,
+      source: a.source,
+      outcome: a.outcome,
+      industry: a.industry
+    }))
+  });
+  return crypto.createHash('md5').update(data).digest('hex');
+}
+
+function getCachedResult(key: string): CacheEntry['result'] | null {
+  const entry = analysisCache.get(key);
+  if (!entry) return null;
+
+  // Check if cache is still valid
+  if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
+    analysisCache.delete(key);
+    return null;
+  }
+
+  return entry.result;
+}
+
+function setCachedResult(key: string, result: CacheEntry['result']): void {
+  // Clean up old entries if cache is getting large
+  if (analysisCache.size > 100) {
+    const now = Date.now();
+    for (const [k, v] of analysisCache.entries()) {
+      if (now - v.timestamp > CACHE_TTL_MS) {
+        analysisCache.delete(k);
+      }
+    }
+  }
+
+  analysisCache.set(key, { result, timestamp: Date.now() });
+}
 
 function getOpenAIClient(): OpenAI {
   if (!openai) {
@@ -211,12 +267,20 @@ export async function analyzeApplications(
   applications: ApplicationRecord[]
 ): Promise<{ profile: FullProfile; analysis: UnifiedAnalysisResponse }> {
 
-  // Step 1: Infer full profile from applications
+  // Step 1: Check cache first
+  const cacheKey = generateCacheKey(minimalProfile, applications);
+  const cached = getCachedResult(cacheKey);
+  if (cached) {
+    console.log('[Analytics] Returning cached result');
+    return cached;
+  }
+
+  // Step 2: Infer full profile from applications
   const profile = inferProfile(minimalProfile, applications);
 
-  // Step 2: Handle insufficient data case
+  // Step 3: Handle insufficient data case
   if (applications.length < 3) {
-    return {
+    const result = {
       profile,
       analysis: {
         summary: `You've tracked ${applications.length} application${applications.length === 1 ? '' : 's'}. Track at least 3-5 more to unlock pattern analysis and personalized insights.`,
@@ -229,12 +293,14 @@ export async function analyzeApplications(
         biggest_issue: null
       }
     };
+    setCachedResult(cacheKey, result);
+    return result;
   }
 
-  // Step 3: Generate prompt context
+  // Step 4: Generate prompt context
   const profileContext = profileToPromptContext(profile);
 
-  // Step 4: Call AI for analysis
+  // Step 5: Call AI for analysis
   const client = getOpenAIClient();
 
   const response = await client.chat.completions.create({
@@ -259,7 +325,7 @@ export async function analyzeApplications(
 
   if (!validated.success) {
     console.error('Validation failed:', validated.error);
-    // Return a safe fallback
+    // Return a safe fallback (don't cache failures)
     return {
       profile,
       analysis: {
@@ -279,7 +345,10 @@ export async function analyzeApplications(
     };
   }
 
-  return { profile, analysis: validated.data };
+  const result = { profile, analysis: validated.data };
+  setCachedResult(cacheKey, result);
+  console.log('[Analytics] Cached new result');
+  return result;
 }
 
 // ============ ROLE FIT WITH INFERRED PROFILE ============
