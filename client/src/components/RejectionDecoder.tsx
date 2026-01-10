@@ -456,20 +456,63 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
           maxLength={10000}
           disabled={loading}
         />
-        <div className="interview-context">
-          <label htmlFor="interview-stage">How far did you get?</label>
-          <select
-            id="interview-stage"
-            value={interviewStage}
-            onChange={(e) => setInterviewStage(e.target.value as InterviewStage)}
-            disabled={loading}
-          >
-            <option value="none">No interviews (just applied)</option>
-            <option value="phone_screen">Phone/Recruiter screen</option>
-            <option value="technical">Technical interview(s)</option>
-            <option value="onsite">Onsite/Multiple rounds</option>
-            <option value="final_round">Final round</option>
-          </select>
+        <div className="interview-stage-section">
+          <div className="stage-header">
+            <label htmlFor="interview-stage">How far did you get in the process?</label>
+            <span className="stage-hint">This helps us give you accurate insights</span>
+          </div>
+          <div className="stage-options">
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'none' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('none')}
+              disabled={loading}
+            >
+              <span className="stage-icon">1</span>
+              <span className="stage-label">Just Applied</span>
+              <span className="stage-desc">No interviews yet</span>
+            </button>
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'phone_screen' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('phone_screen')}
+              disabled={loading}
+            >
+              <span className="stage-icon">2</span>
+              <span className="stage-label">Phone/Recruiter Screen</span>
+              <span className="stage-desc">Initial call completed</span>
+            </button>
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'technical' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('technical')}
+              disabled={loading}
+            >
+              <span className="stage-icon">3</span>
+              <span className="stage-label">Technical Interview</span>
+              <span className="stage-desc">Coding/skills assessment</span>
+            </button>
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'onsite' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('onsite')}
+              disabled={loading}
+            >
+              <span className="stage-icon">4</span>
+              <span className="stage-label">Onsite/Panel</span>
+              <span className="stage-desc">Multiple rounds</span>
+            </button>
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'final_round' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('final_round')}
+              disabled={loading}
+            >
+              <span className="stage-icon">5</span>
+              <span className="stage-label">Final Round</span>
+              <span className="stage-desc">Last interview stage</span>
+            </button>
+          </div>
         </div>
         <div className="decoder-actions">
           <span className="char-count">{emailText.length}/10,000</span>
