@@ -244,6 +244,7 @@ function App() {
           FAQ
         </button>
         <p>REJECT &mdash; Decode what hiring systems don't tell you.</p>
+        <a href="mailto:info@tryreject.co.uk" className="footer-email">info@tryreject.co.uk</a>
       </footer>
     </div>
   );
