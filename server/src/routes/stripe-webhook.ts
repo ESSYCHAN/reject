@@ -192,6 +192,103 @@ router.post('/activate-pro', async (req: Request, res: Response) => {
   }
 });
 
+// Create Stripe Customer Portal session for managing subscription
+router.post('/create-portal-session', async (req: Request, res: Response) => {
+  const { customerId, returnUrl } = req.body;
+
+  if (!customerId) {
+    return res.status(400).json({ error: 'Customer ID required' });
+  }
+
+  try {
+    const session = await getStripe().billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl || process.env.CLIENT_URL || 'http://localhost:5173'
+    });
+
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error('Error creating portal session:', error);
+    res.status(500).json({ error: 'Failed to create portal session' });
+  }
+});
+
+// Cancel subscription
+router.post('/cancel-subscription', async (req: Request, res: Response) => {
+  const { userId } = req.body;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+
+  try {
+    // Get the subscription from database
+    const result = await db.query(
+      'SELECT stripe_subscription_id, stripe_customer_id FROM subscriptions WHERE user_id = $1',
+      [userId]
+    );
+
+    if (!result.rows[0]) {
+      return res.status(404).json({ error: 'No subscription found' });
+    }
+
+    const { stripe_subscription_id, stripe_customer_id } = result.rows[0];
+
+    if (!stripe_subscription_id) {
+      // No Stripe subscription, just update database status
+      await db.updateSubscription(userId, { status: 'canceled' });
+      return res.json({ success: true, message: 'Subscription canceled' });
+    }
+
+    // Cancel the subscription in Stripe (at period end to let them use remaining time)
+    await getStripe().subscriptions.update(stripe_subscription_id, {
+      cancel_at_period_end: true
+    });
+
+    // Update database
+    await db.updateSubscription(userId, { status: 'canceling' });
+
+    console.log(`User ${userId} subscription set to cancel at period end`);
+    res.json({
+      success: true,
+      message: 'Subscription will be canceled at the end of the billing period',
+      customerId: stripe_customer_id
+    });
+  } catch (error) {
+    console.error('Error canceling subscription:', error);
+    res.status(500).json({ error: 'Failed to cancel subscription' });
+  }
+});
+
+// Get subscription details (for showing in UI)
+router.get('/subscription/:userId', async (req: Request, res: Response) => {
+  const { userId } = req.params;
+
+  try {
+    const result = await db.query(
+      'SELECT status, plan_type, stripe_customer_id, stripe_subscription_id, current_period_end FROM subscriptions WHERE user_id = $1',
+      [userId]
+    );
+
+    if (!result.rows[0]) {
+      return res.json({ subscription: null });
+    }
+
+    const sub = result.rows[0];
+    res.json({
+      subscription: {
+        status: sub.status,
+        planType: sub.plan_type,
+        customerId: sub.stripe_customer_id,
+        currentPeriodEnd: sub.current_period_end
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching subscription:', error);
+    res.status(500).json({ error: 'Failed to fetch subscription' });
+  }
+});
+
 // Create checkout session with user ID
 router.post('/create-checkout', async (req: Request, res: Response) => {
   const { userId, priceId, successUrl, cancelUrl } = req.body;

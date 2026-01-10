@@ -4,6 +4,7 @@ import { ProTracker } from './components/ProTracker';
 import { ProInsightsV2 } from './components/ProInsightsV2';
 import { JDAnalyzer } from './components/JDAnalyzer';
 import { FAQ } from './components/FAQ';
+import { SubscriptionManager } from './components/SubscriptionManager';
 import { EmailCapture } from './components/EmailCapture';
 import { AuthButtons, useAuth, syncUserToServer } from './components/AuthButtons';
 import { LandingHero, PromoStrip } from './components/LandingHero';
@@ -12,7 +13,7 @@ import { ApplicationRecord } from './types/pro';
 import { setProStatus, syncProStatusFromServer, loadUsage } from './utils/usage';
 import './App.css';
 
-type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'faq';
+type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'faq' | 'account';
 
 // Check if user has used the app before
 function hasUsedAppBefore(): boolean {
@@ -214,6 +215,14 @@ function App() {
             >
               JD Check
             </button>
+            {isSignedIn && (
+              <button
+                className={`nav-btn ${activeTab === 'account' ? 'active' : ''}`}
+                onClick={() => setActiveTab('account')}
+              >
+                Account
+              </button>
+            )}
           </nav>
           <AuthButtons />
         </div>
@@ -248,6 +257,12 @@ function App() {
           {activeTab === 'insights' && <ProInsightsV2 applications={proApplications} />}
           {activeTab === 'jd-check' && <JDAnalyzer onAddToTracker={handleAddFromJD} />}
           {activeTab === 'faq' && <FAQ />}
+          {activeTab === 'account' && (
+            <div className="account-page">
+              <h2>Account Settings</h2>
+              <SubscriptionManager />
+            </div>
+          )}
         </div>
       </main>
 
