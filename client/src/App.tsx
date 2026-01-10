@@ -42,24 +42,36 @@ function App() {
   }, []);
 
   // Sync user to database and check Pro status when signed in
+  // Run on mount AND when isSignedIn changes to catch stale localStorage
   useEffect(() => {
     if (isSignedIn) {
       // First sync user to database, then check Pro status
       syncUserToServer()
         .then(() => syncProStatusFromServer())
         .then(isPro => {
-          if (isPro) {
-            console.log('Pro status verified from server');
-            // Force re-render of components that depend on Pro status
-            // by dispatching a custom event that components can listen to
-            window.dispatchEvent(new CustomEvent('pro-status-synced', { detail: { isPro } }));
-          }
+          console.log('Pro status synced from server:', isPro);
+          // Always dispatch event so components update
+          window.dispatchEvent(new CustomEvent('pro-status-synced', { detail: { isPro } }));
         })
         .catch(err => {
           console.error('Failed to sync user/pro status:', err);
         });
     }
   }, [isSignedIn]);
+
+  // Force sync Pro status on every page load (not just sign-in state change)
+  useEffect(() => {
+    if (isSignedIn) {
+      // Small delay to ensure auth is ready
+      const timer = setTimeout(() => {
+        syncProStatusFromServer().then(isPro => {
+          console.log('Force Pro sync on load:', isPro);
+          window.dispatchEvent(new CustomEvent('pro-status-synced', { detail: { isPro } }));
+        });
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, []); // Empty deps = run once on mount
   const [proApplications, setProApplications] = useState<ApplicationRecord[]>(() => {
     try {
       const stored = localStorage.getItem('reject_pro_applications');

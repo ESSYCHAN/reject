@@ -117,20 +117,19 @@ export async function syncProStatusFromServer(): Promise<boolean> {
     });
 
     if (!response.ok) {
-      // User not authenticated or error - keep local status
+      console.log('Pro sync failed - response not ok:', response.status);
       return loadUsage().isPro;
     }
 
     const data = await response.json();
+    console.log('Pro sync response:', data.subscription);
     const serverIsPro = data.subscription?.isPro === true;
 
-    // Update local storage with server status
+    // Always update local storage with server status (server is source of truth)
     const usage = loadUsage();
-    if (usage.isPro !== serverIsPro) {
-      usage.isPro = serverIsPro;
-      saveUsage(usage);
-      console.log(`Pro status synced from server: ${serverIsPro}`);
-    }
+    usage.isPro = serverIsPro;
+    saveUsage(usage);
+    console.log(`Pro status set to: ${serverIsPro}`);
 
     return serverIsPro;
   } catch (error) {
