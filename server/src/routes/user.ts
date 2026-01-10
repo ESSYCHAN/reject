@@ -25,7 +25,46 @@ router.get('/me', requireAuth(), async (req: Request, res: Response) => {
   }
 
   try {
-    const subscription = await db.getSubscription(userId);
+    // First try to get subscription by userId
+    let subscription = await db.getSubscription(userId);
+
+    // If no subscription found, try to get user's email from Clerk and check by email
+    if (!subscription) {
+      try {
+        const user = await clerkClient.users.getUser(userId);
+        const email = user.emailAddresses?.[0]?.emailAddress;
+        if (email) {
+          // Check if there's a subscription linked to this email in users table
+          const userByEmail = await db.query(
+            'SELECT u.id, s.status, s.plan_type FROM users u LEFT JOIN subscriptions s ON u.id = s.user_id WHERE LOWER(u.email) = LOWER($1)',
+            [email]
+          );
+          if (userByEmail.rows[0]?.status) {
+            subscription = {
+              status: userByEmail.rows[0].status,
+              plan_type: userByEmail.rows[0].plan_type
+            };
+            console.log(`Found subscription by email ${email}: status=${subscription.status}`);
+
+            // Also migrate the subscription to this userId if it belongs to a different user
+            const existingUserId = userByEmail.rows[0].id;
+            if (existingUserId !== userId) {
+              console.log(`Migrating subscription from ${existingUserId} to ${userId}`);
+              // Upsert the current user
+              await db.upsertUser(userId, email);
+              // Copy subscription to new userId
+              await db.updateSubscription(userId, {
+                status: subscription.status,
+                planType: subscription.plan_type
+              });
+            }
+          }
+        }
+      } catch (clerkError) {
+        console.error('Failed to check subscription by email:', clerkError);
+      }
+    }
+
     const isPro = subscription?.status === 'pro' || subscription?.status === 'active';
 
     const monthKey = getMonthKey();
@@ -158,7 +197,7 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
   }
 
   try {
-    // Get email from Clerk
+    // Get email from request body (preferred - client already has it from Clerk)
     let email = req.body.email;
 
     if (!email) {
@@ -173,8 +212,33 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
       }
     }
 
-    await db.upsertUser(userId, email || '');
-    console.log(`User sync: successfully upserted user ${userId}`);
+    // Try to upsert the user - if this fails, still return success if we can
+    try {
+      await db.upsertUser(userId, email || '');
+      console.log(`User sync: successfully upserted user ${userId} with email ${email || 'null'}`);
+    } catch (dbError) {
+      console.error('Failed to upsert user (continuing):', dbError);
+    }
+
+    // Check if this email has a Pro subscription we should link
+    if (email) {
+      try {
+        const existingSub = await db.query(
+          'SELECT u.id, s.status, s.plan_type FROM users u JOIN subscriptions s ON u.id = s.user_id WHERE LOWER(u.email) = LOWER($1) AND s.status IN ($2, $3)',
+          [email, 'active', 'pro']
+        );
+        if (existingSub.rows[0] && existingSub.rows[0].id !== userId) {
+          console.log(`User sync: Found Pro subscription for ${email}, linking to ${userId}`);
+          await db.updateSubscription(userId, {
+            status: existingSub.rows[0].status,
+            planType: existingSub.rows[0].plan_type
+          });
+        }
+      } catch (subError) {
+        console.error('Failed to check/link subscription:', subError);
+      }
+    }
+
     res.json({ success: true, userId, email: email || null });
   } catch (error) {
     console.error('Error syncing user:', error);
