@@ -9,6 +9,7 @@ import { analyzeJobDescription } from '../services/jdAnalyzer.js';
 import { inferProfile } from '../services/profileInference.js';
 import { analyzeApplications } from '../services/unifiedAnalytics.js';
 import { decodeRateLimiter } from '../middleware/rateLimiter.js';
+import { getCommunityCompanyStats, getCompanyStats } from '../db/index.js';
 
 const router = Router();
 
@@ -145,6 +146,57 @@ router.post(
       res.json({ data: result });
     } catch (error) {
       console.error('[jd-analyze] Error:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/pro/company-intel
+ * Get aggregated company intelligence from all users (Pro feature)
+ * Privacy: Only shows companies with 10+ data points, never individual user data
+ */
+router.get(
+  '/company-intel',
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      console.log('[company-intel] Fetching community company stats');
+
+      const stats = await getCommunityCompanyStats(10);
+
+      console.log(`[company-intel] Returning ${stats.length} companies`);
+      res.json({ data: stats });
+    } catch (error) {
+      console.error('[company-intel] Error:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/pro/company-intel/:company
+ * Get stats for a specific company
+ */
+router.get(
+  '/company-intel/:company',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const companyName = req.params.company;
+      console.log(`[company-intel] Looking up: ${companyName}`);
+
+      const stats = await getCompanyStats(companyName);
+
+      if (!stats) {
+        res.status(404).json({
+          error: 'Not enough data',
+          message: 'We need more applications to this company before showing insights (privacy threshold: 5+)'
+        });
+        return;
+      }
+
+      res.json({ data: stats });
+    } catch (error) {
+      console.error('[company-intel] Error:', error);
       next(error);
     }
   }

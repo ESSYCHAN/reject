@@ -56,6 +56,19 @@ interface AnalysisResult {
   analysis: UnifiedAnalysisResponse;
 }
 
+// Community company stats from all users
+interface CommunityCompanyStats {
+  company: string;
+  totalApplications: number;
+  uniqueApplicants: number;
+  avgDaysToResponse: number | null;
+  ghostRate: number;
+  rejectionCategories: { category: string; count: number; percentage: number }[];
+  topSignals: { signal: string; count: number }[];
+  seniorityBreakdown: { level: string; count: number }[];
+  mostCommonOutcome: string | null;
+}
+
 // Minimal profile storage
 const PROFILE_KEY = 'reject_minimal_profile';
 
@@ -118,6 +131,8 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'companies' | 'patterns'>('overview');
   const [isPro, setIsPro] = useState(loadUsage().isPro);
+  const [communityCompanies, setCommunityCompanies] = useState<CommunityCompanyStats[]>([]);
+  const [loadingCommunity, setLoadingCommunity] = useState(false);
 
   // Sync Pro status from server on mount
   useEffect(() => {
@@ -125,6 +140,24 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
       setIsPro(serverIsPro);
     });
   }, []);
+
+  // Fetch community company data when Companies tab is active
+  useEffect(() => {
+    if (activeTab === 'companies' && isPro && communityCompanies.length === 0) {
+      setLoadingCommunity(true);
+      fetch('/api/pro/company-intel')
+        .then(res => res.json())
+        .then(data => {
+          setCommunityCompanies(data.data || []);
+        })
+        .catch(err => {
+          console.error('Failed to fetch community company data:', err);
+        })
+        .finally(() => {
+          setLoadingCommunity(false);
+        });
+    }
+  }, [activeTab, isPro, communityCompanies.length]);
 
   // Generate Pro insights locally (no API call needed)
   const proInsights: ProInsightsData = useMemo(
@@ -534,61 +567,144 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
       {/* Companies Tab - PRO ONLY */}
       {activeTab === 'companies' && isPro && (
         <div className="companies-section">
-          <h3>Company Intelligence</h3>
-          <p className="section-hint">See patterns at companies you've applied to multiple times.</p>
+          {/* Your Companies Section */}
+          <div className="companies-subsection">
+            <h3>Your Company History</h3>
+            <p className="section-hint">Patterns from companies you've applied to multiple times.</p>
 
-          {proInsights.companies.length > 0 ? (
-            <div className="companies-list">
-              {proInsights.companies.map((company, i) => (
-                <div key={i} className="company-card">
-                  <div className="company-header">
-                    <h4>{company.company}</h4>
-                    <span className="app-count">{company.totalApplications} applications</span>
-                  </div>
-
-                  <div className="company-outcomes">
-                    {company.outcomes.offer > 0 && (
-                      <span className="outcome-badge outcome-offer">{company.outcomes.offer} offer(s)</span>
-                    )}
-                    {company.outcomes.rejected_final > 0 && (
-                      <span className="outcome-badge outcome-final">{company.outcomes.rejected_final} final round</span>
-                    )}
-                    {company.outcomes.rejected_hm > 0 && (
-                      <span className="outcome-badge outcome-hm">{company.outcomes.rejected_hm} HM stage</span>
-                    )}
-                    {company.outcomes.rejected_recruiter > 0 && (
-                      <span className="outcome-badge outcome-recruiter">{company.outcomes.rejected_recruiter} recruiter</span>
-                    )}
-                    {company.outcomes.rejected_ats > 0 && (
-                      <span className="outcome-badge outcome-ats">{company.outcomes.rejected_ats} ATS</span>
-                    )}
-                    {company.outcomes.ghosted > 0 && (
-                      <span className="outcome-badge outcome-ghosted">{company.outcomes.ghosted} ghosted</span>
-                    )}
-                  </div>
-
-                  {company.avgDaysToResponse && (
-                    <p className="company-response-time">Avg response: {company.avgDaysToResponse} days</p>
-                  )}
-
-                  <p className="company-insight">{company.insight}</p>
-
-                  {company.rejectionCategories.length > 0 && (
-                    <div className="rejection-categories">
-                      <span className="categories-label">Rejection types:</span>
-                      {company.rejectionCategories.map((cat, j) => (
-                        <span key={j} className="category-tag">{cat.category} ({cat.count})</span>
-                      ))}
+            {proInsights.companies.length > 0 ? (
+              <div className="companies-list">
+                {proInsights.companies.map((company, i) => (
+                  <div key={i} className="company-card personal">
+                    <div className="company-header">
+                      <h4>{company.company}</h4>
+                      <span className="app-count">{company.totalApplications} applications</span>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="no-data-message">
-              <p>Apply to companies multiple times to see company-specific patterns. We need at least 2 applications per company.</p>
-            </div>
-          )}
+
+                    <div className="company-outcomes">
+                      {company.outcomes.offer > 0 && (
+                        <span className="outcome-badge outcome-offer">{company.outcomes.offer} offer(s)</span>
+                      )}
+                      {company.outcomes.rejected_final > 0 && (
+                        <span className="outcome-badge outcome-final">{company.outcomes.rejected_final} final round</span>
+                      )}
+                      {company.outcomes.rejected_hm > 0 && (
+                        <span className="outcome-badge outcome-hm">{company.outcomes.rejected_hm} HM stage</span>
+                      )}
+                      {company.outcomes.rejected_recruiter > 0 && (
+                        <span className="outcome-badge outcome-recruiter">{company.outcomes.rejected_recruiter} recruiter</span>
+                      )}
+                      {company.outcomes.rejected_ats > 0 && (
+                        <span className="outcome-badge outcome-ats">{company.outcomes.rejected_ats} ATS</span>
+                      )}
+                      {company.outcomes.ghosted > 0 && (
+                        <span className="outcome-badge outcome-ghosted">{company.outcomes.ghosted} ghosted</span>
+                      )}
+                    </div>
+
+                    {company.avgDaysToResponse && (
+                      <p className="company-response-time">Avg response: {company.avgDaysToResponse} days</p>
+                    )}
+
+                    <p className="company-insight">{company.insight}</p>
+
+                    {company.rejectionCategories.length > 0 && (
+                      <div className="rejection-categories">
+                        <span className="categories-label">Rejection types:</span>
+                        {company.rejectionCategories.map((cat, j) => (
+                          <span key={j} className="category-tag">{cat.category} ({cat.count})</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-data-message">
+                <p>Apply to companies multiple times to see your personal patterns. We need at least 2 applications per company.</p>
+              </div>
+            )}
+          </div>
+
+          {/* Community Intelligence Section */}
+          <div className="companies-subsection community">
+            <h3>Community Intelligence</h3>
+            <p className="section-hint">Aggregated insights from all REJECT users (anonymized, 10+ data points per company).</p>
+
+            {loadingCommunity ? (
+              <div className="no-data-message">
+                <p>Loading community data...</p>
+              </div>
+            ) : communityCompanies.length > 0 ? (
+              <div className="companies-list">
+                {communityCompanies.map((company, i) => (
+                  <div key={i} className="company-card community">
+                    <div className="company-header">
+                      <h4>{company.company}</h4>
+                      <div className="community-badges">
+                        <span className="app-count">{company.totalApplications} data points</span>
+                        <span className="applicant-count">{company.uniqueApplicants} applicants</span>
+                      </div>
+                    </div>
+
+                    <div className="community-stats">
+                      {company.ghostRate > 0 && (
+                        <div className="community-stat">
+                          <span className="stat-value">{company.ghostRate}%</span>
+                          <span className="stat-label">Ghost Rate</span>
+                        </div>
+                      )}
+                      {company.avgDaysToResponse && (
+                        <div className="community-stat">
+                          <span className="stat-value">{company.avgDaysToResponse}d</span>
+                          <span className="stat-label">Avg Response</span>
+                        </div>
+                      )}
+                      {company.mostCommonOutcome && (
+                        <div className="community-stat">
+                          <span className="stat-value">{company.mostCommonOutcome}</span>
+                          <span className="stat-label">Most Common</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {company.rejectionCategories.length > 0 && (
+                      <div className="rejection-breakdown">
+                        <span className="breakdown-title">Rejection breakdown:</span>
+                        <div className="breakdown-bars-mini">
+                          {company.rejectionCategories.slice(0, 3).map((cat, j) => (
+                            <div key={j} className="breakdown-item">
+                              <span className="breakdown-name">{cat.category}</span>
+                              <div className="breakdown-bar-mini">
+                                <div
+                                  className="breakdown-fill-mini"
+                                  style={{ width: `${cat.percentage}%` }}
+                                />
+                              </div>
+                              <span className="breakdown-pct">{cat.percentage}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {company.topSignals.length > 0 && (
+                      <div className="community-signals">
+                        <span className="signals-label">Common signals:</span>
+                        {company.topSignals.slice(0, 3).map((sig, j) => (
+                          <span key={j} className="signal-mini">{sig.signal}</span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="no-data-message">
+                <p>Community data is building. As more users decode rejections, company insights will appear here.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

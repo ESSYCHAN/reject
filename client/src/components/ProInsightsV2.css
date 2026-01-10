@@ -745,6 +745,136 @@
   color: var(--text);
 }
 
+/* Companies Subsections */
+.companies-subsection {
+  margin-bottom: 2rem;
+}
+
+.companies-subsection.community {
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.company-card.personal {
+  border-left: 3px solid var(--accent);
+}
+
+.company-card.community {
+  border-left: 3px solid #6366f1;
+  background: linear-gradient(135deg, var(--card) 0%, rgba(99, 102, 241, 0.03) 100%);
+}
+
+.community-badges {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.applicant-count {
+  font-size: 0.75rem;
+  color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+
+.community-stats {
+  display: flex;
+  gap: 1.5rem;
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  background: var(--highlight);
+  border-radius: var(--radius-sm);
+}
+
+.community-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.community-stat .stat-value {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.community-stat .stat-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.rejection-breakdown {
+  margin: 0.75rem 0;
+}
+
+.breakdown-title {
+  font-size: 0.8rem;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.breakdown-bars-mini {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.breakdown-item {
+  display: grid;
+  grid-template-columns: 80px 1fr 40px;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.breakdown-name {
+  font-size: 0.8rem;
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.breakdown-bar-mini {
+  height: 12px;
+  background: var(--highlight);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.breakdown-fill-mini {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #8b5cf6);
+  border-radius: 6px;
+}
+
+.breakdown-pct {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-align: right;
+}
+
+.community-signals {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.signals-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.signal-mini {
+  font-size: 0.7rem;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-sm);
+}
+
 /* ============ PATTERNS SECTION ============ */
 
 .patterns-section {

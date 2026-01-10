@@ -192,4 +192,157 @@ export async function saveRejectionData(
   );
 }
 
+// ============ COMMUNITY COMPANY INTELLIGENCE ============
+
+export interface CommunityCompanyStats {
+  company: string;
+  totalApplications: number;
+  uniqueApplicants: number;
+  avgDaysToResponse: number | null;
+  ghostRate: number;
+  rejectionCategories: { category: string; count: number; percentage: number }[];
+  topSignals: { signal: string; count: number }[];
+  seniorityBreakdown: { level: string; count: number }[];
+  mostCommonOutcome: string | null;
+}
+
+/**
+ * Get aggregated company stats from all users
+ * Only returns companies with MIN_APPLICATIONS threshold for privacy
+ */
+export async function getCommunityCompanyStats(minApplications = 10): Promise<CommunityCompanyStats[]> {
+  // Get companies with enough data points
+  const companiesResult = await query(`
+    SELECT
+      LOWER(TRIM(company_name)) as company_key,
+      company_name,
+      COUNT(*) as total_applications,
+      COUNT(DISTINCT user_id) as unique_applicants
+    FROM rejection_data
+    WHERE company_name IS NOT NULL AND TRIM(company_name) != ''
+    GROUP BY LOWER(TRIM(company_name)), company_name
+    HAVING COUNT(*) >= $1
+    ORDER BY COUNT(*) DESC
+    LIMIT 50
+  `, [minApplications]);
+
+  const stats: CommunityCompanyStats[] = [];
+
+  for (const row of companiesResult.rows) {
+    const companyKey = row.company_key;
+
+    // Get rejection categories for this company
+    const categoriesResult = await query(`
+      SELECT rejection_category, COUNT(*) as count
+      FROM rejection_data
+      WHERE LOWER(TRIM(company_name)) = $1 AND rejection_category IS NOT NULL
+      GROUP BY rejection_category
+      ORDER BY count DESC
+    `, [companyKey]);
+
+    const totalWithCategory = categoriesResult.rows.reduce((sum, r) => sum + parseInt(r.count), 0);
+    const rejectionCategories = categoriesResult.rows.map(r => ({
+      category: r.rejection_category,
+      count: parseInt(r.count),
+      percentage: totalWithCategory > 0 ? Math.round((parseInt(r.count) / totalWithCategory) * 100) : 0
+    }));
+
+    // Get seniority breakdown
+    const seniorityResult = await query(`
+      SELECT seniority_level, COUNT(*) as count
+      FROM rejection_data
+      WHERE LOWER(TRIM(company_name)) = $1 AND seniority_level IS NOT NULL
+      GROUP BY seniority_level
+      ORDER BY count DESC
+    `, [companyKey]);
+
+    const seniorityBreakdown = seniorityResult.rows.map(r => ({
+      level: r.seniority_level,
+      count: parseInt(r.count)
+    }));
+
+    // Get aggregated signals
+    const signalsResult = await query(`
+      SELECT signals
+      FROM rejection_data
+      WHERE LOWER(TRIM(company_name)) = $1 AND signals IS NOT NULL
+    `, [companyKey]);
+
+    const signalCounts: Record<string, number> = {};
+    for (const r of signalsResult.rows) {
+      try {
+        const signals = typeof r.signals === 'string' ? JSON.parse(r.signals) : r.signals;
+        if (Array.isArray(signals)) {
+          for (const signal of signals) {
+            signalCounts[signal] = (signalCounts[signal] || 0) + 1;
+          }
+        }
+      } catch { /* ignore parsing errors */ }
+    }
+
+    const topSignals = Object.entries(signalCounts)
+      .map(([signal, count]) => ({ signal, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    // Calculate ghost rate from applications table if available
+    const ghostResult = await query(`
+      SELECT
+        COUNT(*) FILTER (WHERE outcome = 'ghosted') as ghosted,
+        COUNT(*) as total
+      FROM applications
+      WHERE LOWER(TRIM(company)) = $1 AND outcome IS NOT NULL AND outcome != 'pending'
+    `, [companyKey]);
+
+    const ghosted = parseInt(ghostResult.rows[0]?.ghosted || '0');
+    const totalResolved = parseInt(ghostResult.rows[0]?.total || '0');
+    const ghostRate = totalResolved > 0 ? Math.round((ghosted / totalResolved) * 100) : 0;
+
+    // Get avg days to response
+    const responseTimeResult = await query(`
+      SELECT AVG(days_to_response) as avg_days
+      FROM applications
+      WHERE LOWER(TRIM(company)) = $1 AND days_to_response > 0
+    `, [companyKey]);
+
+    const avgDays = responseTimeResult.rows[0]?.avg_days
+      ? Math.round(parseFloat(responseTimeResult.rows[0].avg_days))
+      : null;
+
+    stats.push({
+      company: row.company_name,
+      totalApplications: parseInt(row.total_applications),
+      uniqueApplicants: parseInt(row.unique_applicants),
+      avgDaysToResponse: avgDays,
+      ghostRate,
+      rejectionCategories,
+      topSignals,
+      seniorityBreakdown,
+      mostCommonOutcome: rejectionCategories[0]?.category || null
+    });
+  }
+
+  return stats;
+}
+
+/**
+ * Get stats for a specific company (for lookup)
+ */
+export async function getCompanyStats(companyName: string): Promise<CommunityCompanyStats | null> {
+  const companyKey = companyName.toLowerCase().trim();
+
+  const result = await query(`
+    SELECT COUNT(*) as total, COUNT(DISTINCT user_id) as unique_applicants
+    FROM rejection_data
+    WHERE LOWER(TRIM(company_name)) = $1
+  `, [companyKey]);
+
+  const total = parseInt(result.rows[0]?.total || '0');
+  if (total < 5) return null; // Privacy threshold
+
+  // Use the same logic as getCommunityCompanyStats for single company
+  const stats = await getCommunityCompanyStats(1);
+  return stats.find(s => s.company.toLowerCase().trim() === companyKey) || null;
+}
+
 export default pool;
