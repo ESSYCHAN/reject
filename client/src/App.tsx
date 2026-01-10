@@ -215,16 +215,8 @@ function App() {
             >
               JD Check
             </button>
-            {isSignedIn && (
-              <button
-                className={`nav-btn ${activeTab === 'account' ? 'active' : ''}`}
-                onClick={() => setActiveTab('account')}
-              >
-                Account
-              </button>
-            )}
           </nav>
-          <AuthButtons />
+          <AuthButtons onAccountClick={() => setActiveTab('account')} />
         </div>
       </header>
 

@@ -19,7 +19,11 @@ function useClerkAvailable() {
   }
 }
 
-export function AuthButtons() {
+interface AuthButtonsProps {
+  onAccountClick?: () => void;
+}
+
+export function AuthButtons({ onAccountClick }: AuthButtonsProps) {
   const clerkAvailable = useClerkAvailable();
 
   if (!clerkAvailable) {
@@ -39,6 +43,11 @@ export function AuthButtons() {
         </SignUpButton>
       </SignedOut>
       <SignedIn>
+        {onAccountClick && (
+          <button className="account-link" onClick={onAccountClick}>
+            Account
+          </button>
+        )}
         <UserButton afterSignOutUrl="/" />
       </SignedIn>
     </div>
