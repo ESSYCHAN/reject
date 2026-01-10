@@ -106,7 +106,61 @@ export async function query(text: string, params?: unknown[]) {
 // User operations
 export async function upsertUser(userId: string, email: string) {
   // Handle empty email by making it null to avoid unique constraint violations
-  const emailValue = email && email.trim() ? email.trim() : null;
+  const emailValue = email && email.trim() ? email.trim().toLowerCase() : null;
+
+  // If email is provided, check if another user has this email and migrate their data
+  if (emailValue) {
+    const existingUser = await query(
+      `SELECT id FROM users WHERE LOWER(email) = $1 AND id != $2`,
+      [emailValue, userId]
+    );
+
+    if (existingUser.rows.length > 0) {
+      const oldUserId = existingUser.rows[0].id;
+      console.log(`upsertUser: migrating data from ${oldUserId} to ${userId} for email ${emailValue}`);
+
+      // Migrate subscription (copy to new user if not exists)
+      await query(
+        `INSERT INTO subscriptions (user_id, stripe_customer_id, stripe_subscription_id, status, plan_type, current_period_end, updated_at)
+         SELECT $1, stripe_customer_id, stripe_subscription_id, status, plan_type, current_period_end, CURRENT_TIMESTAMP
+         FROM subscriptions WHERE user_id = $2
+         ON CONFLICT (user_id) DO UPDATE SET
+           stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, subscriptions.stripe_customer_id),
+           stripe_subscription_id = COALESCE(EXCLUDED.stripe_subscription_id, subscriptions.stripe_subscription_id),
+           status = COALESCE(EXCLUDED.status, subscriptions.status),
+           plan_type = COALESCE(EXCLUDED.plan_type, subscriptions.plan_type),
+           current_period_end = COALESCE(EXCLUDED.current_period_end, subscriptions.current_period_end),
+           updated_at = CURRENT_TIMESTAMP`,
+        [userId, oldUserId]
+      );
+
+      // Migrate applications (update user_id)
+      await query(
+        `UPDATE applications SET user_id = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2`,
+        [userId, oldUserId]
+      );
+
+      // Migrate usage data
+      await query(
+        `UPDATE usage SET user_id = $1 WHERE user_id = $2`,
+        [userId, oldUserId]
+      );
+
+      // Migrate rejection data
+      await query(
+        `UPDATE rejection_data SET user_id = $1 WHERE user_id = $2`,
+        [userId, oldUserId]
+      );
+
+      // Clear email from old user
+      await query(
+        `UPDATE users SET email = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+        [oldUserId]
+      );
+
+      console.log(`upsertUser: migration complete from ${oldUserId} to ${userId}`);
+    }
+  }
 
   await query(
     `INSERT INTO users (id, email, updated_at)
