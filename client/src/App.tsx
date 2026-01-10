@@ -196,12 +196,6 @@ function App() {
             >
               JD Check
             </button>
-            <button
-              className={`nav-btn ${activeTab === 'faq' ? 'active' : ''}`}
-              onClick={() => setActiveTab('faq')}
-            >
-              FAQ
-            </button>
           </nav>
           <AuthButtons />
         </div>
@@ -243,6 +237,12 @@ function App() {
       {!isSignedIn && <EmailCapture />}
 
       <footer className="footer">
+        <button
+          className="footer-link"
+          onClick={() => setActiveTab('faq')}
+        >
+          FAQ
+        </button>
         <p>REJECT &mdash; Decode what hiring systems don't tell you.</p>
       </footer>
     </div>
