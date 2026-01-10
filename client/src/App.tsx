@@ -45,13 +45,19 @@ function App() {
   useEffect(() => {
     if (isSignedIn) {
       // First sync user to database, then check Pro status
-      syncUserToServer().then(() => {
-        return syncProStatusFromServer();
-      }).then(isPro => {
-        if (isPro && !showProWelcome) {
-          console.log('Pro status verified from server');
-        }
-      });
+      syncUserToServer()
+        .then(() => syncProStatusFromServer())
+        .then(isPro => {
+          if (isPro) {
+            console.log('Pro status verified from server');
+            // Force re-render of components that depend on Pro status
+            // by dispatching a custom event that components can listen to
+            window.dispatchEvent(new CustomEvent('pro-status-synced', { detail: { isPro } }));
+          }
+        })
+        .catch(err => {
+          console.error('Failed to sync user/pro status:', err);
+        });
     }
   }, [isSignedIn]);
   const [proApplications, setProApplications] = useState<ApplicationRecord[]>(() => {

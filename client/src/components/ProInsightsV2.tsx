@@ -139,6 +139,16 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
     syncProStatusFromServer().then((serverIsPro) => {
       setIsPro(serverIsPro);
     });
+
+    // Listen for Pro status sync events from App.tsx
+    const handleProSync = (e: CustomEvent<{ isPro: boolean }>) => {
+      setIsPro(e.detail.isPro);
+    };
+
+    window.addEventListener('pro-status-synced', handleProSync as EventListener);
+    return () => {
+      window.removeEventListener('pro-status-synced', handleProSync as EventListener);
+    };
   }, []);
 
   // Fetch community company data when Companies tab is active
