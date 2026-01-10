@@ -78,11 +78,16 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
   }
 
   try {
+    console.log(`Sync: starting for user ${userId}, ${applications.length} apps`);
+
     // Ensure user exists in database first (for foreign key constraint)
     await ensureUserExists(userId);
+    console.log(`Sync: user ensured`);
 
     // Upsert each application
-    for (const app of applications) {
+    for (let i = 0; i < applications.length; i++) {
+      const app = applications[i];
+      console.log(`Sync: upserting app ${i + 1}/${applications.length}: ${app.id?.substring(0, 8)}...`);
       await db.query(
         `INSERT INTO applications (id, user_id, company, role, seniority_level, company_size,
                                    industry, source, date_applied, outcome, days_to_response,
@@ -121,7 +126,14 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
     res.json({ success: true, count: applications.length });
   } catch (error) {
     console.error('Error syncing applications:', error);
-    res.status(500).json({ error: 'Failed to sync applications' });
+    // Return more details for debugging
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('Sync error details:', { errorMessage, errorStack });
+    res.status(500).json({
+      error: 'Failed to sync applications',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+    });
   }
 });
 
