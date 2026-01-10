@@ -1,8 +1,27 @@
 import { Router, Request, Response } from 'express';
-import { requireAuth, getAuth } from '@clerk/express';
+import { requireAuth, getAuth, clerkClient } from '@clerk/express';
 import * as db from '../db/index.js';
 
 const router = Router();
+
+// Helper to ensure user exists in database before inserting applications
+async function ensureUserExists(userId: string): Promise<void> {
+  try {
+    // Try to get user email from Clerk
+    let email: string | null = null;
+    try {
+      const user = await clerkClient.users.getUser(userId);
+      email = user.emailAddresses?.[0]?.emailAddress || null;
+    } catch {
+      // Clerk lookup failed, continue without email
+    }
+
+    await db.upsertUser(userId, email || '');
+  } catch (error) {
+    console.error('Error ensuring user exists:', error);
+    throw error;
+  }
+}
 
 // Get all applications for the current user
 router.get('/', requireAuth(), async (req: Request, res: Response) => {
@@ -59,6 +78,9 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
   }
 
   try {
+    // Ensure user exists in database first (for foreign key constraint)
+    await ensureUserExists(userId);
+
     // Upsert each application
     for (const app of applications) {
       await db.query(
@@ -117,6 +139,9 @@ router.post('/', requireAuth(), async (req: Request, res: Response) => {
   }
 
   try {
+    // Ensure user exists in database first (for foreign key constraint)
+    await ensureUserExists(userId);
+
     await db.query(
       `INSERT INTO applications (id, user_id, company, role, seniority_level, company_size,
                                  industry, source, date_applied, outcome, days_to_response,
