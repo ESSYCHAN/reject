@@ -105,11 +105,16 @@ export async function query(text: string, params?: unknown[]) {
 
 // User operations
 export async function upsertUser(userId: string, email: string) {
+  // Handle empty email by making it null to avoid unique constraint violations
+  const emailValue = email && email.trim() ? email.trim() : null;
+
   await query(
     `INSERT INTO users (id, email, updated_at)
      VALUES ($1, $2, CURRENT_TIMESTAMP)
-     ON CONFLICT (id) DO UPDATE SET email = $2, updated_at = CURRENT_TIMESTAMP`,
-    [userId, email]
+     ON CONFLICT (id) DO UPDATE SET
+       email = COALESCE($2, users.email),
+       updated_at = CURRENT_TIMESTAMP`,
+    [userId, emailValue]
   );
 }
 

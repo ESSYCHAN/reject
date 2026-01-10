@@ -166,16 +166,21 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
       try {
         const user = await clerkClient.users.getUser(userId);
         email = user.emailAddresses?.[0]?.emailAddress;
+        console.log(`User sync: fetched email ${email} for userId ${userId}`);
       } catch (clerkError) {
-        console.error('Failed to get user from Clerk:', clerkError);
+        // Log but don't fail - user can still be synced with null email
+        console.error('Failed to get user from Clerk (continuing anyway):', clerkError);
       }
     }
 
     await db.upsertUser(userId, email || '');
-    res.json({ success: true, userId, email });
+    console.log(`User sync: successfully upserted user ${userId}`);
+    res.json({ success: true, userId, email: email || null });
   } catch (error) {
     console.error('Error syncing user:', error);
-    res.status(500).json({ error: 'Failed to sync user' });
+    // Return more details in development
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    res.status(500).json({ error: 'Failed to sync user', details: errorMessage });
   }
 });
 

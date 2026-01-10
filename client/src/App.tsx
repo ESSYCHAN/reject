@@ -22,7 +22,7 @@ function hasUsedAppBefore(): boolean {
 }
 
 function App() {
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, email } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('decoder');
   const [showProWelcome, setShowProWelcome] = useState(false);
   const [showLanding, setShowLanding] = useState(() => !hasUsedAppBefore());
@@ -45,8 +45,8 @@ function App() {
   // Run on mount AND when isSignedIn changes to catch stale localStorage
   useEffect(() => {
     if (isSignedIn) {
-      // First sync user to database, then check Pro status
-      syncUserToServer()
+      // First sync user to database (passing email), then check Pro status
+      syncUserToServer(email)
         .then(() => syncProStatusFromServer())
         .then(isPro => {
           console.log('Pro status synced from server:', isPro);
@@ -57,7 +57,7 @@ function App() {
           console.error('Failed to sync user/pro status:', err);
         });
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, email]);
 
   // Force sync Pro status on every page load (not just sign-in state change)
   useEffect(() => {
