@@ -14,7 +14,7 @@ interface SubscriptionDetails {
 
 export function SubscriptionManager() {
   const { isSignedIn, userId } = useAuth();
-  const { isPro, isLoading } = useUserSubscription();
+  const { isPro: isProFromHook, isLoading } = useUserSubscription();
   const [subscription, setSubscription] = useState<SubscriptionDetails | null>(null);
   const [canceling, setCanceling] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
@@ -118,6 +118,10 @@ export function SubscriptionManager() {
       </div>
     );
   }
+
+  // Determine Pro status from directly fetched subscription (more reliable than localStorage)
+  const isProFromServer = subscription?.status === 'active' || subscription?.status === 'pro';
+  const isPro = isProFromServer || isProFromHook;
 
   const getStatusLabel = (status: string) => {
     switch (status) {
