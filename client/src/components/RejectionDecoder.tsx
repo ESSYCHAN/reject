@@ -188,18 +188,6 @@ function stageToOutcome(stage: InterviewStage): ApplicationRecord['outcome'] {
   }
 }
 
-// Short label for outcome badge
-function getShortOutcomeLabel(stage: InterviewStage): string {
-  switch (stage) {
-    case 'none': return 'ATS';
-    case 'phone_screen': return 'Recruiter';
-    case 'technical': return 'Technical';
-    case 'onsite': return 'Final';
-    case 'final_round': return 'Final';
-    default: return 'ATS';
-  }
-}
-
 interface DecodedData {
   result: DecodeResponse;
   emailText: string;
@@ -568,6 +556,107 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
             </div>
           )}
 
+          {/* TRACK THIS REJECTION - Prominent CTA moved up */}
+          {(onAddToTracker || onLinkToApplication) && !addedToTracker && !linkResult && (
+            <div className="result-section tracker-cta-section">
+              <div className="tracker-cta-header">
+                <h3>Track this rejection</h3>
+                <p className="tracker-cta-subtitle">
+                  Building a record helps you spot patterns and improve your strategy
+                </p>
+              </div>
+
+              <div className="tracker-cta-content">
+                {/* Show extracted company/role */}
+                <div className="extracted-info-display">
+                  <div className="extracted-item">
+                    <span className="extracted-label">Company</span>
+                    <input
+                      type="text"
+                      value={editedCompany}
+                      onChange={(e) => setEditedCompany(e.target.value)}
+                      placeholder="Company name"
+                      className="extracted-input"
+                    />
+                  </div>
+                  <div className="extracted-item">
+                    <span className="extracted-label">Role</span>
+                    <input
+                      type="text"
+                      value={editedRole}
+                      onChange={(e) => setEditedRole(e.target.value)}
+                      placeholder="Job title"
+                      className="extracted-input"
+                    />
+                  </div>
+                </div>
+
+                {/* Link to existing OR add new */}
+                <div className="tracker-cta-actions">
+                  {onLinkToApplication && linkableApps.length > 0 && (
+                    <div className="link-existing-compact">
+                      <select
+                        value={selectedAppId}
+                        onChange={(e) => setSelectedAppId(e.target.value)}
+                        className="link-select"
+                      >
+                        <option value="">Link to existing...</option>
+                        {linkableApps.map(app => (
+                          <option key={app.id} value={app.id}>
+                            {app.company} - {app.role}
+                          </option>
+                        ))}
+                      </select>
+                      {selectedAppId && (
+                        <button
+                          className="btn btn-primary"
+                          onClick={handleLinkToApplication}
+                        >
+                          Link
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {onAddToTracker && (
+                    <button
+                      className="btn btn-primary btn-add-tracker"
+                      onClick={handleAddToTrackerClick}
+                    >
+                      + Add to Tracker
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Show success message after tracking */}
+          {(addedToTracker || linkResult) && (
+            <div className="result-section tracker-success-section">
+              {linkResult ? (
+                <div className="tracker-success">
+                  <span className="success-icon">✓</span>
+                  <div className="success-details">
+                    <strong>Linked to {linkResult.company} - {linkResult.role}</strong>
+                    <span className="outcome-change">
+                      {linkResult.previousOutcome} → {linkResult.newOutcome}
+                      {linkResult.daysToResponse !== null && ` (${linkResult.daysToResponse} days)`}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="tracker-success">
+                  <span className="success-icon">✓</span>
+                  <div className="success-details">
+                    <strong>Added: {editedCompany || 'Unknown'} — {editedRole || 'Role'}</strong>
+                    <span className="outcome-change">View in Tracker tab</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Silver lining - something positive */}
           {result.silver_lining && (
             <div className="result-section silver-lining">
@@ -645,77 +734,6 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
             </div>
           )}
 
-          {/* Link to existing application or add new */}
-          {(onAddToTracker || onLinkToApplication) && (
-            <div className="result-section tracker-actions">
-              {linkResult ? (
-                <div className="link-success">
-                  <div className="link-success-header">Linked to {linkResult.company} - {linkResult.role}</div>
-                  <ul className="link-changes">
-                    <li>Status: {linkResult.previousOutcome} → <strong>{linkResult.newOutcome}</strong></li>
-                    {linkResult.daysToResponse !== null && (
-                      <li>Days to response: <strong>{linkResult.daysToResponse} days</strong></li>
-                    )}
-                  </ul>
-                </div>
-              ) : addedToTracker ? (
-                <div className="success-message">
-                  Added: {editedCompany || 'Unknown'} — {editedRole || 'Role from email'}
-                </div>
-              ) : (
-                <div className="link-or-add">
-                  {/* Link to existing application */}
-                  {onLinkToApplication && linkableApps.length > 0 && (
-                    <div className="link-to-app">
-                      <label>Link to existing application:</label>
-                      <div className="link-controls">
-                        <select
-                          value={selectedAppId}
-                          onChange={(e) => setSelectedAppId(e.target.value)}
-                        >
-                          <option value="">Select application...</option>
-                          {linkableApps.map(app => (
-                            <option key={app.id} value={app.id}>
-                              {app.company} - {app.role}
-                            </option>
-                          ))}
-                        </select>
-                        <button
-                          className="btn btn-primary"
-                          onClick={handleLinkToApplication}
-                          disabled={!selectedAppId}
-                        >
-                          Link
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Divider if both options available */}
-                  {onLinkToApplication && linkableApps.length > 0 && onAddToTracker && (
-                    <div className="or-divider">
-                      <span>or</span>
-                    </div>
-                  )}
-
-                  {/* Add as new application */}
-                  {onAddToTracker && (
-                    <div className="add-new-section">
-                      <button
-                        className="btn btn-secondary"
-                        onClick={handleAddToTrackerClick}
-                      >
-                        + Add: {editedCompany || 'Unknown'} — {editedRole || 'Role'}
-                      </button>
-                      <span className={`outcome-preview outcome-${stageToOutcome(interviewStage)}`}>
-                        Stage: {getShortOutcomeLabel(interviewStage)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
     </div>
