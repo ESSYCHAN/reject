@@ -11,6 +11,19 @@ interface RedFlag {
   explanation: string;
 }
 
+interface HardRequirement {
+  keyword: string;
+  category: 'certification' | 'tool' | 'technology' | 'degree' | 'clearance' | 'language';
+  tip: string;
+}
+
+interface ATSKeywords {
+  hard_requirements: HardRequirement[];
+  soft_requirements: string[];
+  action_verbs: string[];
+  exact_phrases: string[];
+}
+
 interface JDAnalysis {
   company: string;
   role_title: string;
@@ -37,6 +50,7 @@ interface JDAnalysis {
     reasoning: string;
     better_approach: string | null;
   };
+  ats_keywords: ATSKeywords;
   tldr: string;
 }
 
@@ -341,6 +355,68 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
               </div>
             )}
           </div>
+
+          {/* ATS Keywords */}
+          {result.ats_keywords && (
+            <div className="result-section ats-keywords-section">
+              <h4>ATS Keywords</h4>
+              <p className="ats-hint">Include these on your resume to pass automated screening</p>
+
+              {/* Hard Requirements */}
+              {result.ats_keywords.hard_requirements.length > 0 && (
+                <div className="ats-category">
+                  <h5>Must-Have Keywords <span className="ats-badge critical">Critical</span></h5>
+                  <div className="hard-requirements-list">
+                    {result.ats_keywords.hard_requirements.map((req, i) => (
+                      <div key={i} className="hard-requirement">
+                        <div className="req-header">
+                          <span className="req-keyword">{req.keyword}</span>
+                          <span className={`req-category cat-${req.category}`}>{req.category}</span>
+                        </div>
+                        <p className="req-tip">{req.tip}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Exact Phrases */}
+              {result.ats_keywords.exact_phrases.length > 0 && (
+                <div className="ats-category">
+                  <h5>Exact Phrases to Use</h5>
+                  <div className="keyword-chips">
+                    {result.ats_keywords.exact_phrases.map((phrase, i) => (
+                      <span key={i} className="keyword-chip phrase">{phrase}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Verbs */}
+              {result.ats_keywords.action_verbs.length > 0 && (
+                <div className="ats-category">
+                  <h5>Action Verbs</h5>
+                  <div className="keyword-chips">
+                    {result.ats_keywords.action_verbs.map((verb, i) => (
+                      <span key={i} className="keyword-chip verb">{verb}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Soft Requirements */}
+              {result.ats_keywords.soft_requirements.length > 0 && (
+                <div className="ats-category">
+                  <h5>Nice-to-Have Keywords</h5>
+                  <div className="keyword-chips">
+                    {result.ats_keywords.soft_requirements.map((req, i) => (
+                      <span key={i} className="keyword-chip soft">{req}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Reality Check */}
           <div className="result-section reality-section">

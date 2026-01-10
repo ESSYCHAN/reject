@@ -57,6 +57,18 @@ export const JDAnalysisSchema = z.object({
     better_approach: z.string().nullable()
   }),
 
+  // ATS Keywords - what to include on your resume
+  ats_keywords: z.object({
+    hard_requirements: z.array(z.object({
+      keyword: z.string(),
+      category: z.enum(['certification', 'tool', 'technology', 'degree', 'clearance', 'language']),
+      tip: z.string()
+    })),
+    soft_requirements: z.array(z.string()),
+    action_verbs: z.array(z.string()),
+    exact_phrases: z.array(z.string())
+  }),
+
   // Summary
   tldr: z.string()
 });
@@ -104,6 +116,19 @@ const JD_ANALYZER_PROMPT = `You analyze job descriptions to help candidates unde
     "direct_apply_worth_it": true/false,
     "reasoning": "why direct application may or may not work",
     "better_approach": "alternative strategy" or null
+  },
+
+  "ats_keywords": {
+    "hard_requirements": [
+      {
+        "keyword": "AWS Certified Solutions Architect",
+        "category": "certification" | "tool" | "technology" | "degree" | "clearance" | "language",
+        "tip": "Include exact certification name if you have it"
+      }
+    ],
+    "soft_requirements": ["teamwork", "communication"],
+    "action_verbs": ["led", "designed", "implemented"],
+    "exact_phrases": ["phrases to use verbatim from the JD"]
   },
 
   "tldr": "1-2 sentence summary of what this role really is"
@@ -168,6 +193,37 @@ better_approach suggestions:
 - "Check if you have any connections at [Company] for a referral"
 - "Apply through the company's career page rather than job boards"
 - "Reach out to the team directly with a relevant portfolio piece"
+
+=== ATS KEYWORD EXTRACTION ===
+
+Extract keywords that ATS systems will likely scan for:
+
+hard_requirements (these are FILTERS - missing them may auto-reject):
+- Specific certifications: "AWS Certified", "PMP", "CPA", "PE License"
+- Required tools: "Salesforce", "SAP", "Tableau" (when explicitly required)
+- Technologies: "Python", "React", "Kubernetes" (when listed as required)
+- Degrees: "Bachelor's in Computer Science", "MBA required"
+- Clearances: "Secret clearance", "Public Trust"
+- Languages: "Fluent in Spanish" (when required)
+
+For each hard requirement, provide a tip on how to include it on a resume.
+
+soft_requirements (help but won't filter you out):
+- Soft skills: "leadership", "communication", "cross-functional"
+- Work styles: "self-starter", "detail-oriented", "fast-paced"
+- General skills: "project management", "data analysis"
+
+action_verbs (use these to describe your experience):
+- Extract verbs from the JD that describe what you'll do
+- Examples: "led", "designed", "built", "scaled", "optimized"
+- Match your resume bullets to their language
+
+exact_phrases (use verbatim where applicable):
+- Specific methodologies: "Agile/Scrum", "CI/CD", "DevOps"
+- Industry terms: "B2B SaaS", "Series A", "enterprise clients"
+- Unique phrases the company uses repeatedly
+
+IMPORTANT: Focus on extractable, actionable keywords. Don't list generic requirements like "good communication" unless heavily emphasized.
 
 === SALARY ASSESSMENT ===
 
@@ -239,6 +295,12 @@ export async function analyzeJobDescription(jobDescription: string): Promise<JDA
         direct_apply_worth_it: true,
         reasoning: 'Unable to fully analyze - proceed with direct application',
         better_approach: null
+      },
+      ats_keywords: {
+        hard_requirements: [],
+        soft_requirements: [],
+        action_verbs: [],
+        exact_phrases: []
       },
       tldr: 'Unable to fully analyze this job description.'
     };
