@@ -556,7 +556,84 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
             </div>
           )}
 
-          {/* TRACK THIS REJECTION - Prominent CTA moved up */}
+          {/* Silver lining - something positive */}
+          {result.silver_lining && (
+            <div className="result-section silver-lining">
+              <h3>Silver lining</h3>
+              <p>{result.silver_lining}</p>
+            </div>
+          )}
+
+          <div className="result-section">
+            <h3>What it means</h3>
+            <p>{result.what_it_means}</p>
+          </div>
+
+          <div className="result-section">
+            <h3>Signals detected</h3>
+            <ul className="signals-list">
+              {result.signals.map((signal, i) => (
+                <li key={i}>{signal}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="result-section">
+            <h3>"We'll keep your resume on file" truth</h3>
+            <p>{result.keep_on_file_truth}</p>
+          </div>
+
+          <div className="result-section">
+            <h3>Worth replying?</h3>
+            <span className={`reply-badge ${getReplyColor(result.reply_worth_it)}`}>
+              {result.reply_worth_it}
+            </span>
+            {result.reply_worth_it === 'Low' && (
+              <p className="reply-explanation">
+                Don't waste your energy on a reply. Focus on new opportunities instead.
+              </p>
+            )}
+          </div>
+
+          <div className="result-section">
+            <h3>Next actions</h3>
+            <ul className="actions-list">
+              {result.next_actions.map((action, i) => (
+                <li key={i}>{action}</li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Only show follow-up template if it exists and reply is worth it */}
+          {result.follow_up_template && result.reply_worth_it !== 'Low' && (
+            <div className="result-section">
+              <h3>Follow-up template</h3>
+              <div className="template-box">
+                <pre>{result.follow_up_template}</pre>
+                <button
+                  className="btn btn-secondary btn-small"
+                  onClick={() => navigator.clipboard.writeText(result.follow_up_template)}
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Show why no template if reply is Low */}
+          {result.reply_worth_it === 'Low' && !result.follow_up_template && (
+            <div className="result-section no-template-section">
+              <h3>Why no follow-up template?</h3>
+              <p>
+                Based on the signals in this email, following up would likely be ineffective
+                or could even make you look bad. The email may have come from an automated
+                system, explicitly asked not to reply, or showed no genuine opening for
+                future contact.
+              </p>
+            </div>
+          )}
+
+          {/* TRACK THIS REJECTION - At bottom after full analysis */}
           {(onAddToTracker || onLinkToApplication) && !addedToTracker && !linkResult && (
             <div className="result-section tracker-cta-section">
               <div className="tracker-cta-header">
@@ -654,83 +731,6 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                   </div>
                 </div>
               )}
-            </div>
-          )}
-
-          {/* Silver lining - something positive */}
-          {result.silver_lining && (
-            <div className="result-section silver-lining">
-              <h3>Silver lining</h3>
-              <p>{result.silver_lining}</p>
-            </div>
-          )}
-
-          <div className="result-section">
-            <h3>What it means</h3>
-            <p>{result.what_it_means}</p>
-          </div>
-
-          <div className="result-section">
-            <h3>Signals detected</h3>
-            <ul className="signals-list">
-              {result.signals.map((signal, i) => (
-                <li key={i}>{signal}</li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="result-section">
-            <h3>"We'll keep your resume on file" truth</h3>
-            <p>{result.keep_on_file_truth}</p>
-          </div>
-
-          <div className="result-section">
-            <h3>Worth replying?</h3>
-            <span className={`reply-badge ${getReplyColor(result.reply_worth_it)}`}>
-              {result.reply_worth_it}
-            </span>
-            {result.reply_worth_it === 'Low' && (
-              <p className="reply-explanation">
-                Don't waste your energy on a reply. Focus on new opportunities instead.
-              </p>
-            )}
-          </div>
-
-          <div className="result-section">
-            <h3>Next actions</h3>
-            <ul className="actions-list">
-              {result.next_actions.map((action, i) => (
-                <li key={i}>{action}</li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Only show follow-up template if it exists and reply is worth it */}
-          {result.follow_up_template && result.reply_worth_it !== 'Low' && (
-            <div className="result-section">
-              <h3>Follow-up template</h3>
-              <div className="template-box">
-                <pre>{result.follow_up_template}</pre>
-                <button
-                  className="btn btn-secondary btn-small"
-                  onClick={() => navigator.clipboard.writeText(result.follow_up_template)}
-                >
-                  Copy
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Show why no template if reply is Low */}
-          {result.reply_worth_it === 'Low' && !result.follow_up_template && (
-            <div className="result-section no-template-section">
-              <h3>Why no follow-up template?</h3>
-              <p>
-                Based on the signals in this email, following up would likely be ineffective
-                or could even make you look bad. The email may have come from an automated
-                system, explicitly asked not to reply, or showed no genuine opening for
-                future contact.
-              </p>
             </div>
           )}
 
