@@ -291,13 +291,25 @@ export function inferProfile(
 }
 
 /**
+ * Convert years experience number to human-readable range
+ */
+function getExperienceLabel(years: number): string {
+  if (years === 0) return 'less than 1 year';
+  if (years === 1) return '1-2 years';
+  if (years === 3) return '3-5 years';
+  if (years === 6) return '6-10 years';
+  if (years >= 11) return '10+ years';
+  return `${years} years`;
+}
+
+/**
  * Generate a text summary for the AI prompt
  */
 export function profileToPromptContext(profile: FullProfile): string {
   const lines: string[] = [];
 
   lines.push(`=== CANDIDATE PROFILE ===`);
-  lines.push(`Years of experience: ${profile.yearsExperience}`);
+  lines.push(`Years of experience: ${getExperienceLabel(profile.yearsExperience)}`);
   lines.push(`Current seniority: ${profile.currentSeniority}`);
   lines.push(`Total applications tracked: ${profile.totalApplications}`);
   lines.push(`Overall success rate (got past ATS): ${profile.overallSuccessRate}%`);
