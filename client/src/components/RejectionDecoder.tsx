@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DecodeResponse, ATSAssessment, InterviewStage } from '../types';
 import { ApplicationRecord, SeniorityLevel } from '../types/pro';
 import { decodeEmail } from '../utils/api';
@@ -284,6 +284,19 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const linkableApps = applications.filter(app =>
     app.outcome === 'pending' || app.outcome === 'ghosted'
   );
+
+  // Listen for Pro status sync to clear upgrade prompt if user just became Pro
+  useEffect(() => {
+    const handleProSync = (event: CustomEvent<{ isPro: boolean }>) => {
+      if (event.detail.isPro && showUpgrade) {
+        setShowUpgrade(false);
+      }
+    };
+    window.addEventListener('pro-status-synced', handleProSync as EventListener);
+    return () => {
+      window.removeEventListener('pro-status-synced', handleProSync as EventListener);
+    };
+  }, [showUpgrade]);
 
   // Detect if text looks like a job description rather than a rejection email
   const looksLikeJobDescription = (text: string): boolean => {

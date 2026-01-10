@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ApplicationRecord, SeniorityLevel, CompanySize, ApplicationSource, SOURCE_OPTIONS } from '../types/pro';
 import { canUseFeature, incrementUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
@@ -108,6 +108,19 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [addedToTracker, setAddedToTracker] = useState(false);
   const [selectedSource, setSelectedSource] = useState<ApplicationSource>('linkedin');
+
+  // Listen for Pro status sync to clear upgrade prompt if user just became Pro
+  useEffect(() => {
+    const handleProSync = (event: CustomEvent<{ isPro: boolean }>) => {
+      if (event.detail.isPro && showUpgrade) {
+        setShowUpgrade(false);
+      }
+    };
+    window.addEventListener('pro-status-synced', handleProSync as EventListener);
+    return () => {
+      window.removeEventListener('pro-status-synced', handleProSync as EventListener);
+    };
+  }, [showUpgrade]);
 
   // Detect if text looks like a rejection email rather than a job description
   const looksLikeRejectionEmail = (text: string): boolean => {

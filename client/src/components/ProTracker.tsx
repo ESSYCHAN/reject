@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   ApplicationRecord,
   SeniorityLevel,
@@ -64,6 +64,19 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     usage.applications = newApps.length;
     saveUsage(usage);
   };
+
+  // Listen for Pro status sync to clear upgrade prompt if user just became Pro
+  useEffect(() => {
+    const handleProSync = (event: CustomEvent<{ isPro: boolean }>) => {
+      if (event.detail.isPro && showUpgrade) {
+        setShowUpgrade(false);
+      }
+    };
+    window.addEventListener('pro-status-synced', handleProSync as EventListener);
+    return () => {
+      window.removeEventListener('pro-status-synced', handleProSync as EventListener);
+    };
+  }, [showUpgrade]);
 
   const stats = useMemo(() => {
     const total = applications.length;
