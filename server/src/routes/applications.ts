@@ -6,17 +6,22 @@ const router = Router();
 
 // Helper to ensure user exists in database before inserting applications
 async function ensureUserExists(userId: string): Promise<void> {
+  console.log(`ensureUserExists: starting for ${userId}`);
   try {
     // Try to get user email from Clerk
     let email: string | null = null;
     try {
       const user = await clerkClient.users.getUser(userId);
       email = user.emailAddresses?.[0]?.emailAddress || null;
-    } catch {
+      console.log(`ensureUserExists: got email ${email} from Clerk`);
+    } catch (clerkError) {
       // Clerk lookup failed, continue without email
+      console.log(`ensureUserExists: Clerk lookup failed, continuing without email`, clerkError);
     }
 
+    console.log(`ensureUserExists: upserting user ${userId} with email ${email || 'null'}`);
     await db.upsertUser(userId, email || '');
+    console.log(`ensureUserExists: user upserted successfully`);
   } catch (error) {
     console.error('Error ensuring user exists:', error);
     throw error;
