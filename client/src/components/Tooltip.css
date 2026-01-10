@@ -1,0 +1,83 @@
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: help;
+}
+
+.tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--color-border, rgba(255, 255, 255, 0.15));
+  color: var(--color-text-muted, #888);
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.tooltip-wrapper:hover .tooltip-icon,
+.tooltip-wrapper:focus .tooltip-icon {
+  background: var(--color-accent, #b35c44);
+  color: white;
+}
+
+.tooltip-content {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--color-bg-elevated, #3a3733);
+  color: var(--color-text, #e8e4df);
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  width: max-content;
+  max-width: 280px;
+  text-align: left;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: tooltipFadeIn 0.15s ease-out;
+}
+
+.tooltip-content::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: var(--color-bg-elevated, #3a3733);
+}
+
+@keyframes tooltipFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Make sure tooltips don't get cut off on mobile */
+@media (max-width: 480px) {
+  .tooltip-content {
+    position: fixed;
+    bottom: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    max-width: 90vw;
+  }
+
+  .tooltip-content::after {
+    display: none;
+  }
+}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 396">
+  <!-- Warm off-white background -->
+  <rect width="1584" height="396" fill="#F8F6F3"/>
+
+  <!-- Main tagline - centered -->
+  <text x="792" y="210" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="400" fill="#2D2A26" text-anchor="middle">Decode what hiring systems don't tell you.</text>
+
+  <!-- Subtle brand mark - bottom right -->
+  <text x="1520" y="360" font-family="monospace, 'Courier New'" font-size="16" font-weight="700" fill="#2D2A26" text-anchor="end" letter-spacing="2" opacity="0.6">REJECT</text>
+</svg>

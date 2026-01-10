@@ -19,6 +19,20 @@ interface ProTrackerProps {
 
 const ITEMS_PER_PAGE = 10;
 
+// Format date as "Jan 10, 2026"
+function formatDate(dateString: string): string {
+  try {
+    const date = new Date(dateString + 'T00:00:00'); // Ensure local timezone
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  } catch {
+    return dateString; // Fallback to raw string if parsing fails
+  }
+}
+
 export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
   // Use cloud-synced applications
   const {
@@ -282,7 +296,7 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                     </div>
                   </div>
                   <div className="application-meta">
-                    <span className="date">Applied: {app.dateApplied}</span>
+                    <span className="date">Applied: {formatDate(app.dateApplied)}</span>
                     {app.daysToResponse !== null && (
                       <span className="date">{app.daysToResponse} days to response</span>
                     )}

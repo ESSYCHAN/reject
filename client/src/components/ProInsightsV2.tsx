@@ -4,6 +4,7 @@ import { canUseFeature, incrementUsage, loadUsage } from '../utils/usage';
 import { generateProInsights, ProInsightsData } from '../utils/proAnalytics';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import { useUserSubscription } from '../hooks/useUserSubscription';
+import { Tooltip } from './Tooltip';
 import './ProInsightsV2.css';
 
 // Types for the unified analysis
@@ -344,20 +345,28 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                   <div className="summary-stats">
                     <div className="stat">
                       <span className="stat-value">{result.profile.totalApplications}</span>
-                      <span className="stat-label">Applications</span>
+                      <Tooltip content="The total number of job applications you've tracked in REJECT.">
+                        <span className="stat-label">Applications</span>
+                      </Tooltip>
                     </div>
                     <div className="stat">
                       <span className="stat-value">{result.profile.overallSuccessRate}%</span>
-                      <span className="stat-label">Response Rate</span>
+                      <Tooltip content="How often you got past the initial screening — meaning a real person looked at your application. This includes interviews, offers, and even late-stage rejections (those count as wins because you made it through the ATS).">
+                        <span className="stat-label">Response Rate</span>
+                      </Tooltip>
                     </div>
                     <div className="stat">
                       <span className="stat-value">{result.profile.overallGhostRate}%</span>
-                      <span className="stat-label">Ghost Rate</span>
+                      <Tooltip content="How often companies never responded at all — no rejection, no update, just silence. Lower is better here.">
+                        <span className="stat-label">Ghost Rate</span>
+                      </Tooltip>
                     </div>
                     {result.profile.avgDaysToResponse && (
                       <div className="stat">
                         <span className="stat-value">{result.profile.avgDaysToResponse}</span>
-                        <span className="stat-label">Avg Days to Hear Back</span>
+                        <Tooltip content="The average number of days between when you applied and when you heard back (for applications that got a response).">
+                          <span className="stat-label">Avg Days to Hear Back</span>
+                        </Tooltip>
                       </div>
                     )}
                   </div>
@@ -366,10 +375,14 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                 {/* ATS Boundary Mapping */}
                 {result.analysis.ats_boundary && (
                   <div className="ats-boundary-section">
-                    <h4>Where You're Being Filtered</h4>
+                    <Tooltip content="This shows where in the hiring process your applications are getting filtered out — by software or by people.">
+                      <h4>Where You're Being Filtered</h4>
+                    </Tooltip>
                     <div className="ats-boundary-bars">
                       <div className="boundary-bar">
-                        <div className="bar-label">ATS Filtered</div>
+                        <Tooltip content="These applications were rejected automatically by the company's Applicant Tracking System (ATS) — software that screens resumes before a human ever sees them.">
+                          <div className="bar-label">ATS Filtered</div>
+                        </Tooltip>
                         <div className="bar-container">
                           <div
                             className="bar-fill bar-ats"
@@ -379,7 +392,9 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                         <div className="bar-value">{result.analysis.ats_boundary.ats_filter_rate}%</div>
                       </div>
                       <div className="boundary-bar">
-                        <div className="bar-label">Human Reviewed</div>
+                        <Tooltip content="These applications made it past the ATS — a real person actually looked at your resume. Even if you were rejected, getting human review is a good sign.">
+                          <div className="bar-label">Human Reviewed</div>
+                        </Tooltip>
                         <div className="bar-container">
                           <div
                             className="bar-fill bar-human"
@@ -394,14 +409,18 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
 
                     {result.analysis.ats_boundary.seniority_bands.length > 0 && (
                       <div className="seniority-bands">
-                        <h5>Success by Seniority Level</h5>
+                        <Tooltip content="This breaks down your success rate by the level of roles you're applying for. It helps you see which levels you're most competitive at.">
+                          <h5>Success by Seniority Level</h5>
+                        </Tooltip>
                         <div className="bands-grid">
                           {result.analysis.ats_boundary.seniority_bands.map((band, i) => (
                             <div key={i} className="band-item">
                               <span className="band-level">{band.level}</span>
-                              <span className={`band-rate ${band.ats_pass_rate >= 50 ? 'good' : band.ats_pass_rate >= 25 ? 'fair' : 'poor'}`}>
-                                {band.ats_pass_rate}% pass ATS
-                              </span>
+                              <Tooltip content={`Of the ${band.sample_size} applications you sent for ${band.level} roles, ${band.ats_pass_rate}% got past initial screening.`}>
+                                <span className={`band-rate ${band.ats_pass_rate >= 50 ? 'good' : band.ats_pass_rate >= 25 ? 'fair' : 'poor'}`}>
+                                  {band.ats_pass_rate}% pass ATS
+                                </span>
+                              </Tooltip>
                               <span className="band-sample">({band.sample_size} apps)</span>
                             </div>
                           ))}
@@ -443,7 +462,9 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                       <div key={i} className={`insight-card ${getPriorityColor(insight.priority)}`}>
                         <div className="insight-header">
                           <h5>{insight.title}</h5>
-                          <span className="confidence">{Math.round(insight.confidence * 100)}%</span>
+                          <Tooltip content="How confident we are in this insight based on how much data we have. More applications = higher confidence.">
+                            <span className="confidence">{Math.round(insight.confidence * 100)}%</span>
+                          </Tooltip>
                         </div>
 
                         <p className="insight-explanation">{insight.explanation}</p>
@@ -737,19 +758,27 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
               <div className="patterns-stats">
                 <div className="pattern-stat">
                   <span className="stat-value">{proInsights.rejectionPatterns.totalDecoded}</span>
-                  <span className="stat-label">Rejections Decoded</span>
+                  <Tooltip content="The number of rejection emails you've pasted into REJECT to decode and analyze.">
+                    <span className="stat-label">Rejections Decoded</span>
+                  </Tooltip>
                 </div>
                 <div className="pattern-stat">
                   <span className="stat-value">{proInsights.rejectionPatterns.atsFilteredPercentage}%</span>
-                  <span className="stat-label">ATS Filtered</span>
+                  <Tooltip content="Rejections where it looks like the ATS (software) rejected you automatically, before a human saw your application.">
+                    <span className="stat-label">ATS Filtered</span>
+                  </Tooltip>
                 </div>
                 <div className="pattern-stat">
                   <span className="stat-value">{proInsights.rejectionPatterns.humanReviewedPercentage}%</span>
-                  <span className="stat-label">Human Reviewed</span>
+                  <Tooltip content="Rejections where a real person reviewed your application before deciding. Getting human review is progress, even with a rejection.">
+                    <span className="stat-label">Human Reviewed</span>
+                  </Tooltip>
                 </div>
                 <div className="pattern-stat">
                   <span className="stat-value">{proInsights.rejectionPatterns.templateRejectionPercentage}%</span>
-                  <span className="stat-label">Template Rejections</span>
+                  <Tooltip content="Rejections that used generic, copy-paste language. Companies often use templates, so this is normal and doesn't mean anything bad about you.">
+                    <span className="stat-label">Template Rejections</span>
+                  </Tooltip>
                 </div>
               </div>
 
