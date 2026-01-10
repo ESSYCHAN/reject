@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ApplicationRecord, SeniorityLevel, SENIORITY_OPTIONS } from '../types/pro';
-import { canUseFeature, incrementUsage, loadUsage } from '../utils/usage';
+import { canUseFeature, incrementUsage, loadUsage, syncProStatusFromServer } from '../utils/usage';
 import { generateProInsights, ProInsightsData } from '../utils/proAnalytics';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import './ProInsightsV2.css';
@@ -117,9 +117,14 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'companies' | 'patterns'>('overview');
+  const [isPro, setIsPro] = useState(loadUsage().isPro);
 
-  // Check if user is Pro
-  const isPro = loadUsage().isPro;
+  // Sync Pro status from server on mount
+  useEffect(() => {
+    syncProStatusFromServer().then((serverIsPro) => {
+      setIsPro(serverIsPro);
+    });
+  }, []);
 
   // Generate Pro insights locally (no API call needed)
   const proInsights: ProInsightsData = useMemo(
