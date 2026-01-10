@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { ApplicationRecord } from '../types/pro';
+import { clearAllUserData } from '../utils/usage';
 
 const STORAGE_KEY = 'reject_pro_applications';
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -27,8 +28,12 @@ function saveLocalApplications(applications: ApplicationRecord[]): void {
 
 export function useApplicationsSync() {
   const { isSignedIn, getToken } = useAuth();
-  const [applications, setApplications] = useState<ApplicationRecord[]>(loadLocalApplications);
-  const [isLoading, setIsLoading] = useState(false);
+  // Only load from localStorage if signed in - prevents showing cached data after sign out
+  const [applications, setApplications] = useState<ApplicationRecord[]>(() => {
+    // Don't load cached data - wait for sync effect to determine what to show
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(true); // Start with loading=true until we know sign-in state
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
 
@@ -125,12 +130,17 @@ export function useApplicationsSync() {
   // Track if we've synced to avoid duplicate syncs
   const hasSynced = useRef(false);
 
-  // Initial sync on mount when signed in
+  // Initial sync on mount when signed in, clear data when signed out
   useEffect(() => {
     console.log('useApplicationsSync: effect triggered, isSignedIn:', isSignedIn, 'hasSynced:', hasSynced.current);
 
     if (!isSignedIn) {
       hasSynced.current = false; // Reset when signed out
+      // Clear ALL user data when signed out for security
+      setApplications([]);
+      clearAllUserData();
+      setIsLoading(false);
+      console.log('useApplicationsSync: cleared all user data on sign out');
       return;
     }
 

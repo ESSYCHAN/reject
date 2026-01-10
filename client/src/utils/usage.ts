@@ -148,3 +148,17 @@ export function getLimitLabel(action: UsageAction): string {
   };
   return labels[action];
 }
+
+// Clear all user data from localStorage (for sign out)
+export function clearAllUserData(): void {
+  const keysToRemove = [
+    'reject_usage',
+    'reject_pro_applications',
+    'reject_minimal_profile'
+  ];
+
+  for (const key of keysToRemove) {
+    localStorage.removeItem(key);
+  }
+  console.log('Cleared all user data from localStorage');
+}
