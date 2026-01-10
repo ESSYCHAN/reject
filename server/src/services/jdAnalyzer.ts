@@ -196,34 +196,65 @@ better_approach suggestions:
 
 === ATS KEYWORD EXTRACTION ===
 
-Extract keywords that ATS systems will likely scan for:
+Extract keywords that ATS systems will likely scan for. This applies to ALL industries - tech, healthcare, finance, marketing, operations, legal, HR, sales, etc.
 
 hard_requirements (these are FILTERS - missing them may auto-reject):
-- Specific certifications: "AWS Certified", "PMP", "CPA", "PE License"
-- Required tools: "Salesforce", "SAP", "Tableau" (when explicitly required)
-- Technologies: "Python", "React", "Kubernetes" (when listed as required)
-- Degrees: "Bachelor's in Computer Science", "MBA required"
-- Clearances: "Secret clearance", "Public Trust"
-- Languages: "Fluent in Spanish" (when required)
+- Certifications (ANY field):
+  * Tech: "AWS Certified", "CISSP", "Scrum Master"
+  * Finance: "CPA", "CFA", "Series 7", "FINRA"
+  * Healthcare: "RN", "NP", "BCLS", "HIPAA certified"
+  * HR: "PHR", "SHRM-CP", "SHRM-SCP"
+  * Project Mgmt: "PMP", "Six Sigma", "PRINCE2"
+  * Marketing: "Google Analytics", "HubSpot", "Salesforce Marketing Cloud"
+  * Legal: "JD", "Bar admission", "Paralegal certification"
+  * Real Estate: "Real estate license", "CCIM"
+  * Supply Chain: "APICS", "CSCP", "CPIM"
 
-For each hard requirement, provide a tip on how to include it on a resume.
+- Required tools/software (ANY field):
+  * Tech: "Python", "AWS", "Kubernetes"
+  * Finance: "Bloomberg Terminal", "QuickBooks", "NetSuite"
+  * Marketing: "HubSpot", "Marketo", "Google Ads"
+  * Design: "Figma", "Adobe Creative Suite", "Sketch"
+  * Healthcare: "Epic", "Cerner", "MEDITECH"
+  * HR: "Workday", "ADP", "BambooHR"
+  * Sales: "Salesforce", "Outreach", "Gong"
+  * Operations: "SAP", "Oracle", "Jira"
+
+- Degrees: Match the exact degree mentioned
+- Clearances: Security clearances, background check requirements
+- Languages: Any language requirements (spoken or programming)
+- Licenses: Industry-specific licenses (nursing, law, real estate, etc.)
+
+For each hard requirement, provide a tip on how to include it on a resume that's relevant to that specific field.
 
 soft_requirements (help but won't filter you out):
-- Soft skills: "leadership", "communication", "cross-functional"
-- Work styles: "self-starter", "detail-oriented", "fast-paced"
-- General skills: "project management", "data analysis"
+- Soft skills mentioned: "leadership", "communication", "collaboration", "stakeholder management"
+- Work styles: "self-starter", "detail-oriented", "deadline-driven", "client-facing"
+- Domain skills: Whatever the JD emphasizes but doesn't list as required
 
 action_verbs (use these to describe your experience):
-- Extract verbs from the JD that describe what you'll do
-- Examples: "led", "designed", "built", "scaled", "optimized"
-- Match your resume bullets to their language
+- Extract the ACTUAL verbs from the JD - whatever they use
+- Examples vary by field:
+  * Tech: "built", "deployed", "optimized", "debugged"
+  * Sales: "closed", "prospected", "negotiated", "exceeded"
+  * Marketing: "launched", "grew", "engaged", "analyzed"
+  * Finance: "audited", "forecasted", "reconciled", "reported"
+  * Healthcare: "diagnosed", "treated", "coordinated", "documented"
+  * HR: "recruited", "onboarded", "facilitated", "resolved"
+  * Operations: "streamlined", "implemented", "reduced", "managed"
+- Match your resume bullets to THEIR language
 
 exact_phrases (use verbatim where applicable):
-- Specific methodologies: "Agile/Scrum", "CI/CD", "DevOps"
-- Industry terms: "B2B SaaS", "Series A", "enterprise clients"
-- Unique phrases the company uses repeatedly
+- Industry-specific terminology from the JD
+- Methodologies mentioned (Agile, Lean, Six Sigma, etc.)
+- Company-specific terms they repeat
+- Compliance/regulatory terms (HIPAA, SOX, GDPR, etc.)
+- Business model terms (B2B, B2C, SaaS, etc.)
 
-IMPORTANT: Focus on extractable, actionable keywords. Don't list generic requirements like "good communication" unless heavily emphasized.
+IMPORTANT:
+- Focus on extractable, actionable keywords specific to THIS job
+- Don't assume tech - adapt to the actual industry in the JD
+- Don't list generic requirements unless heavily emphasized
 
 === SALARY ASSESSMENT ===
 
