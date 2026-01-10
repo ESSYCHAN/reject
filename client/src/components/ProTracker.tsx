@@ -8,33 +8,10 @@ import {
   SOURCE_OPTIONS,
   OUTCOME_OPTIONS
 } from '../types/pro';
-import { canUseFeature, loadUsage, saveUsage } from '../utils/usage';
+import { loadUsage, saveUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
-
-const STORAGE_KEY = 'reject_pro_applications';
-const STORAGE_VERSION = 1;
-
-interface StoredProData {
-  version: number;
-  applications: ApplicationRecord[];
-}
-
-function loadProApplications(): ApplicationRecord[] {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return [];
-    const data: StoredProData = JSON.parse(stored);
-    if (data.version !== STORAGE_VERSION) return data.applications || [];
-    return data.applications;
-  } catch {
-    return [];
-  }
-}
-
-function saveProApplications(applications: ApplicationRecord[]): void {
-  const data: StoredProData = { version: STORAGE_VERSION, applications };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
+import { useApplicationsSync } from '../hooks/useApplicationsSync';
+import { useUserSubscription } from '../hooks/useUserSubscription';
 
 interface ProTrackerProps {
   onApplicationsChange?: (apps: ApplicationRecord[]) => void;
@@ -43,7 +20,18 @@ interface ProTrackerProps {
 const ITEMS_PER_PAGE = 10;
 
 export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
-  const [applications, setApplications] = useState<ApplicationRecord[]>(() => loadProApplications());
+  // Use cloud-synced applications
+  const {
+    applications,
+    saveApplication,
+    deleteApplication: deleteAppFromSync,
+    isLoading,
+    isSyncing
+  } = useApplicationsSync();
+
+  // Get Pro status from server
+  const { isPro } = useUserSubscription();
+
   const [showForm, setShowForm] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -55,28 +43,21 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     dateApplied: new Date().toISOString().split('T')[0]
   });
 
-  const updateApplications = (newApps: ApplicationRecord[]) => {
-    setApplications(newApps);
-    saveProApplications(newApps);
-    onApplicationsChange?.(newApps);
-    // Sync application count to usage tracking
+  // Notify parent when applications change
+  useEffect(() => {
+    onApplicationsChange?.(applications);
+    // Update usage tracking
     const usage = loadUsage();
-    usage.applications = newApps.length;
+    usage.applications = applications.length;
     saveUsage(usage);
-  };
+  }, [applications, onApplicationsChange]);
 
   // Listen for Pro status sync to clear upgrade prompt if user just became Pro
   useEffect(() => {
-    const handleProSync = (event: CustomEvent<{ isPro: boolean }>) => {
-      if (event.detail.isPro && showUpgrade) {
-        setShowUpgrade(false);
-      }
-    };
-    window.addEventListener('pro-status-synced', handleProSync as EventListener);
-    return () => {
-      window.removeEventListener('pro-status-synced', handleProSync as EventListener);
-    };
-  }, [showUpgrade]);
+    if (isPro && showUpgrade) {
+      setShowUpgrade(false);
+    }
+  }, [isPro, showUpgrade]);
 
   const stats = useMemo(() => {
     const total = applications.length;
@@ -98,11 +79,13 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     e.preventDefault();
     if (!formData.company || !formData.role) return;
 
-    // Check usage limits
-    const { allowed } = canUseFeature('applications');
-    if (!allowed) {
-      setShowUpgrade(true);
-      return;
+    // Check usage limits (Pro users bypass)
+    if (!isPro) {
+      const FREE_LIMIT = 10;
+      if (applications.length >= FREE_LIMIT) {
+        setShowUpgrade(true);
+        return;
+      }
     }
 
     const newApp: ApplicationRecord = {
@@ -118,7 +101,7 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
       daysToResponse: null // Auto-calculated when rejection is linked
     };
 
-    updateApplications([newApp, ...applications]);
+    saveApplication(newApp);
     setFormData({
       company: '',
       role: '',
@@ -130,14 +113,14 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
   };
 
   const updateApplication = (id: string, updates: Partial<ApplicationRecord>) => {
-    const updated = applications.map(app =>
-      app.id === id ? { ...app, ...updates } : app
-    );
-    updateApplications(updated);
+    const app = applications.find(a => a.id === id);
+    if (app) {
+      saveApplication({ ...app, ...updates });
+    }
   };
 
-  const deleteApplication = (id: string) => {
-    updateApplications(applications.filter(app => app.id !== id));
+  const handleDeleteApplication = (id: string) => {
+    deleteAppFromSync(id);
   };
 
   const getOutcomeClass = (outcome: Outcome) => {
@@ -173,7 +156,10 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     <div className="pro-tracker">
       <LimitWarning action="applications" />
       <div className="tracker-header">
-        <h2>Pro Application Tracker</h2>
+        <h2>
+          Pro Application Tracker
+          {(isLoading || isSyncing) && <span className="sync-status"> (syncing...)</span>}
+        </h2>
         <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
           {showForm ? 'Cancel' : '+ Add Application'}
         </button>
@@ -265,7 +251,11 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
       </div>
 
       <div className="applications-list">
-        {applications.length === 0 ? (
+        {isLoading ? (
+          <div className="empty-state">
+            <p>Loading applications...</p>
+          </div>
+        ) : applications.length === 0 ? (
           <div className="empty-state">
             <p>No applications tracked yet.</p>
             <p>Add applications to unlock pattern analysis and strategic insights.</p>
@@ -310,7 +300,7 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                   </select>
                   <button
                     className="btn btn-danger btn-small"
-                    onClick={() => deleteApplication(app.id)}
+                    onClick={() => handleDeleteApplication(app.id)}
                   >
                     Delete
                   </button>
@@ -348,6 +338,6 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
 }
 
 export function useProApplications() {
-  const [applications] = useState<ApplicationRecord[]>(() => loadProApplications());
+  const { applications } = useApplicationsSync();
   return applications;
 }

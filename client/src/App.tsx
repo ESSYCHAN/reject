@@ -11,6 +11,7 @@ import { LandingHero, PromoStrip } from './components/LandingHero';
 import { DecodeResponse } from './types';
 import { ApplicationRecord } from './types/pro';
 import { setProStatus, syncProStatusFromServer, loadUsage } from './utils/usage';
+import { useApplicationsSync } from './hooks/useApplicationsSync';
 import './App.css';
 
 type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'faq' | 'account';
@@ -27,6 +28,14 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('decoder');
   const [showProWelcome, setShowProWelcome] = useState(false);
   const [showLanding, setShowLanding] = useState(() => !hasUsedAppBefore());
+
+  // Use cloud-synced applications
+  const {
+    applications: proApplications,
+    saveApplication,
+    updateApplications,
+    isSyncing
+  } = useApplicationsSync();
 
   // Check for successful payment redirect from Stripe
   useEffect(() => {
@@ -73,18 +82,9 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, []); // Empty deps = run once on mount
-  const [proApplications, setProApplications] = useState<ApplicationRecord[]>(() => {
-    try {
-      const stored = localStorage.getItem('reject_pro_applications');
-      if (!stored) return [];
-      return JSON.parse(stored).applications || [];
-    } catch {
-      return [];
-    }
-  });
 
   const handleProApplicationsChange = (apps: ApplicationRecord[]) => {
-    setProApplications(apps);
+    updateApplications(apps);
   };
 
   const handleAddToTracker = (data: DecodedData) => {
@@ -103,22 +103,8 @@ function App() {
       daysToResponse: null
     };
 
-    // Get existing applications and add new one
-    const STORAGE_KEY = 'reject_pro_applications';
-    let existingApps: ApplicationRecord[] = [];
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const data = JSON.parse(stored);
-        existingApps = data.applications || [];
-      }
-    } catch {
-      existingApps = [];
-    }
-
-    const updatedApps = [newApp, ...existingApps];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, applications: updatedApps }));
-    setProApplications(updatedApps);
+    // Save using sync hook (handles both local and server)
+    saveApplication(newApp);
 
     // Switch to Pro Tracker tab to show the new entry
     setActiveTab('pro-tracker');
@@ -126,8 +112,6 @@ function App() {
 
   // Link a rejection analysis to an existing application
   const handleLinkToApplication = (applicationId: string, result: DecodeResponse): LinkResult | null => {
-    const STORAGE_KEY = 'reject_pro_applications';
-
     // Find the application to get previous state
     const app = proApplications.find(a => a.id === applicationId);
     if (!app) return null;
@@ -138,27 +122,22 @@ function App() {
       ? Math.floor((Date.now() - new Date(app.dateApplied).getTime()) / (1000 * 60 * 60 * 24))
       : null;
 
-    const updatedApps = proApplications.map(a => {
-      if (a.id === applicationId) {
-        return {
-          ...a,
-          outcome: newOutcome,
-          daysToResponse,
-          // Store the rejection analysis with the application
-          rejectionAnalysis: {
-            category: result.category,
-            confidence: result.confidence,
-            signals: result.signals,
-            replyWorthIt: result.reply_worth_it,
-            decodedAt: new Date().toISOString()
-          }
-        };
+    const updatedApp = {
+      ...app,
+      outcome: newOutcome,
+      daysToResponse,
+      // Store the rejection analysis with the application
+      rejectionAnalysis: {
+        category: result.category,
+        confidence: result.confidence,
+        signals: result.signals,
+        replyWorthIt: result.reply_worth_it,
+        decodedAt: new Date().toISOString()
       }
-      return a;
-    });
+    };
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, applications: updatedApps }));
-    setProApplications(updatedApps);
+    // Save updated app using sync hook
+    saveApplication(updatedApp);
 
     return {
       company: app.company,
@@ -171,15 +150,13 @@ function App() {
 
   // Add application from JD Analyzer (pre-filled from job description)
   const handleAddFromJD = (appData: Omit<ApplicationRecord, 'id'>) => {
-    const STORAGE_KEY = 'reject_pro_applications';
     const newApp: ApplicationRecord = {
       ...appData,
       id: crypto.randomUUID()
     };
 
-    const updatedApps = [newApp, ...proApplications];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ version: 1, applications: updatedApps }));
-    setProApplications(updatedApps);
+    // Save using sync hook
+    saveApplication(newApp);
 
     // Switch to Tracker tab
     setActiveTab('pro-tracker');
@@ -201,7 +178,7 @@ function App() {
               className={`nav-btn ${activeTab === 'pro-tracker' ? 'active' : ''}`}
               onClick={() => setActiveTab('pro-tracker')}
             >
-              Tracker
+              Tracker {isSyncing && <span className="sync-indicator">...</span>}
             </button>
             <button
               className={`nav-btn pro ${activeTab === 'insights' ? 'active' : ''}`}

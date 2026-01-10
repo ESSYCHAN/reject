@@ -14,6 +14,7 @@ import decodeRouter from './routes/decode.js';
 import subscribeRouter from './routes/subscribe.js';
 import proRouter from './routes/pro.js';
 import userRouter from './routes/user.js';
+import applicationsRouter from './routes/applications.js';
 import stripeWebhookRouter from './routes/stripe-webhook.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -50,8 +51,8 @@ app.use(helmet({
 if (corsOrigin) {
   app.use(cors({
     origin: corsOrigin,
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type']
+    methods: ['GET', 'POST', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
   }));
 }
 
@@ -75,6 +76,7 @@ app.use('/api/decode', decodeRouter);
 app.use('/api/subscribe', subscribeRouter);
 app.use('/api/pro', proRouter);
 app.use('/api/user', userRouter);
+app.use('/api/applications', applicationsRouter);
 
 // In production, serve the Vite build
 if (NODE_ENV === 'production') {
