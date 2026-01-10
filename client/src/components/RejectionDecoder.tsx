@@ -355,9 +355,26 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
       // Increment usage only on successful decode
       incrementUsage('decodes_per_month');
 
+      // Prefer AI-extracted company/role over local regex extraction
+      const aiCompany = response.data.extracted_company?.trim();
+      const aiRole = response.data.extracted_role?.trim();
+
+      // Update extracted info with AI values if available
+      if (aiCompany || aiRole) {
+        const updatedExtracted = {
+          company: aiCompany || extractedInfo.company,
+          role: aiRole || extractedInfo.role,
+          seniority: aiRole ? inferSeniority(aiRole) : extractedInfo.seniority
+        };
+        setExtracted(updatedExtracted);
+        setEditedCompany(updatedExtracted.company || '');
+        setEditedRole(updatedExtracted.role || '');
+      }
+
       // Try to auto-match with an existing application by company name (fuzzy)
-      if (extractedInfo.company && linkableApps.length > 0) {
-        const normalizedExtracted = normalizeCompany(extractedInfo.company);
+      const companyToMatch = aiCompany || extractedInfo.company;
+      if (companyToMatch && linkableApps.length > 0) {
+        const normalizedExtracted = normalizeCompany(companyToMatch);
         const match = linkableApps.find(app => {
           const normalizedApp = normalizeCompany(app.company);
           return normalizedApp === normalizedExtracted ||

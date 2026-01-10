@@ -34,8 +34,26 @@ Return a JSON response with this structure:
     "reasoning": "Brief explanation of why you believe this was or wasn't filtered before human review",
     "stage_reached": "ats_filter" | "recruiter_screen" | "hiring_manager" | "final_round" | "unknown",
     "strategic_insight": "Actionable strategic guidance (not resume fixes)"
-  }
+  },
+  "extracted_company": "Company name from email",
+  "extracted_role": "Full role title from email"
 }
+
+=== METADATA EXTRACTION (REQUIRED) ===
+
+ALWAYS extract company and role information when present in the email:
+
+extracted_company:
+- Look for company name in: signature, sender domain, "Thank you for your interest in [Company]", "at [Company]", "working at [Company]", etc.
+- Extract just the company name without legal suffixes (e.g., "Amazon" not "Amazon.com, Inc.")
+- If unclear, return empty string ""
+
+extracted_role:
+- Look for role title in: "position of [Role]", "role of [Role]", "[Role] position", "for the [Role]", subject line references
+- Extract the FULL role title including seniority level and any descriptors
+- Example: "Senior Research Scientist, Intelligent Talent Acquisition - Lead Generation & Detection Services"
+- If there's a job ID like "(ID: 3131743)", you can omit it from the role title
+- If unclear, return empty string ""
 
 === CATEGORY DEFINITIONS ===
 
@@ -338,7 +356,9 @@ function createFallbackResponse(): DecodeResponse {
       reasoning: 'Standard template rejection typically indicates automated filtering before human review.',
       stage_reached: 'ats_filter',
       strategic_insight: 'For similar roles, consider applying through referrals or direct outreach to increase your chances of human review.'
-    }
+    },
+    extracted_company: '',
+    extracted_role: ''
   };
 }
 

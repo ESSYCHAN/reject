@@ -32,7 +32,10 @@ export const DecodeResponseSchema = z.object({
   next_actions: z.array(z.string()),
   follow_up_template: z.string(),
   contradictions: z.array(z.string()).optional(),
-  ats_assessment: ATSAssessmentSchema.optional()
+  ats_assessment: ATSAssessmentSchema.optional(),
+  // Extracted metadata from the email
+  extracted_company: z.string().optional(),
+  extracted_role: z.string().optional()
 });
 
 export type RejectionCategory = z.infer<typeof RejectionCategorySchema>;
