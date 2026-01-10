@@ -17,7 +17,7 @@ export interface ApplicationRecord {
   role: string;
   seniorityLevel: SeniorityLevel;
   companySize: CompanySize;
-  industry: string;
+  industry: string | null;
   source: ApplicationSource;
   dateApplied: string;
   outcome: Outcome;

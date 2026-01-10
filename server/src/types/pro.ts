@@ -21,12 +21,12 @@ export const ApplicationRecordSchema = z.object({
   id: z.string(),
   company: z.string(),
   role: z.string(),
-  seniorityLevel: SeniorityLevelSchema,
-  companySize: CompanySizeSchema,
-  industry: z.string(),
-  source: ApplicationSourceSchema,
-  dateApplied: z.string(),
-  outcome: OutcomeSchema,
+  seniorityLevel: SeniorityLevelSchema.nullable().optional().transform(v => v ?? 'mid'),
+  companySize: CompanySizeSchema.nullable().optional().transform(v => v ?? 'mid'),
+  industry: z.string().nullable().optional().transform(v => v ?? ''),
+  source: ApplicationSourceSchema.nullable().optional().transform(v => v ?? 'other'),
+  dateApplied: z.string().nullable().optional().transform(v => v ?? new Date().toISOString().split('T')[0]),
+  outcome: OutcomeSchema.nullable().optional().transform(v => v ?? 'pending'),
   daysToResponse: z.number().nullable().optional().transform(v => v ?? null),
   rejectionEmailId: z.string().optional()
 });
