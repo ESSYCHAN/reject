@@ -46,14 +46,19 @@ export function useUserSubscription(): UserData {
 
     try {
       const token = await getToken();
+      console.log('useUserSubscription: fetching /api/user/me with token:', token ? 'present' : 'missing');
+
       const response = await fetch(`${API_URL}/api/user/me`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
+      console.log('useUserSubscription: response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('useUserSubscription: isPro from server:', data.subscription?.isPro);
         setIsPro(data.subscription?.isPro || false);
         setUsage({
           decodes: data.usage?.decodes || defaultUsage.decodes,
@@ -61,9 +66,11 @@ export function useUserSubscription(): UserData {
           insights: data.usage?.insights || defaultUsage.insights,
           roleFits: data.usage?.roleFits || defaultUsage.roleFits
         });
+      } else {
+        console.error('useUserSubscription: error response:', response.status, await response.text());
       }
     } catch (error) {
-      console.error('Failed to fetch user data:', error);
+      console.error('useUserSubscription: failed to fetch user data:', error);
     } finally {
       setIsLoading(false);
     }

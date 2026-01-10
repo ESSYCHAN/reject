@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ApplicationRecord, SeniorityLevel, SENIORITY_OPTIONS } from '../types/pro';
-import { canUseFeature, incrementUsage, loadUsage, syncProStatusFromServer } from '../utils/usage';
+import { canUseFeature, incrementUsage, loadUsage } from '../utils/usage';
 import { generateProInsights, ProInsightsData } from '../utils/proAnalytics';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
+import { useUserSubscription } from '../hooks/useUserSubscription';
 import './ProInsightsV2.css';
 
 // Types for the unified analysis
@@ -130,19 +131,22 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
   const [hasAnalyzed, setHasAnalyzed] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'companies' | 'patterns'>('overview');
-  const [isPro, setIsPro] = useState(loadUsage().isPro);
   const [communityCompanies, setCommunityCompanies] = useState<CommunityCompanyStats[]>([]);
   const [loadingCommunity, setLoadingCommunity] = useState(false);
 
-  // Sync Pro status from server on mount
-  useEffect(() => {
-    syncProStatusFromServer().then((serverIsPro) => {
-      setIsPro(serverIsPro);
-    });
+  // Use the hook for reliable Pro status (fetches from server with proper auth)
+  const { isPro: isProFromHook, isLoading: isProLoading } = useUserSubscription();
 
-    // Listen for Pro status sync events from App.tsx
+  // Also listen for localStorage fallback (for non-signed-in users)
+  const [localIsPro, setLocalIsPro] = useState(loadUsage().isPro);
+
+  // Use hook value if available, otherwise fall back to localStorage
+  const isPro = isProFromHook || localIsPro;
+
+  // Listen for Pro status sync events from App.tsx (as backup)
+  useEffect(() => {
     const handleProSync = (e: CustomEvent<{ isPro: boolean }>) => {
-      setIsPro(e.detail.isPro);
+      setLocalIsPro(e.detail.isPro);
     };
 
     window.addEventListener('pro-status-synced', handleProSync as EventListener);
@@ -255,22 +259,22 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
           Overview
         </button>
         <button
-          className={`tab-btn ${activeTab === 'progress' ? 'active' : ''} ${!isPro ? 'pro-locked' : ''}`}
-          onClick={() => isPro ? setActiveTab('progress') : setShowUpgrade(true)}
+          className={`tab-btn ${activeTab === 'progress' ? 'active' : ''} ${!isPro && !isProLoading ? 'pro-locked' : ''}`}
+          onClick={() => isPro || isProLoading ? setActiveTab('progress') : setShowUpgrade(true)}
         >
-          Progress {!isPro && '🔒'}
+          Progress {!isPro && !isProLoading && '🔒'}
         </button>
         <button
-          className={`tab-btn ${activeTab === 'companies' ? 'active' : ''} ${!isPro ? 'pro-locked' : ''}`}
-          onClick={() => isPro ? setActiveTab('companies') : setShowUpgrade(true)}
+          className={`tab-btn ${activeTab === 'companies' ? 'active' : ''} ${!isPro && !isProLoading ? 'pro-locked' : ''}`}
+          onClick={() => isPro || isProLoading ? setActiveTab('companies') : setShowUpgrade(true)}
         >
-          Companies {!isPro && '🔒'}
+          Companies {!isPro && !isProLoading && '🔒'}
         </button>
         <button
-          className={`tab-btn ${activeTab === 'patterns' ? 'active' : ''} ${!isPro ? 'pro-locked' : ''}`}
-          onClick={() => isPro ? setActiveTab('patterns') : setShowUpgrade(true)}
+          className={`tab-btn ${activeTab === 'patterns' ? 'active' : ''} ${!isPro && !isProLoading ? 'pro-locked' : ''}`}
+          onClick={() => isPro || isProLoading ? setActiveTab('patterns') : setShowUpgrade(true)}
         >
-          Patterns {!isPro && '🔒'}
+          Patterns {!isPro && !isProLoading && '🔒'}
         </button>
       </div>
 
@@ -473,7 +477,7 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
       )}
 
       {/* Progress Tab - PRO ONLY */}
-      {activeTab === 'progress' && isPro && (
+      {activeTab === 'progress' && (isPro || isProLoading) && (
         <div className="progress-section">
           <h3>Month-over-Month Progress</h3>
           <p className="section-hint">Track how your job search is improving over time.</p>
@@ -575,7 +579,7 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
       )}
 
       {/* Companies Tab - PRO ONLY */}
-      {activeTab === 'companies' && isPro && (
+      {activeTab === 'companies' && (isPro || isProLoading) && (
         <div className="companies-section">
           {/* Your Companies Section */}
           <div className="companies-subsection">
@@ -719,7 +723,7 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
       )}
 
       {/* Patterns Tab - PRO ONLY */}
-      {activeTab === 'patterns' && isPro && (
+      {activeTab === 'patterns' && (isPro || isProLoading) && (
         <div className="patterns-section">
           <h3>Rejection Pattern Analysis</h3>
           <p className="section-hint">Aggregate insights from your decoded rejection emails.</p>
