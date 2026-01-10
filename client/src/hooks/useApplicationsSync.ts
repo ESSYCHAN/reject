@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { ApplicationRecord } from '../types/pro';
 
@@ -34,21 +34,29 @@ export function useApplicationsSync() {
 
   // Fetch applications from server
   const fetchFromServer = useCallback(async (): Promise<ApplicationRecord[]> => {
-    if (!isSignedIn) return [];
+    if (!isSignedIn) {
+      console.log('useApplicationsSync: not signed in, skipping fetch');
+      return [];
+    }
 
     try {
       const token = await getToken();
+      console.log('useApplicationsSync: fetching applications with token:', token ? 'present' : 'missing');
+
       const response = await fetch(`${API_URL}/api/applications`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
       });
 
+      console.log('useApplicationsSync: fetch response status:', response.status);
+
       if (response.ok) {
         const data = await response.json();
+        console.log('useApplicationsSync: fetched', data.applications?.length || 0, 'applications from server');
         return data.applications || [];
       }
-      console.error('Failed to fetch applications:', response.status);
+      console.error('Failed to fetch applications:', response.status, await response.text());
       return [];
     } catch (error) {
       console.error('Error fetching applications:', error);
@@ -58,10 +66,15 @@ export function useApplicationsSync() {
 
   // Push applications to server
   const pushToServer = useCallback(async (apps: ApplicationRecord[]): Promise<boolean> => {
-    if (!isSignedIn || apps.length === 0) return true;
+    if (!isSignedIn || apps.length === 0) {
+      console.log('useApplicationsSync: skip push - signed in:', isSignedIn, 'apps:', apps.length);
+      return true;
+    }
 
     try {
       const token = await getToken();
+      console.log('useApplicationsSync: pushing', apps.length, 'applications to server');
+
       const response = await fetch(`${API_URL}/api/applications/sync`, {
         method: 'POST',
         headers: {
@@ -72,13 +85,13 @@ export function useApplicationsSync() {
       });
 
       if (response.ok) {
-        console.log(`Synced ${apps.length} applications to server`);
+        console.log('useApplicationsSync: successfully synced', apps.length, 'applications to server');
         return true;
       }
-      console.error('Failed to sync applications:', response.status);
+      console.error('useApplicationsSync: failed to sync:', response.status, await response.text());
       return false;
     } catch (error) {
-      console.error('Error syncing applications:', error);
+      console.error('useApplicationsSync: error syncing:', error);
       return false;
     }
   }, [isSignedIn, getToken]);
@@ -109,9 +122,20 @@ export function useApplicationsSync() {
     return Array.from(merged.values());
   }, []);
 
+  // Track if we've synced to avoid duplicate syncs
+  const hasSynced = useRef(false);
+
   // Initial sync on mount when signed in
   useEffect(() => {
-    if (!isSignedIn) return;
+    console.log('useApplicationsSync: effect triggered, isSignedIn:', isSignedIn, 'hasSynced:', hasSynced.current);
+
+    if (!isSignedIn) {
+      hasSynced.current = false; // Reset when signed out
+      return;
+    }
+
+    if (hasSynced.current) return; // Already synced this session
+    hasSynced.current = true;
 
     const syncOnMount = async () => {
       setIsLoading(true);
@@ -119,9 +143,11 @@ export function useApplicationsSync() {
 
       try {
         const localApps = loadLocalApplications();
+        console.log('useApplicationsSync: starting sync, local apps:', localApps.length);
+
         const serverApps = await fetchFromServer();
 
-        console.log(`Sync: ${localApps.length} local, ${serverApps.length} server applications`);
+        console.log(`useApplicationsSync: Sync - ${localApps.length} local, ${serverApps.length} server applications`);
 
         // Merge and update
         const merged = mergeApplications(localApps, serverApps);
