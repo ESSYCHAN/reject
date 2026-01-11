@@ -205,8 +205,8 @@ function App() {
             </div>
           )}
 
-          {/* Show landing hero for first-time visitors on decoder tab */}
-          {showLanding && activeTab === 'decoder' && (
+          {/* Show landing hero for first-time visitors on decoder tab (not when signed in) */}
+          {showLanding && activeTab === 'decoder' && !isSignedIn && (
             <>
               <LandingHero onGetStarted={() => setShowLanding(false)} />
               <PromoStrip />
