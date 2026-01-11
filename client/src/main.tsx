@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { ClerkProvider } from '@clerk/clerk-react';
+import { Analytics } from '@vercel/analytics/react';
 import App from './App';
 import './index.css';
 
@@ -12,9 +13,13 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     {PUBLISHABLE_KEY ? (
       <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
         <App />
+        <Analytics />
       </ClerkProvider>
     ) : (
-      <App />
+      <>
+        <App />
+        <Analytics />
+      </>
     )}
   </React.StrictMode>
 );
