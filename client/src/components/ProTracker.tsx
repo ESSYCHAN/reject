@@ -18,6 +18,21 @@ interface ProTrackerProps {
 }
 
 const ITEMS_PER_PAGE = 10;
+const GHOST_THRESHOLD_DAYS = 30; // Auto-mark as ghosted after 30 days
+
+// Calculate days since application
+function daysSinceApplied(dateApplied: string | undefined | null): number | null {
+  if (!dateApplied) return null;
+  try {
+    const applied = new Date(dateApplied);
+    if (isNaN(applied.getTime())) return null;
+    const now = new Date();
+    const diffTime = now.getTime() - applied.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  } catch {
+    return null;
+  }
+}
 
 // Format date as "Jan 10, 2026"
 function formatDate(dateString: string | undefined | null): string {
@@ -94,6 +109,25 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
       setShowUpgrade(false);
     }
   }, [isPro, showUpgrade]);
+
+  // Auto-ghost old pending applications
+  useEffect(() => {
+    const pendingApps = applications.filter(app => app.outcome === 'pending');
+    const appsToGhost = pendingApps.filter(app => {
+      const days = daysSinceApplied(app.dateApplied);
+      return days !== null && days >= GHOST_THRESHOLD_DAYS;
+    });
+
+    // Mark each old pending app as ghosted
+    appsToGhost.forEach(app => {
+      const days = daysSinceApplied(app.dateApplied);
+      saveApplication({
+        ...app,
+        outcome: 'ghosted',
+        daysToResponse: days
+      });
+    });
+  }, [applications, saveApplication]);
 
   const stats = useMemo(() => {
     const total = applications.length;
@@ -319,7 +353,23 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                   </div>
                   <div className="application-meta">
                     <span className="date">Applied: {formatDate(app.dateApplied)}</span>
-                    {app.daysToResponse !== null && (
+                    {app.outcome === 'pending' && daysSinceApplied(app.dateApplied) !== null && (
+                      <span className={`days-pending ${daysSinceApplied(app.dateApplied)! >= 21 ? 'warning' : ''}`}>
+                        {daysSinceApplied(app.dateApplied)} days pending
+                        {daysSinceApplied(app.dateApplied)! >= 21 && daysSinceApplied(app.dateApplied)! < GHOST_THRESHOLD_DAYS && (
+                          <button
+                            className="btn-ghost-now"
+                            onClick={() => updateApplication(app.id, {
+                              outcome: 'ghosted',
+                              daysToResponse: daysSinceApplied(app.dateApplied)
+                            })}
+                          >
+                            Mark Ghosted
+                          </button>
+                        )}
+                      </span>
+                    )}
+                    {app.daysToResponse !== null && app.outcome !== 'pending' && (
                       <span className="date">{app.daysToResponse} days to response</span>
                     )}
                   </div>

@@ -1078,6 +1078,34 @@
   color: var(--muted);
 }
 
+.days-pending {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.days-pending.warning {
+  color: #e67e22;
+}
+
+.btn-ghost-now {
+  background: transparent;
+  border: 1px solid #e67e22;
+  color: #e67e22;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.65rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-ghost-now:hover {
+  background: #e67e22;
+  color: white;
+}
+
 .application-actions {
   display: flex;
   gap: var(--space-sm);
