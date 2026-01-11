@@ -267,6 +267,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [editedCompany, setEditedCompany] = useState<string>('');
   const [editedRole, setEditedRole] = useState<string>('');
+  const [matchingAppIds, setMatchingAppIds] = useState<string[]>([]);
 
   // Filter to show only pending/interviewing applications (ones that could receive rejections)
   const linkableApps = applications.filter(app =>
@@ -372,18 +373,23 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
         setEditedRole(updatedExtracted.role || '');
       }
 
-      // Try to auto-match with an existing application by company name (fuzzy)
+      // Try to auto-match with existing applications by company name (fuzzy)
       const companyToMatch = aiCompany || extractedInfo.company;
       if (companyToMatch && linkableApps.length > 0) {
         const normalizedExtracted = normalizeCompany(companyToMatch);
-        const match = linkableApps.find(app => {
+        const matches = linkableApps.filter(app => {
           const normalizedApp = normalizeCompany(app.company);
           return normalizedApp === normalizedExtracted ||
             normalizedApp.includes(normalizedExtracted) ||
             normalizedExtracted.includes(normalizedApp);
         });
-        if (match) {
-          setSelectedAppId(match.id);
+
+        if (matches.length > 0) {
+          setMatchingAppIds(matches.map(m => m.id));
+          // Auto-select only if there's exactly one match
+          if (matches.length === 1) {
+            setSelectedAppId(matches[0].id);
+          }
         }
       }
     }
@@ -679,20 +685,36 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                 <div className="tracker-cta-actions">
                   {onLinkToApplication && linkableApps.length > 0 && (
                     <div className="link-existing-compact">
-                      {selectedAppId && (
+                      {matchingAppIds.length === 1 && selectedAppId && (
                         <span className="match-found-badge">Match found!</span>
+                      )}
+                      {matchingAppIds.length > 1 && (
+                        <span className="match-found-badge multiple">{matchingAppIds.length} matches - pick one</span>
                       )}
                       <select
                         value={selectedAppId}
                         onChange={(e) => setSelectedAppId(e.target.value)}
-                        className={`link-select ${selectedAppId ? 'has-match' : ''}`}
+                        className={`link-select ${matchingAppIds.length > 0 ? 'has-match' : ''}`}
                       >
                         <option value="">Link to existing...</option>
-                        {linkableApps.map(app => (
-                          <option key={app.id} value={app.id}>
-                            {app.company} - {app.role}
-                          </option>
-                        ))}
+                        {/* Show matching apps first */}
+                        {matchingAppIds.length > 1 && linkableApps
+                          .filter(app => matchingAppIds.includes(app.id))
+                          .map(app => (
+                            <option key={app.id} value={app.id}>
+                              ★ {app.company} - {app.role}
+                            </option>
+                          ))
+                        }
+                        {/* Show non-matching apps */}
+                        {linkableApps
+                          .filter(app => !matchingAppIds.includes(app.id) || matchingAppIds.length <= 1)
+                          .map(app => (
+                            <option key={app.id} value={app.id}>
+                              {matchingAppIds.includes(app.id) ? '★ ' : ''}{app.company} - {app.role}
+                            </option>
+                          ))
+                        }
                       </select>
                       {selectedAppId && (
                         <button

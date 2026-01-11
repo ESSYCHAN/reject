@@ -781,6 +781,10 @@
   white-space: nowrap;
 }
 
+.match-found-badge.multiple {
+  background: var(--warning, #fbbf24);
+}
+
 .btn-add-tracker {
   white-space: nowrap;
 }
