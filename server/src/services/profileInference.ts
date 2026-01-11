@@ -11,6 +11,14 @@ export interface MinimalProfile {
 /**
  * Inferred profile - derived from application history
  */
+export interface GhostPattern {
+  totalGhosted: number;
+  nearGhostCount: number;  // 21-29 days pending
+  ghostedBySource: { source: ApplicationSource; count: number; rate: number }[];
+  ghostedByCompanySize: { size: CompanySize; count: number; rate: number }[];
+  avgDaysToGhost: number | null;
+}
+
 export interface InferredProfile {
   // What they're targeting (from applications)
   targetSeniorities: { level: SeniorityLevel; count: number; percentage: number }[];
@@ -23,6 +31,9 @@ export interface InferredProfile {
   successByCompanySize: { size: CompanySize; applied: number; succeeded: number; rate: number }[];
   successBySource: { source: ApplicationSource; applied: number; succeeded: number; rate: number }[];
   successByIndustry: { industry: string; applied: number; succeeded: number; rate: number }[];
+
+  // Ghost patterns
+  ghostPatterns: GhostPattern;
 
   // Key mismatches detected
   mismatches: ProfileMismatch[];
@@ -106,6 +117,97 @@ function calculateSuccessRates<K extends string>(
         : 0
     }))
     .sort((a, b) => b.applied - a.applied);
+}
+
+// Calculate days since application was submitted
+function daysSinceApplied(dateApplied: string | undefined | null): number | null {
+  if (!dateApplied) return null;
+  try {
+    const applied = new Date(dateApplied);
+    if (isNaN(applied.getTime())) return null;
+    const now = new Date();
+    const diffTime = now.getTime() - applied.getTime();
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  } catch {
+    return null;
+  }
+}
+
+function calculateGhostPatterns(applications: ApplicationRecord[]): GhostPattern {
+  const ghosted = applications.filter(app => app.outcome === 'ghosted');
+  const pending = applications.filter(app => app.outcome === 'pending');
+
+  // Near ghost = pending for 21-29 days
+  const nearGhost = pending.filter(app => {
+    const days = daysSinceApplied(app.dateApplied);
+    return days !== null && days >= 21 && days < 30;
+  });
+
+  // Ghost rate by source
+  const ghostedBySource: { source: ApplicationSource; count: number; rate: number }[] = [];
+  const sourceGroups = new Map<ApplicationSource, { ghosted: number; total: number }>();
+
+  for (const app of applications) {
+    if (!sourceGroups.has(app.source)) {
+      sourceGroups.set(app.source, { ghosted: 0, total: 0 });
+    }
+    const group = sourceGroups.get(app.source)!;
+    group.total++;
+    if (app.outcome === 'ghosted') {
+      group.ghosted++;
+    }
+  }
+
+  for (const [source, data] of sourceGroups.entries()) {
+    if (data.ghosted > 0) {
+      ghostedBySource.push({
+        source,
+        count: data.ghosted,
+        rate: Math.round((data.ghosted / data.total) * 100)
+      });
+    }
+  }
+  ghostedBySource.sort((a, b) => b.rate - a.rate);
+
+  // Ghost rate by company size
+  const ghostedByCompanySize: { size: CompanySize; count: number; rate: number }[] = [];
+  const sizeGroups = new Map<CompanySize, { ghosted: number; total: number }>();
+
+  for (const app of applications) {
+    if (!sizeGroups.has(app.companySize)) {
+      sizeGroups.set(app.companySize, { ghosted: 0, total: 0 });
+    }
+    const group = sizeGroups.get(app.companySize)!;
+    group.total++;
+    if (app.outcome === 'ghosted') {
+      group.ghosted++;
+    }
+  }
+
+  for (const [size, data] of sizeGroups.entries()) {
+    if (data.ghosted > 0) {
+      ghostedByCompanySize.push({
+        size,
+        count: data.ghosted,
+        rate: Math.round((data.ghosted / data.total) * 100)
+      });
+    }
+  }
+  ghostedByCompanySize.sort((a, b) => b.rate - a.rate);
+
+  // Average days to ghost (from daysToResponse on ghosted apps)
+  const ghostedWithDays = ghosted.filter(app => app.daysToResponse != null && app.daysToResponse > 0);
+  const avgDaysToGhost = ghostedWithDays.length > 0
+    ? Math.round(ghostedWithDays.reduce((sum, app) => sum + (app.daysToResponse || 0), 0) / ghostedWithDays.length)
+    : null;
+
+  return {
+    totalGhosted: ghosted.length,
+    nearGhostCount: nearGhost.length,
+    ghostedBySource,
+    ghostedByCompanySize,
+    avgDaysToGhost
+  };
 }
 
 function detectMismatches(
@@ -228,6 +330,9 @@ export function inferProfile(
   // Detect mismatches
   const mismatches = detectMismatches(minimal, applications);
 
+  // Calculate ghost patterns
+  const ghostPatterns = calculateGhostPatterns(applications);
+
   return {
     yearsExperience: minimal.yearsExperience,
     currentSeniority: minimal.currentSeniority,
@@ -279,6 +384,7 @@ export function inferProfile(
         rate: x.rate
       })),
 
+      ghostPatterns,
       mismatches
     },
 
@@ -362,6 +468,31 @@ export function profileToPromptContext(profile: FullProfile): string {
     profile.inferred.successBySource.forEach(s => {
       lines.push(`  - ${s.source}: ${s.rate}% success (${s.succeeded}/${s.applied})`);
     });
+  }
+
+  // Ghost patterns
+  const ghost = profile.inferred.ghostPatterns;
+  if (ghost.totalGhosted > 0 || ghost.nearGhostCount > 0) {
+    lines.push(`\n=== GHOST PATTERNS ===`);
+    lines.push(`Total ghosted: ${ghost.totalGhosted}`);
+    if (ghost.nearGhostCount > 0) {
+      lines.push(`Applications likely to ghost soon (21-29 days pending): ${ghost.nearGhostCount}`);
+    }
+    if (ghost.avgDaysToGhost) {
+      lines.push(`Average days until ghosted: ${ghost.avgDaysToGhost}`);
+    }
+    if (ghost.ghostedBySource.length > 0) {
+      lines.push(`Ghost rate by source:`);
+      ghost.ghostedBySource.forEach(s => {
+        lines.push(`  - ${s.source}: ${s.rate}% ghost rate (${s.count} ghosted)`);
+      });
+    }
+    if (ghost.ghostedByCompanySize.length > 0) {
+      lines.push(`Ghost rate by company size:`);
+      ghost.ghostedByCompanySize.forEach(s => {
+        lines.push(`  - ${s.size}: ${s.rate}% ghost rate (${s.count} ghosted)`);
+      });
+    }
   }
 
   if (profile.inferred.mismatches.length > 0) {

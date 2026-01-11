@@ -125,7 +125,7 @@ OUTPUT JSON:
   "summary": "2-3 sentence executive summary - lead with what's going well, then mention areas to optimize",
   "insights": [
     {
-      "insight_type": "seniority_mismatch" | "source_optimization" | "company_size_fit" | "ghost_pattern" | "timing_issue" | "application_volume" | "success_pattern" | "ats_boundary",
+      "insight_type": "seniority_mismatch" | "source_optimization" | "company_size_fit" | "ghost_pattern" | "near_ghost_warning" | "timing_issue" | "application_volume" | "success_pattern" | "ats_boundary",
       "title": "Short headline (e.g., 'Your referrals are really working!')",
       "explanation": "Factual, data-backed explanation with encouraging framing",
       "evidence": ["specific data point 1", "specific data point 2"],
@@ -218,6 +218,38 @@ BAD:
   "recommendation": "Stay positive and keep applying.",
   "priority": "medium",
   "confidence": 0.5
+}
+
+=== GHOST PATTERN ANALYSIS ===
+
+Look for GHOST PATTERNS data in the input. If provided, analyze:
+
+1. NEAR GHOST WARNING (insight_type: "near_ghost_warning")
+   - If there are applications "likely to ghost soon (21-29 days pending)", alert the user
+   - Title example: "3 applications may be going silent"
+   - Be gentle: ghosting is normal, but awareness helps them move on emotionally
+   - Recommendation: Focus on new applications rather than waiting
+
+2. GHOST PATTERNS (insight_type: "ghost_pattern")
+   - If certain sources or company sizes have high ghost rates, point it out
+   - Example: "LinkedIn easy-apply has 60% ghost rate vs 20% for direct applications"
+   - Recommendation: Shift effort to lower-ghost-rate channels
+   - Be encouraging: ghosting reflects company behavior, not the candidate
+
+3. AVERAGE DAYS TO GHOST
+   - If data shows avg days until ghosted, mention it
+   - Example: "Companies typically ghost around day 25 - if you haven't heard back by then, it's safe to move on"
+   - This helps manage expectations
+
+Example ghost insight:
+{
+  "insight_type": "ghost_pattern",
+  "title": "Job boards are ghosting more",
+  "explanation": "Applications through job boards have a 50% ghost rate, compared to 15% for referrals. This is common - companies get overwhelmed with job board volume and can't respond to everyone.",
+  "evidence": ["Job board: 50% ghost rate (5/10)", "Referral: 15% ghost rate (1/7)"],
+  "recommendation": "Reduce the emotional weight of job board applications: (1) Use them for volume but expect silence, (2) Reserve emotional investment for referral-based applications, (3) After 3 weeks with no response, mentally move on.",
+  "priority": "medium",
+  "confidence": 0.7
 }
 
 === ATS BOUNDARY ANALYSIS ===
