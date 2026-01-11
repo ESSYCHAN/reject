@@ -20,9 +20,31 @@ interface ProTrackerProps {
 const ITEMS_PER_PAGE = 10;
 
 // Format date as "Jan 10, 2026"
-function formatDate(dateString: string): string {
+function formatDate(dateString: string | undefined | null): string {
+  if (!dateString) return 'Unknown date';
+
   try {
-    const date = new Date(dateString + 'T00:00:00'); // Ensure local timezone
+    // Handle various date formats
+    let date: Date;
+
+    // If it's already in YYYY-MM-DD format
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      date = new Date(dateString + 'T00:00:00'); // Ensure local timezone
+    }
+    // If it's a full ISO string (2026-01-10T00:00:00.000Z)
+    else if (dateString.includes('T')) {
+      date = new Date(dateString);
+    }
+    // Try parsing as-is
+    else {
+      date = new Date(dateString);
+    }
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return dateString; // Return raw string if invalid
+    }
+
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',

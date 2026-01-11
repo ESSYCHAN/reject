@@ -55,7 +55,12 @@ router.get('/', requireAuth(), async (req: Request, res: Response) => {
       companySize: row.company_size,
       industry: row.industry,
       source: row.source,
-      dateApplied: row.date_applied,
+      // Ensure dateApplied is always a string in YYYY-MM-DD format
+      dateApplied: row.date_applied
+        ? (row.date_applied instanceof Date
+            ? row.date_applied.toISOString().split('T')[0]
+            : String(row.date_applied).split('T')[0])
+        : null,
       outcome: row.outcome,
       daysToResponse: row.days_to_response,
       rejectionAnalysis: row.rejection_analysis,
