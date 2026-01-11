@@ -3,6 +3,17 @@ import { useAuth } from '@clerk/clerk-react';
 import { ApplicationRecord } from '../types/pro';
 import { clearAllUserData } from '../utils/usage';
 
+// Track if user has ever signed in (to distinguish "never signed in" from "signed out")
+const HAS_SIGNED_IN_KEY = 'reject_has_signed_in';
+
+function hasEverSignedIn(): boolean {
+  return localStorage.getItem(HAS_SIGNED_IN_KEY) === 'true';
+}
+
+function markAsSignedIn(): void {
+  localStorage.setItem(HAS_SIGNED_IN_KEY, 'true');
+}
+
 const STORAGE_KEY = 'reject_pro_applications';
 const API_URL = import.meta.env.VITE_API_URL || '';
 
@@ -28,12 +39,11 @@ function saveLocalApplications(applications: ApplicationRecord[]): void {
 
 export function useApplicationsSync() {
   const { isSignedIn, getToken } = useAuth();
-  // Only load from localStorage if signed in - prevents showing cached data after sign out
+  // Load from localStorage initially - supports anonymous users and signed-in users
   const [applications, setApplications] = useState<ApplicationRecord[]>(() => {
-    // Don't load cached data - wait for sync effect to determine what to show
-    return [];
+    return loadLocalApplications();
   });
-  const [isLoading, setIsLoading] = useState(true); // Start with loading=true until we know sign-in state
+  const [isLoading, setIsLoading] = useState(false); // Only loading when syncing with server
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSyncError, setLastSyncError] = useState<string | null>(null);
 
@@ -130,19 +140,28 @@ export function useApplicationsSync() {
   // Track if we've synced to avoid duplicate syncs
   const hasSynced = useRef(false);
 
-  // Initial sync on mount when signed in, clear data when signed out
+  // Initial sync on mount when signed in
+  // Only clear data when user explicitly signs OUT (not when they've never signed in)
   useEffect(() => {
-    console.log('useApplicationsSync: effect triggered, isSignedIn:', isSignedIn, 'hasSynced:', hasSynced.current);
+    const everSignedIn = hasEverSignedIn();
+    console.log('useApplicationsSync: effect triggered, isSignedIn:', isSignedIn, 'everSignedIn:', everSignedIn, 'hasSynced:', hasSynced.current);
 
     if (!isSignedIn) {
       hasSynced.current = false; // Reset when signed out
-      // Clear ALL user data when signed out for security
-      setApplications([]);
-      clearAllUserData();
+
+      // Only clear data if user has previously signed in (meaning they signed out)
+      // This preserves data for anonymous users who haven't signed up yet
+      if (everSignedIn) {
+        setApplications([]);
+        clearAllUserData();
+        console.log('useApplicationsSync: cleared all user data on sign out');
+      }
       setIsLoading(false);
-      console.log('useApplicationsSync: cleared all user data on sign out');
       return;
     }
+
+    // Mark that user has signed in (for future sign-out detection)
+    markAsSignedIn();
 
     if (hasSynced.current) return; // Already synced this session
     hasSynced.current = true;
