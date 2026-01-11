@@ -679,10 +679,13 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                 <div className="tracker-cta-actions">
                   {onLinkToApplication && linkableApps.length > 0 && (
                     <div className="link-existing-compact">
+                      {selectedAppId && (
+                        <span className="match-found-badge">Match found!</span>
+                      )}
                       <select
                         value={selectedAppId}
                         onChange={(e) => setSelectedAppId(e.target.value)}
-                        className="link-select"
+                        className={`link-select ${selectedAppId ? 'has-match' : ''}`}
                       >
                         <option value="">Link to existing...</option>
                         {linkableApps.map(app => (

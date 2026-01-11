@@ -766,6 +766,21 @@
   border-color: var(--accent);
 }
 
+.link-select.has-match {
+  border-color: var(--success, #4ade80);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.match-found-badge {
+  background: var(--success, #4ade80);
+  color: #000;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .btn-add-tracker {
   white-space: nowrap;
 }
