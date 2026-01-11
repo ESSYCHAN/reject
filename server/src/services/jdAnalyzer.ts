@@ -3,6 +3,54 @@ import { z } from 'zod';
 
 let openai: OpenAI | null = null;
 
+// ============ LINKEDIN UI NOISE CLEANER ============
+// Removes LinkedIn-specific UI text that gets copied when users paste job descriptions
+
+function cleanJobDescription(text: string): string {
+  // LinkedIn UI patterns to remove
+  const linkedInNoise = [
+    // Application status UI
+    /Application status[\s\S]*?(?=About|Role|Company|Position|Overview|Description|Responsibilities|Requirements|What|Who|We|Join|At )/i,
+    /Application submitted[\s\S]*?(?=About|Role|Company|Position|Overview|Description|Responsibilities|Requirements|What|Who|We|Join|At )/i,
+    /View resume[\s\S]*?(?=About|Role|Company|Position|Overview|Description|Responsibilities|Requirements|What|Who|We|Join|At )/i,
+
+    // Social/engagement UI
+    /People you can reach out to[\s\S]*?(?=About|Role|Company|Position|Overview|Description|Responsibilities|Requirements|What|Who|We|Join|At )/i,
+    /Recent .* hires at[\s\S]*?(?=About|Role|Company|Position|Overview|Description|Responsibilities|Requirements|What|Who|We|Join|At )/i,
+    /Show all[\s\n]*/gi,
+    /Take the next step in your job search[\s\S]*?(?=About|Role|Company|Position|Overview|Description|Responsibilities|Requirements|What|Who|We|Join|At )/i,
+    /Practice an interview[\s\n]*/gi,
+
+    // Job metadata that's not part of the description
+    /Promoted by hirer[\s\S]*?(?=About|Role|Company|Position|Overview|Description|Responsibilities|Requirements|What|Who|We|Join|At )/i,
+    /No response insights available yet[\s\n]*/gi,
+    /\d+ applicants?[\s\n]*/gi,
+    /\d+ (hours?|days?|weeks?|months?) ago[\s\n]*/gi,
+
+    // Location/type badges that appear before description
+    /^.*?·.*?·.*?·.*?\n/gm,  // Lines with multiple dots (location · time · applicants)
+
+    // Generic LinkedIn footer stuff
+    /Know amazing talent\?[\s\S]*/i,
+    /If you are interested in a software engineer role[\s\S]*/i,
+  ];
+
+  let cleaned = text;
+
+  // Apply all cleaning patterns
+  for (const pattern of linkedInNoise) {
+    cleaned = cleaned.replace(pattern, '');
+  }
+
+  // Remove lines that are just "Remote", "Hybrid", "Contract", "Full-time" etc. at the start
+  cleaned = cleaned.replace(/^(Remote|Hybrid|Onsite|Contract|Full-time|Part-time|Internship)\n+/gim, '');
+
+  // Clean up excessive whitespace
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n').trim();
+
+  return cleaned;
+}
+
 function getOpenAIClient(): OpenAI {
   if (!openai) {
     const apiKey = process.env.OPENAI_API_KEY;
@@ -278,13 +326,16 @@ Respond with valid JSON only.`;
 export async function analyzeJobDescription(jobDescription: string): Promise<JDAnalysis> {
   const client = getOpenAIClient();
 
+  // Clean LinkedIn UI noise from pasted job descriptions
+  const cleanedJD = cleanJobDescription(jobDescription);
+
   const response = await client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: JD_ANALYZER_PROMPT },
       {
         role: 'user',
-        content: `Analyze this job description:\n\n${jobDescription.substring(0, 5000)}`
+        content: `Analyze this job description:\n\n${cleanedJD.substring(0, 5000)}`
       }
     ],
     temperature: 0.3,
