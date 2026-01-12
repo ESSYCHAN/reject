@@ -188,6 +188,23 @@ router.get('/can-use/:action', requireAuth(), async (req: Request, res: Response
   }
 });
 
+// Get user's rejection archive (persists even after app deletion)
+router.get('/rejection-archive', requireAuth(), async (req: Request, res: Response) => {
+  const { userId } = getAuth(req);
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const archive = await db.getUserRejectionArchive(userId);
+    res.json({ archive });
+  } catch (error) {
+    console.error('Error fetching rejection archive:', error);
+    res.status(500).json({ error: 'Failed to fetch rejection archive' });
+  }
+});
+
 // Sync user from Clerk (called on first API request)
 router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
   const { userId } = getAuth(req);

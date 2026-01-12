@@ -84,12 +84,47 @@ export async function initDatabase() {
         source TEXT DEFAULT 'website'
       );
 
+      -- Rejection archive (user-specific, persists after app deletion)
+      CREATE TABLE IF NOT EXISTS rejection_archive (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(id),
+        application_id TEXT,  -- Reference to original app (may be deleted)
+        company TEXT NOT NULL,
+        role TEXT,
+        seniority_level TEXT,
+        rejection_category TEXT,
+        confidence REAL,
+        signals JSONB,
+        ats_stage TEXT,
+        reply_worth_it TEXT,  -- "Low" | "Medium" | "High"
+        days_to_response INTEGER,
+        email_snippet TEXT,  -- First 200 chars for context (no PII)
+        decoded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Anonymized knowledge base (aggregate patterns across all users)
+      CREATE TABLE IF NOT EXISTS rejection_knowledge_base (
+        id SERIAL PRIMARY KEY,
+        company_normalized TEXT NOT NULL,  -- Lowercase, stripped of Inc/Ltd/etc
+        role_category TEXT,  -- e.g., "engineering", "product", "design"
+        seniority_level TEXT,
+        rejection_category TEXT,
+        ats_stage TEXT,
+        signal TEXT,  -- Individual signal (one row per signal)
+        response_days_bucket TEXT,  -- "same_day", "1-3_days", "1_week", "2_weeks", "1_month+"
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
       CREATE INDEX IF NOT EXISTS idx_usage_user_month ON usage(user_id, month_key);
       CREATE INDEX IF NOT EXISTS idx_rejection_company ON rejection_data(company_name);
       CREATE INDEX IF NOT EXISTS idx_applications_user ON applications(user_id);
       CREATE INDEX IF NOT EXISTS idx_subscribers_email ON subscribers(email);
+      CREATE INDEX IF NOT EXISTS idx_rejection_archive_user ON rejection_archive(user_id);
+      CREATE INDEX IF NOT EXISTS idx_rejection_archive_company ON rejection_archive(company);
+      CREATE INDEX IF NOT EXISTS idx_knowledge_base_company ON rejection_knowledge_base(company_normalized);
+      CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON rejection_knowledge_base(rejection_category);
     `);
     console.log('Database schema initialized');
   } finally {
@@ -255,6 +290,333 @@ export async function saveRejectionData(
     [userId, data.companyName, data.industry, data.companySize, data.roleTitle,
      data.seniorityLevel, data.rejectionCategory, JSON.stringify(data.signals || []), data.source]
   );
+}
+
+// ============ REJECTION ARCHIVE (User-Specific Persistence) ============
+
+export interface RejectionArchiveEntry {
+  userId: string;
+  applicationId?: string;
+  company: string;
+  role?: string;
+  seniorityLevel?: string;
+  rejectionCategory?: string;
+  confidence?: number;
+  signals?: string[];
+  atsStage?: string;
+  replyWorthIt?: 'Low' | 'Medium' | 'High';
+  daysToResponse?: number;
+  emailSnippet?: string;
+}
+
+/**
+ * Save rejection to user's personal archive
+ * This persists even if the application is deleted from tracker
+ */
+export async function saveToRejectionArchive(entry: RejectionArchiveEntry) {
+  await query(
+    `INSERT INTO rejection_archive
+     (user_id, application_id, company, role, seniority_level, rejection_category,
+      confidence, signals, ats_stage, reply_worth_it, days_to_response, email_snippet)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+    [
+      entry.userId,
+      entry.applicationId || null,
+      entry.company,
+      entry.role || null,
+      entry.seniorityLevel || null,
+      entry.rejectionCategory || null,
+      entry.confidence || null,
+      entry.signals ? JSON.stringify(entry.signals) : null,
+      entry.atsStage || null,
+      entry.replyWorthIt ?? null,
+      entry.daysToResponse || null,
+      entry.emailSnippet || null
+    ]
+  );
+}
+
+/**
+ * Get user's rejection archive (for insights even after app deletion)
+ */
+export async function getUserRejectionArchive(userId: string) {
+  const result = await query(
+    `SELECT * FROM rejection_archive WHERE user_id = $1 ORDER BY decoded_at DESC`,
+    [userId]
+  );
+  return result.rows.map(row => ({
+    id: row.id,
+    applicationId: row.application_id,
+    company: row.company,
+    role: row.role,
+    seniorityLevel: row.seniority_level,
+    rejectionCategory: row.rejection_category,
+    confidence: row.confidence,
+    signals: row.signals,
+    atsStage: row.ats_stage,
+    replyWorthIt: row.reply_worth_it,
+    daysToResponse: row.days_to_response,
+    emailSnippet: row.email_snippet,
+    decodedAt: row.decoded_at
+  }));
+}
+
+// ============ ANONYMIZED KNOWLEDGE BASE ============
+
+/**
+ * Normalize company name for aggregation
+ */
+function normalizeCompanyName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[.,\s]+(com|inc|ltd|llc|corp|corporation|co|plc|group|holdings?)\.?$/gi, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .trim()
+    .replace(/\s+/g, '_');
+}
+
+/**
+ * Categorize role for aggregation
+ */
+function categorizeRole(role: string): string {
+  const r = role.toLowerCase();
+  if (r.includes('engineer') || r.includes('developer') || r.includes('swe') || r.includes('software')) return 'engineering';
+  if (r.includes('product') || r.includes('pm')) return 'product';
+  if (r.includes('design') || r.includes('ux') || r.includes('ui')) return 'design';
+  if (r.includes('data') || r.includes('analyst') || r.includes('ml') || r.includes('ai')) return 'data';
+  if (r.includes('marketing') || r.includes('growth')) return 'marketing';
+  if (r.includes('sales') || r.includes('account')) return 'sales';
+  if (r.includes('hr') || r.includes('people') || r.includes('recruiter')) return 'hr';
+  if (r.includes('finance') || r.includes('accounting')) return 'finance';
+  if (r.includes('operations') || r.includes('ops')) return 'operations';
+  return 'other';
+}
+
+/**
+ * Convert days to response bucket for aggregation
+ */
+function daysToResponseBucket(days: number | null | undefined): string {
+  if (days === null || days === undefined) return 'unknown';
+  if (days === 0) return 'same_day';
+  if (days <= 3) return '1-3_days';
+  if (days <= 7) return '1_week';
+  if (days <= 14) return '2_weeks';
+  if (days <= 30) return '1_month';
+  return '1_month+';
+}
+
+export interface KnowledgeBaseEntry {
+  company: string;
+  role?: string;
+  seniorityLevel?: string;
+  rejectionCategory?: string;
+  atsStage?: string;
+  signals?: string[];
+  daysToResponse?: number;
+}
+
+/**
+ * Save anonymized rejection pattern to knowledge base
+ * One row per signal for better aggregation
+ */
+export async function saveToKnowledgeBase(entry: KnowledgeBaseEntry) {
+  const companyNormalized = normalizeCompanyName(entry.company);
+  const roleCategory = entry.role ? categorizeRole(entry.role) : null;
+  const responseBucket = daysToResponseBucket(entry.daysToResponse);
+
+  // If there are signals, create one row per signal
+  if (entry.signals && entry.signals.length > 0) {
+    for (const signal of entry.signals) {
+      await query(
+        `INSERT INTO rejection_knowledge_base
+         (company_normalized, role_category, seniority_level, rejection_category, ats_stage, signal, response_days_bucket)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [
+          companyNormalized,
+          roleCategory,
+          entry.seniorityLevel || null,
+          entry.rejectionCategory || null,
+          entry.atsStage || null,
+          signal,
+          responseBucket
+        ]
+      );
+    }
+  } else {
+    // Single row without signal
+    await query(
+      `INSERT INTO rejection_knowledge_base
+       (company_normalized, role_category, seniority_level, rejection_category, ats_stage, signal, response_days_bucket)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        companyNormalized,
+        roleCategory,
+        entry.seniorityLevel || null,
+        entry.rejectionCategory || null,
+        entry.atsStage || null,
+        null,
+        responseBucket
+      ]
+    );
+  }
+}
+
+/**
+ * Get aggregated knowledge base stats for a company
+ */
+export async function getKnowledgeBaseCompanyStats(companyName: string, minSamples = 5) {
+  const companyNormalized = normalizeCompanyName(companyName);
+
+  // Check if we have enough data
+  const countResult = await query(
+    `SELECT COUNT(DISTINCT id) as total FROM rejection_knowledge_base WHERE company_normalized = $1`,
+    [companyNormalized]
+  );
+  const total = parseInt(countResult.rows[0]?.total || '0');
+  if (total < minSamples) return null;
+
+  // Get rejection category breakdown
+  const categoryResult = await query(
+    `SELECT rejection_category, COUNT(*) as count
+     FROM rejection_knowledge_base
+     WHERE company_normalized = $1 AND rejection_category IS NOT NULL
+     GROUP BY rejection_category
+     ORDER BY count DESC`,
+    [companyNormalized]
+  );
+
+  // Get ATS stage breakdown
+  const stageResult = await query(
+    `SELECT ats_stage, COUNT(*) as count
+     FROM rejection_knowledge_base
+     WHERE company_normalized = $1 AND ats_stage IS NOT NULL
+     GROUP BY ats_stage
+     ORDER BY count DESC`,
+    [companyNormalized]
+  );
+
+  // Get top signals
+  const signalResult = await query(
+    `SELECT signal, COUNT(*) as count
+     FROM rejection_knowledge_base
+     WHERE company_normalized = $1 AND signal IS NOT NULL
+     GROUP BY signal
+     ORDER BY count DESC
+     LIMIT 10`,
+    [companyNormalized]
+  );
+
+  // Get response time breakdown
+  const responseResult = await query(
+    `SELECT response_days_bucket, COUNT(*) as count
+     FROM rejection_knowledge_base
+     WHERE company_normalized = $1 AND response_days_bucket != 'unknown'
+     GROUP BY response_days_bucket
+     ORDER BY count DESC`,
+    [companyNormalized]
+  );
+
+  return {
+    company: companyName,
+    totalSamples: total,
+    rejectionCategories: categoryResult.rows.map(r => ({
+      category: r.rejection_category,
+      count: parseInt(r.count),
+      percentage: Math.round((parseInt(r.count) / total) * 100)
+    })),
+    atsStages: stageResult.rows.map(r => ({
+      stage: r.ats_stage,
+      count: parseInt(r.count),
+      percentage: Math.round((parseInt(r.count) / total) * 100)
+    })),
+    topSignals: signalResult.rows.map(r => ({
+      signal: r.signal,
+      count: parseInt(r.count)
+    })),
+    responseTimeBreakdown: responseResult.rows.map(r => ({
+      bucket: r.response_days_bucket,
+      count: parseInt(r.count)
+    }))
+  };
+}
+
+/**
+ * Get market-wide rejection patterns (all companies)
+ */
+export async function getMarketRejectionPatterns() {
+  // Overall rejection category distribution
+  const categoryResult = await query(
+    `SELECT rejection_category, COUNT(*) as count
+     FROM rejection_knowledge_base
+     WHERE rejection_category IS NOT NULL
+     GROUP BY rejection_category
+     ORDER BY count DESC`
+  );
+
+  // ATS stage distribution
+  const stageResult = await query(
+    `SELECT ats_stage, COUNT(*) as count
+     FROM rejection_knowledge_base
+     WHERE ats_stage IS NOT NULL
+     GROUP BY ats_stage
+     ORDER BY count DESC`
+  );
+
+  // Top signals market-wide
+  const signalResult = await query(
+    `SELECT signal, COUNT(*) as count
+     FROM rejection_knowledge_base
+     WHERE signal IS NOT NULL
+     GROUP BY signal
+     ORDER BY count DESC
+     LIMIT 20`
+  );
+
+  // Response time patterns
+  const responseResult = await query(
+    `SELECT response_days_bucket, COUNT(*) as count
+     FROM rejection_knowledge_base
+     WHERE response_days_bucket != 'unknown'
+     GROUP BY response_days_bucket
+     ORDER BY count DESC`
+  );
+
+  // Companies with most rejections (privacy: only names, no user data)
+  const companiesResult = await query(
+    `SELECT company_normalized, COUNT(*) as count
+     FROM rejection_knowledge_base
+     GROUP BY company_normalized
+     HAVING COUNT(*) >= 10
+     ORDER BY count DESC
+     LIMIT 20`
+  );
+
+  const total = categoryResult.rows.reduce((sum, r) => sum + parseInt(r.count), 0);
+
+  return {
+    totalRejections: total,
+    rejectionCategories: categoryResult.rows.map(r => ({
+      category: r.rejection_category,
+      count: parseInt(r.count),
+      percentage: total > 0 ? Math.round((parseInt(r.count) / total) * 100) : 0
+    })),
+    atsStages: stageResult.rows.map(r => ({
+      stage: r.ats_stage,
+      count: parseInt(r.count)
+    })),
+    topSignals: signalResult.rows.map(r => ({
+      signal: r.signal,
+      count: parseInt(r.count)
+    })),
+    responseTimeBreakdown: responseResult.rows.map(r => ({
+      bucket: r.response_days_bucket,
+      count: parseInt(r.count)
+    })),
+    topCompanies: companiesResult.rows.map(r => ({
+      company: r.company_normalized,
+      count: parseInt(r.count)
+    }))
+  };
 }
 
 // ============ COMMUNITY COMPANY INTELLIGENCE ============

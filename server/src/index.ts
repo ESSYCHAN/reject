@@ -16,6 +16,7 @@ import proRouter from './routes/pro.js';
 import userRouter from './routes/user.js';
 import applicationsRouter from './routes/applications.js';
 import stripeWebhookRouter from './routes/stripe-webhook.js';
+import knowledgeRouter from './routes/knowledge.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -77,6 +78,7 @@ app.use('/api/subscribe', subscribeRouter);
 app.use('/api/pro', proRouter);
 app.use('/api/user', userRouter);
 app.use('/api/applications', applicationsRouter);
+app.use('/api/knowledge', knowledgeRouter);
 
 // In production, serve the Vite build
 if (NODE_ENV === 'production') {
