@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { ApplicationRecord, SeniorityLevel, SENIORITY_OPTIONS } from '../types/pro';
 import { canUseFeature, incrementUsage, loadUsage } from '../utils/usage';
 import { generateProInsights, ProInsightsData } from '../utils/proAnalytics';
@@ -111,6 +112,20 @@ async function fetchAnalysis(
   return data.data;
 }
 
+// Rejection archive entry from server
+interface RejectionArchiveEntry {
+  id: number;
+  company: string;
+  role?: string;
+  seniorityLevel?: string;
+  rejectionCategory?: string;
+  confidence?: number;
+  signals?: string[];
+  atsStage?: string;
+  replyWorthIt?: string;
+  decodedAt: string;
+}
+
 // Experience options
 const EXPERIENCE_OPTIONS = [
   { value: 0, label: '< 1 year' },
@@ -125,6 +140,7 @@ interface ProInsightsV2Props {
 }
 
 export function ProInsightsV2({ applications }: ProInsightsV2Props) {
+  const { getToken, isSignedIn } = useAuth();
   const [profile, setProfile] = useState<MinimalProfile>(loadMinimalProfile);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -134,6 +150,8 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
   const [activeTab, setActiveTab] = useState<'overview' | 'progress' | 'companies' | 'patterns'>('overview');
   const [communityCompanies, setCommunityCompanies] = useState<CommunityCompanyStats[]>([]);
   const [loadingCommunity, setLoadingCommunity] = useState(false);
+  const [rejectionArchive, setRejectionArchive] = useState<RejectionArchiveEntry[]>([]);
+  const [loadingArchive, setLoadingArchive] = useState(false);
 
   // Use the hook for reliable Pro status (fetches from server with proper auth)
   const { isPro: isProFromHook, isLoading: isProLoading } = useUserSubscription();
@@ -174,11 +192,117 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
     }
   }, [activeTab, isPro, communityCompanies.length]);
 
+  // Fetch rejection archive with proper auth
+  const fetchRejectionArchive = useCallback(async () => {
+    if (!isSignedIn) return;
+
+    setLoadingArchive(true);
+    try {
+      const token = await getToken();
+      const API_URL = import.meta.env.VITE_API_URL || '';
+      const response = await fetch(`${API_URL}/api/user/rejection-archive`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('ProInsightsV2: fetched', data.archive?.length || 0, 'rejection archive entries');
+        setRejectionArchive(data.archive || []);
+      } else {
+        console.error('ProInsightsV2: failed to fetch archive:', response.status);
+      }
+    } catch (err) {
+      console.error('Failed to fetch rejection archive:', err);
+    } finally {
+      setLoadingArchive(false);
+    }
+  }, [isSignedIn, getToken]);
+
+  // Fetch rejection archive when Patterns tab is active (uses server archive, not just tracker)
+  useEffect(() => {
+    if (activeTab === 'patterns' && isPro && rejectionArchive.length === 0 && isSignedIn) {
+      fetchRejectionArchive();
+    }
+  }, [activeTab, isPro, rejectionArchive.length, isSignedIn, fetchRejectionArchive]);
+
   // Generate Pro insights locally (no API call needed)
   const proInsights: ProInsightsData = useMemo(
     () => generateProInsights(applications),
     [applications]
   );
+
+  // Generate rejection patterns from archive (includes ALL decoded rejections, not just tracker entries)
+  const archivePatterns = useMemo(() => {
+    if (rejectionArchive.length === 0) return null;
+
+    const categoryCounts: Record<string, number> = {};
+    const signalCounts: Record<string, number> = {};
+
+    for (const entry of rejectionArchive) {
+      // Count categories
+      const cat = entry.rejectionCategory || 'unknown';
+      categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+
+      // Count signals
+      if (entry.signals) {
+        for (const signal of entry.signals) {
+          signalCounts[signal] = (signalCounts[signal] || 0) + 1;
+        }
+      }
+    }
+
+    const totalDecoded = rejectionArchive.length;
+    const categoryBreakdown = Object.entries(categoryCounts)
+      .map(([category, count]) => ({
+        category,
+        count,
+        percentage: Math.round((count / totalDecoded) * 100)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const topSignals = Object.entries(signalCounts)
+      .map(([signal, count]) => ({ signal, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    // Calculate ATS vs human reviewed
+    const atsCategories = ['Template', 'Hard No'];
+    const humanCategories = ['Soft No', 'Door Open', 'Polite Pass'];
+
+    const atsCount = atsCategories.reduce((sum, cat) => sum + (categoryCounts[cat] || 0), 0);
+    const humanCount = humanCategories.reduce((sum, cat) => sum + (categoryCounts[cat] || 0), 0);
+
+    const atsFilteredPercentage = Math.round((atsCount / totalDecoded) * 100);
+    const humanReviewedPercentage = Math.round((humanCount / totalDecoded) * 100);
+    const templateRejectionPercentage = Math.round(((categoryCounts['Template'] || 0) / totalDecoded) * 100);
+
+    // Generate insight
+    let insight = '';
+    if (templateRejectionPercentage >= 60) {
+      insight = `${templateRejectionPercentage}% of your rejections are template responses. You're likely being filtered by ATS systems before a human sees your application. Focus on referrals and direct applications.`;
+    } else if (humanReviewedPercentage >= 50) {
+      insight = `${humanReviewedPercentage}% of your rejections show signs of human review. Your applications are getting through ATS - focus on improving your pitch and interview skills.`;
+    } else if (categoryCounts['Door Open'] && categoryCounts['Door Open'] >= 2) {
+      insight = `You have ${categoryCounts['Door Open']} "door open" rejections - companies that left room for future opportunities. Consider following up with these.`;
+    } else {
+      insight = `Based on ${totalDecoded} decoded rejections, your results are mixed. Keep tracking to identify clearer patterns.`;
+    }
+
+    return {
+      totalDecoded,
+      categoryBreakdown,
+      topSignals,
+      atsFilteredPercentage,
+      humanReviewedPercentage,
+      templateRejectionPercentage,
+      insight
+    };
+  }, [rejectionArchive]);
+
+  // Use archive patterns if available, otherwise fall back to tracker-based patterns
+  const patternsData = archivePatterns || proInsights.rejectionPatterns;
 
   // Save profile when it changes
   useEffect(() => {
@@ -749,33 +873,37 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
           <h3>Rejection Pattern Analysis</h3>
           <p className="section-hint">Aggregate insights from your decoded rejection emails.</p>
 
-          {proInsights.rejectionPatterns.totalDecoded > 0 ? (
+          {loadingArchive ? (
+            <div className="no-data-message">
+              <p>Loading your rejection archive...</p>
+            </div>
+          ) : patternsData.totalDecoded > 0 ? (
             <>
               <div className="patterns-summary">
-                <p>{proInsights.rejectionPatterns.insight}</p>
+                <p>{patternsData.insight}</p>
               </div>
 
               <div className="patterns-stats">
                 <div className="pattern-stat">
-                  <span className="stat-value">{proInsights.rejectionPatterns.totalDecoded}</span>
+                  <span className="stat-value">{patternsData.totalDecoded}</span>
                   <Tooltip content="The number of rejection emails you've pasted into REJECT to decode and analyze.">
                     <span className="stat-label">Rejections Decoded</span>
                   </Tooltip>
                 </div>
                 <div className="pattern-stat">
-                  <span className="stat-value">{proInsights.rejectionPatterns.atsFilteredPercentage}%</span>
+                  <span className="stat-value">{patternsData.atsFilteredPercentage}%</span>
                   <Tooltip content="Rejections where it looks like the ATS (software) rejected you automatically, before a human saw your application.">
                     <span className="stat-label">ATS Filtered</span>
                   </Tooltip>
                 </div>
                 <div className="pattern-stat">
-                  <span className="stat-value">{proInsights.rejectionPatterns.humanReviewedPercentage}%</span>
+                  <span className="stat-value">{patternsData.humanReviewedPercentage}%</span>
                   <Tooltip content="Rejections where a real person reviewed your application before deciding. Getting human review is progress, even with a rejection.">
                     <span className="stat-label">Human Reviewed</span>
                   </Tooltip>
                 </div>
                 <div className="pattern-stat">
-                  <span className="stat-value">{proInsights.rejectionPatterns.templateRejectionPercentage}%</span>
+                  <span className="stat-value">{patternsData.templateRejectionPercentage}%</span>
                   <Tooltip content="Rejections that used generic, copy-paste language. Companies often use templates, so this is normal and doesn't mean anything bad about you.">
                     <span className="stat-label">Template Rejections</span>
                   </Tooltip>
@@ -783,11 +911,11 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
               </div>
 
               {/* Category Breakdown */}
-              {proInsights.rejectionPatterns.categoryBreakdown.length > 0 && (
+              {patternsData.categoryBreakdown.length > 0 && (
                 <div className="category-breakdown">
                   <h4>Rejection Categories</h4>
                   <div className="breakdown-bars">
-                    {proInsights.rejectionPatterns.categoryBreakdown.map((cat, i) => (
+                    {patternsData.categoryBreakdown.map((cat, i) => (
                       <div key={i} className="breakdown-row">
                         <span className="breakdown-label">{cat.category}</span>
                         <div className="breakdown-bar-container">
@@ -804,11 +932,11 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
               )}
 
               {/* Top Signals */}
-              {proInsights.rejectionPatterns.topSignals.length > 0 && (
+              {patternsData.topSignals.length > 0 && (
                 <div className="top-signals">
                   <h4>Common Signals in Your Rejections</h4>
                   <div className="signals-grid">
-                    {proInsights.rejectionPatterns.topSignals.map((signal, i) => (
+                    {patternsData.topSignals.map((signal, i) => (
                       <span key={i} className="signal-tag">
                         {signal.signal} <span className="signal-count">({signal.count})</span>
                       </span>
@@ -819,7 +947,7 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
             </>
           ) : (
             <div className="no-data-message">
-              <p>{proInsights.rejectionPatterns.insight}</p>
+              <p>{patternsData.insight}</p>
             </div>
           )}
         </div>
