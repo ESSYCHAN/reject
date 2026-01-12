@@ -86,6 +86,8 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
   const [showForm, setShowForm] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortBy, setSortBy] = useState<'date' | 'company' | 'status'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [formData, setFormData] = useState({
     company: '',
     role: '',
@@ -201,12 +203,42 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     return '';
   };
 
+  // Sort applications
+  const sortedApplications = useMemo(() => {
+    const sorted = [...applications].sort((a, b) => {
+      let comparison = 0;
+      switch (sortBy) {
+        case 'date':
+          comparison = new Date(a.dateApplied || 0).getTime() - new Date(b.dateApplied || 0).getTime();
+          break;
+        case 'company':
+          comparison = (a.company || '').localeCompare(b.company || '');
+          break;
+        case 'status':
+          comparison = (a.outcome || '').localeCompare(b.outcome || '');
+          break;
+      }
+      return sortOrder === 'desc' ? -comparison : comparison;
+    });
+    return sorted;
+  }, [applications, sortBy, sortOrder]);
+
   // Pagination
-  const totalPages = Math.ceil(applications.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(sortedApplications.length / ITEMS_PER_PAGE);
   const paginatedApplications = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return applications.slice(start, start + ITEMS_PER_PAGE);
-  }, [applications, currentPage]);
+    return sortedApplications.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedApplications, currentPage]);
+
+  // Toggle sort
+  const handleSort = (field: 'date' | 'company' | 'status') => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('desc');
+    }
+  };
 
   // Reset to page 1 when applications change significantly
   const handlePageChange = (page: number) => {
@@ -332,67 +364,85 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
           </div>
         ) : (
           <>
-            {paginatedApplications.map((app) => (
-              <div key={app.id} className="application-card pro-card">
-                <div className="application-main">
-                  <div className="application-info">
-                    <h3>{app.company}</h3>
-                    <p className="role">{app.role}</p>
-                    <div className="app-tags">
-                      <span className="tag">{app.seniorityLevel}</span>
+            {/* Sort controls */}
+            <div className="sort-controls">
+              <span className="sort-label">Sort by:</span>
+              <button
+                className={`sort-btn ${sortBy === 'date' ? 'active' : ''}`}
+                onClick={() => handleSort('date')}
+              >
+                Date {sortBy === 'date' && (sortOrder === 'desc' ? '↓' : '↑')}
+              </button>
+              <button
+                className={`sort-btn ${sortBy === 'company' ? 'active' : ''}`}
+                onClick={() => handleSort('company')}
+              >
+                Company {sortBy === 'company' && (sortOrder === 'desc' ? '↓' : '↑')}
+              </button>
+              <button
+                className={`sort-btn ${sortBy === 'status' ? 'active' : ''}`}
+                onClick={() => handleSort('status')}
+              >
+                Status {sortBy === 'status' && (sortOrder === 'desc' ? '↓' : '↑')}
+              </button>
+            </div>
+
+            {/* Compact table view */}
+            <div className="applications-table">
+              {paginatedApplications.map((app) => (
+                <div key={app.id} className="app-row">
+                  <div className="app-row-main">
+                    <div className="app-row-company">
+                      <span className="company-name">{app.company}</span>
+                      <span className="role-name">{app.role}</span>
+                    </div>
+                    <div className="app-row-date">
+                      {formatDate(app.dateApplied)}
+                      {app.outcome === 'pending' && daysSinceApplied(app.dateApplied) !== null && (
+                        <span className={`days-badge ${daysSinceApplied(app.dateApplied)! >= 21 ? 'warning' : ''}`}>
+                          {daysSinceApplied(app.dateApplied)}d
+                        </span>
+                      )}
+                      {app.daysToResponse !== null && app.outcome !== 'pending' && (
+                        <span className="days-badge">{app.daysToResponse}d</span>
+                      )}
+                    </div>
+                    <div className="app-row-status">
                       <select
-                        className="source-tag-select"
-                        value={app.source}
-                        onChange={(e) => updateApplication(app.id, { source: e.target.value as ApplicationSource })}
+                        className={`status-select-compact ${getOutcomeClass(app.outcome)}`}
+                        value={app.outcome}
+                        onChange={(e) => updateApplication(app.id, { outcome: e.target.value as Outcome })}
                       >
-                        {SOURCE_OPTIONS.map(opt => (
+                        {OUTCOME_OPTIONS.map((opt) => (
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
                     </div>
-                  </div>
-                  <div className="application-meta">
-                    <span className="date">Applied: {formatDate(app.dateApplied)}</span>
-                    {app.outcome === 'pending' && daysSinceApplied(app.dateApplied) !== null && (
-                      <span className={`days-pending ${daysSinceApplied(app.dateApplied)! >= 21 ? 'warning' : ''}`}>
-                        {daysSinceApplied(app.dateApplied)} days pending
-                        {daysSinceApplied(app.dateApplied)! >= 21 && daysSinceApplied(app.dateApplied)! < GHOST_THRESHOLD_DAYS && (
-                          <button
-                            className="btn-ghost-now"
-                            onClick={() => updateApplication(app.id, {
-                              outcome: 'ghosted',
-                              daysToResponse: daysSinceApplied(app.dateApplied)
-                            })}
-                          >
-                            Mark Ghosted
-                          </button>
-                        )}
-                      </span>
-                    )}
-                    {app.daysToResponse !== null && app.outcome !== 'pending' && (
-                      <span className="date">{app.daysToResponse} days to response</span>
-                    )}
+                    <div className="app-row-actions">
+                      {app.outcome === 'pending' && daysSinceApplied(app.dateApplied)! >= 21 && daysSinceApplied(app.dateApplied)! < GHOST_THRESHOLD_DAYS && (
+                        <button
+                          className="btn-ghost-compact"
+                          onClick={() => updateApplication(app.id, {
+                            outcome: 'ghosted',
+                            daysToResponse: daysSinceApplied(app.dateApplied)
+                          })}
+                          title="Mark as ghosted"
+                        >
+                          Ghost
+                        </button>
+                      )}
+                      <button
+                        className="btn-delete-compact"
+                        onClick={() => handleDeleteApplication(app.id)}
+                        title="Delete application"
+                      >
+                        ×
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="application-actions">
-                  <select
-                    className={`status-select ${getOutcomeClass(app.outcome)}`}
-                    value={app.outcome}
-                    onChange={(e) => updateApplication(app.id, { outcome: e.target.value as Outcome })}
-                  >
-                    {OUTCOME_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                  <button
-                    className="btn btn-danger btn-small"
-                    onClick={() => handleDeleteApplication(app.id)}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
 
             {/* Pagination controls */}
             {totalPages > 1 && (
