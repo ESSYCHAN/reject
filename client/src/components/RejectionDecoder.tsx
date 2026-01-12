@@ -258,6 +258,13 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const [editedCompany, setEditedCompany] = useState<string>('');
   const [editedRole, setEditedRole] = useState<string>('');
   const [matchingAppIds, setMatchingAppIds] = useState<string[]>([]);
+  const [companyIntel, setCompanyIntel] = useState<{
+    totalSamples: number;
+    rejectionCategories: { category: string; count: number; percentage: number }[];
+    atsStages: { stage: string; count: number; percentage: number }[];
+    topSignals: { signal: string; count: number }[];
+  } | null>(null);
+  const [companyIntelLoading, setCompanyIntelLoading] = useState(false);
 
   // Filter to show only pending/interviewing applications (ones that could receive rejections)
   const linkableApps = applications.filter(app =>
@@ -380,6 +387,23 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
           if (matches.length === 1) {
             setSelectedAppId(matches[0].id);
           }
+        }
+      }
+
+      // Fetch company intel from knowledge base (preview mode for early stage)
+      if (companyToMatch) {
+        setCompanyIntelLoading(true);
+        setCompanyIntel(null);
+        try {
+          const intelResponse = await fetch(`/api/knowledge/company/${encodeURIComponent(companyToMatch)}?preview=true`);
+          const intelData = await intelResponse.json();
+          if (intelData.data) {
+            setCompanyIntel(intelData.data);
+          }
+        } catch (err) {
+          console.error('Failed to fetch company intel:', err);
+        } finally {
+          setCompanyIntelLoading(false);
         }
       }
     }
@@ -559,6 +583,52 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
               <div className="strategic-insight">
                 <strong>Strategy:</strong> {result.ats_assessment.strategic_insight}
               </div>
+            </div>
+          )}
+
+          {/* Company Intel from Knowledge Base */}
+          {(companyIntel || companyIntelLoading) && extracted?.company && (
+            <div className="result-section company-intel">
+              <h3>Company Intel: {extracted.company}</h3>
+              {companyIntelLoading ? (
+                <p className="intel-loading">Loading community insights...</p>
+              ) : companyIntel ? (
+                <div className="intel-content">
+                  <p className="intel-samples">Based on {companyIntel.totalSamples} decoded rejection{companyIntel.totalSamples !== 1 ? 's' : ''} from this company</p>
+
+                  {companyIntel.atsStages.length > 0 && (
+                    <div className="intel-section">
+                      <strong>Where others got filtered:</strong>
+                      <div className="intel-bars">
+                        {companyIntel.atsStages.slice(0, 3).map((stage, i) => (
+                          <div key={i} className="intel-bar-item">
+                            <span className="intel-bar-label">{getStageLabel(stage.stage as ATSAssessment['stage_reached'])}</span>
+                            <div className="intel-bar">
+                              <div className="intel-bar-fill" style={{ width: `${stage.percentage}%` }}></div>
+                            </div>
+                            <span className="intel-bar-pct">{stage.percentage}%</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {companyIntel.topSignals.length > 0 && (
+                    <div className="intel-section">
+                      <strong>Common signals in rejections:</strong>
+                      <ul className="intel-signals">
+                        {companyIntel.topSignals.slice(0, 3).map((sig, i) => (
+                          <li key={i}>{sig.signal} <span className="signal-count">({sig.count}×)</span></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {companyIntel.totalSamples < 5 && (
+                    <p className="intel-note">More data needed for reliable patterns. Keep decoding to help build the knowledge base!</p>
+                  )}
+                </div>
+              ) : null}
             </div>
           )}
 
