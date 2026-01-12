@@ -188,6 +188,18 @@ function stageToOutcome(stage: InterviewStage): ApplicationRecord['outcome'] {
   }
 }
 
+// Map AI-detected ATS stage to outcome (preferred over dropdown)
+function atsStageToOutcome(stage: ATSAssessment['stage_reached']): ApplicationRecord['outcome'] {
+  switch (stage) {
+    case 'ats_filter': return 'rejected_ats';
+    case 'recruiter_screen': return 'rejected_recruiter';
+    case 'hiring_manager': return 'rejected_hm';
+    case 'final_round': return 'rejected_final';
+    case 'unknown': return 'rejected_ats';
+    default: return 'rejected_ats';
+  }
+}
+
 interface DecodedData {
   result: DecodeResponse;
   emailText: string;
@@ -397,7 +409,10 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
 
   const handleAddToTrackerClick = () => {
     if (result && onAddToTracker && extracted) {
-      const outcome = stageToOutcome(interviewStage);
+      // Use AI-detected stage if available, otherwise fall back to dropdown
+      const outcome = result.ats_assessment?.stage_reached
+        ? atsStageToOutcome(result.ats_assessment.stage_reached)
+        : stageToOutcome(interviewStage);
       // Use edited values (which may have been modified by user)
       const finalCompany = editedCompany.trim() || 'Unknown Company';
       const finalRole = editedRole.trim() || 'Position from rejection email';
