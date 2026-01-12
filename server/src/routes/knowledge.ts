@@ -1,7 +1,39 @@
 import { Router, Request, Response } from 'express';
-import { getKnowledgeBaseCompanyStats, getMarketRejectionPatterns } from '../db/index.js';
+import { getKnowledgeBaseCompanyStats, getMarketRejectionPatterns, query } from '../db/index.js';
 
 const router = Router();
+
+/**
+ * Get all companies in knowledge base (for early-stage visibility)
+ * Shows all companies regardless of data threshold
+ */
+router.get('/companies', async (_req: Request, res: Response) => {
+  try {
+    const result = await query(
+      `SELECT company_normalized,
+              COUNT(*) as total_entries,
+              COUNT(DISTINCT rejection_category) as categories,
+              COUNT(DISTINCT ats_stage) as stages
+       FROM rejection_knowledge_base
+       GROUP BY company_normalized
+       ORDER BY total_entries DESC
+       LIMIT 50`
+    );
+
+    res.json({
+      companies: result.rows.map(r => ({
+        company: r.company_normalized,
+        dataPoints: parseInt(r.total_entries),
+        uniqueCategories: parseInt(r.categories),
+        uniqueStages: parseInt(r.stages)
+      })),
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching companies:', error);
+    res.status(500).json({ error: 'Failed to fetch companies' });
+  }
+});
 
 /**
  * Get market-wide rejection patterns
@@ -23,13 +55,16 @@ router.get('/market', async (_req: Request, res: Response) => {
  */
 router.get('/company/:name', async (req: Request, res: Response) => {
   const { name } = req.params;
+  // Allow ?preview=true to show with min 1 sample (for early stage)
+  const preview = req.query.preview === 'true';
+  const minSamples = preview ? 1 : 5;
 
   if (!name || name.trim().length < 2) {
     return res.status(400).json({ error: 'Company name required (min 2 characters)' });
   }
 
   try {
-    const stats = await getKnowledgeBaseCompanyStats(name.trim());
+    const stats = await getKnowledgeBaseCompanyStats(name.trim(), minSamples);
 
     if (!stats) {
       return res.json({
@@ -38,7 +73,7 @@ router.get('/company/:name', async (req: Request, res: Response) => {
       });
     }
 
-    res.json({ data: stats });
+    res.json({ data: stats, preview });
   } catch (error) {
     console.error('Error fetching company stats:', error);
     res.status(500).json({ error: 'Failed to fetch company stats' });
