@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { RejectionDecoder, DecodedData, LinkResult, categoryToOutcome, getOutcomeLabel } from './components/RejectionDecoder';
+import { RejectionDecoder, DecodedData, LinkResult, getOutcomeLabel } from './components/RejectionDecoder';
+import { ATSAssessment } from './types';
 import { ProTracker } from './components/ProTracker';
 import { ProInsightsV2 } from './components/ProInsightsV2';
 import { JDAnalyzer } from './components/JDAnalyzer';
@@ -110,6 +111,18 @@ function App() {
     setActiveTab('pro-tracker');
   };
 
+  // Map AI-detected ATS stage to outcome
+  const atsStageToOutcome = (stage: ATSAssessment['stage_reached']): ApplicationRecord['outcome'] => {
+    switch (stage) {
+      case 'ats_filter': return 'rejected_ats';
+      case 'recruiter_screen': return 'rejected_recruiter';
+      case 'hiring_manager': return 'rejected_hm';
+      case 'final_round': return 'rejected_final';
+      case 'unknown': return 'rejected_ats';
+      default: return 'rejected_ats';
+    }
+  };
+
   // Link a rejection analysis to an existing application
   const handleLinkToApplication = (applicationId: string, result: DecodeResponse): LinkResult | null => {
     // Find the application to get previous state
@@ -117,7 +130,10 @@ function App() {
     if (!app) return null;
 
     const previousOutcome = getOutcomeLabel(app.outcome);
-    const newOutcome = categoryToOutcome(result.category, result.signals);
+    // Use AI-detected stage if available for accurate outcome
+    const newOutcome = result.ats_assessment?.stage_reached
+      ? atsStageToOutcome(result.ats_assessment.stage_reached)
+      : 'rejected_ats';
     const daysToResponse = app.dateApplied
       ? Math.floor((Date.now() - new Date(app.dateApplied).getTime()) / (1000 * 60 * 60 * 24))
       : null;

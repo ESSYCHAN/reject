@@ -218,28 +218,6 @@ function normalizeCompany(name: string): string {
     .trim();
 }
 
-// Smarter outcome mapping using signals
-function categoryToOutcome(category: string, signals: string[] = []): ApplicationRecord['outcome'] {
-  const signalsText = signals.join(' ').toLowerCase();
-
-  // Check signals for clues about interview stage
-  const hadInterview = /interview|meeting|conversation|spoke|chat|call/.test(signalsText);
-  const finalRound = /final|team|onsite|panel|offer stage|last round/.test(signalsText);
-  const recruiterMention = /recruiter|talent|hr rep|sourcer/.test(signalsText);
-
-  if (finalRound) return 'rejected_final';
-  if (hadInterview && !recruiterMention) return 'rejected_hm';
-  if (hadInterview && recruiterMention) return 'rejected_recruiter';
-
-  switch (category) {
-    case 'Door Open': return 'rejected_recruiter';
-    case 'Polite Pass': return 'rejected_hm';
-    case 'Soft No': return 'rejected_recruiter';
-    case 'Hard No': return 'rejected_ats';
-    case 'Template': return 'rejected_ats';
-    default: return 'rejected_ats';
-  }
-}
 
 // Get human-readable outcome label
 function getOutcomeLabel(outcome: ApplicationRecord['outcome']): string {
@@ -696,7 +674,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                   </div>
                 </div>
 
-                {/* Link to existing OR add new */}
+                {/* Link to existing OR add new - prioritize linking when match found */}
                 <div className="tracker-cta-actions">
                   {onLinkToApplication && linkableApps.length > 0 && (
                     <div className="link-existing-compact">
@@ -736,18 +714,30 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
                           className="btn btn-primary"
                           onClick={handleLinkToApplication}
                         >
-                          Link
+                          Link Rejection
                         </button>
                       )}
                     </div>
                   )}
 
-                  {onAddToTracker && (
+                  {/* Only show "Add to Tracker" if NO match was found */}
+                  {onAddToTracker && matchingAppIds.length === 0 && (
                     <button
                       className="btn btn-primary btn-add-tracker"
                       onClick={handleAddToTrackerClick}
                     >
                       + Add to Tracker
+                    </button>
+                  )}
+
+                  {/* Show secondary "Add as new" option if match exists but user wants to add anyway */}
+                  {onAddToTracker && matchingAppIds.length > 0 && (
+                    <button
+                      className="btn btn-secondary btn-small"
+                      onClick={handleAddToTrackerClick}
+                      title="Add as a separate application (not linked to match)"
+                    >
+                      Add as new
                     </button>
                   )}
                 </div>
@@ -787,5 +777,5 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   );
 }
 
-export { categoryToOutcome, getOutcomeLabel };
+export { getOutcomeLabel };
 export type { DecodedData, LinkResult };
