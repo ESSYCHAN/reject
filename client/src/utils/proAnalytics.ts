@@ -323,16 +323,16 @@ export function aggregateRejectionPatterns(applications: ApplicationRecord[]): R
     .slice(0, 10);
 
   // Calculate ATS vs human reviewed
-  // template and hard-no often indicate ATS filtering
-  const atsCategories = ['template', 'hard-no'];
-  const humanCategories = ['soft-no', 'door-open', 'polite-pass'];
+  // Template and Hard No often indicate ATS filtering
+  const atsCategories = ['Template', 'Hard No'];
+  const humanCategories = ['Soft No', 'Door Open', 'Polite Pass'];
 
   const atsCount = atsCategories.reduce((sum, cat) => sum + (categoryCounts[cat] || 0), 0);
   const humanCount = humanCategories.reduce((sum, cat) => sum + (categoryCounts[cat] || 0), 0);
 
   const atsFilteredPercentage = Math.round((atsCount / totalDecoded) * 100);
   const humanReviewedPercentage = Math.round((humanCount / totalDecoded) * 100);
-  const templateRejectionPercentage = Math.round(((categoryCounts['template'] || 0) / totalDecoded) * 100);
+  const templateRejectionPercentage = Math.round(((categoryCounts['Template'] || 0) / totalDecoded) * 100);
 
   // Generate insight
   let insight = '';
@@ -341,8 +341,8 @@ export function aggregateRejectionPatterns(applications: ApplicationRecord[]): R
     insight = `${templateRejectionPercentage}% of your rejections are template responses. You're likely being filtered by ATS systems before a human sees your application. Focus on referrals and direct applications.`;
   } else if (humanReviewedPercentage >= 50) {
     insight = `${humanReviewedPercentage}% of your rejections show signs of human review. Your applications are getting through ATS - focus on improving your pitch and interview skills.`;
-  } else if (categoryCounts['door-open'] && categoryCounts['door-open'] >= 2) {
-    insight = `You have ${categoryCounts['door-open']} "door open" rejections - companies that left room for future opportunities. Consider following up with these.`;
+  } else if (categoryCounts['Door Open'] && categoryCounts['Door Open'] >= 2) {
+    insight = `You have ${categoryCounts['Door Open']} "door open" rejections - companies that left room for future opportunities. Consider following up with these.`;
   } else {
     insight = `Based on ${totalDecoded} decoded rejections, your results are mixed. Keep tracking to identify clearer patterns.`;
   }

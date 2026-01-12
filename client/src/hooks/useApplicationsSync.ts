@@ -15,7 +15,29 @@ function markAsSignedIn(): void {
 }
 
 const STORAGE_KEY = 'reject_pro_applications';
+const DELETED_IDS_KEY = 'reject_deleted_ids';
 const API_URL = import.meta.env.VITE_API_URL || '';
+
+// Load deleted IDs from localStorage (persists across page refresh until server confirms)
+function loadDeletedIds(): Set<string> {
+  try {
+    const stored = localStorage.getItem(DELETED_IDS_KEY);
+    if (!stored) return new Set();
+    return new Set(JSON.parse(stored));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveDeletedIds(ids: Set<string>): void {
+  localStorage.setItem(DELETED_IDS_KEY, JSON.stringify(Array.from(ids)));
+}
+
+function removeDeletedId(id: string): void {
+  const ids = loadDeletedIds();
+  ids.delete(id);
+  saveDeletedIds(ids);
+}
 
 interface StoredData {
   version: number;
@@ -111,17 +133,25 @@ export function useApplicationsSync() {
     }
   }, [isSignedIn, getToken]);
 
+  // Track deleted IDs to prevent re-sync from bringing them back (persists across refresh)
+  const deletedIds = useRef<Set<string>>(loadDeletedIds());
+
   // Merge local and server applications (server wins for conflicts based on updatedAt)
   const mergeApplications = useCallback((local: ApplicationRecord[], server: ApplicationRecord[]): ApplicationRecord[] => {
     const merged = new Map<string, ApplicationRecord>();
 
     // Add all local apps first
     for (const app of local) {
+      // Skip if this app was deleted in this session
+      if (deletedIds.current.has(app.id)) continue;
       merged.set(app.id, app);
     }
 
     // Server apps override or add
     for (const app of server) {
+      // Skip if this app was deleted in this session
+      if (deletedIds.current.has(app.id)) continue;
+
       const existing = merged.get(app.id);
       if (!existing) {
         merged.set(app.id, app);
@@ -233,6 +263,10 @@ export function useApplicationsSync() {
 
   // Delete an application
   const deleteApplication = useCallback(async (id: string) => {
+    // Track this ID as deleted to prevent re-sync from bringing it back
+    deletedIds.current.add(id);
+    saveDeletedIds(deletedIds.current);
+
     // Update local state immediately
     setApplications(prev => {
       const updated = prev.filter(a => a.id !== id);
@@ -245,17 +279,29 @@ export function useApplicationsSync() {
       setIsSyncing(true);
       try {
         const token = await getToken();
-        await fetch(`${API_URL}/api/applications/${id}`, {
+        const response = await fetch(`${API_URL}/api/applications/${id}`, {
           method: 'DELETE',
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
+        if (response.ok) {
+          console.log('useApplicationsSync: deleted from server:', id);
+          // Server confirmed delete, can remove from tracking
+          removeDeletedId(id);
+          deletedIds.current.delete(id);
+        } else {
+          console.error('useApplicationsSync: server delete failed:', response.status);
+        }
       } catch (error) {
         console.error('Failed to delete from server:', error);
       } finally {
         setIsSyncing(false);
       }
+    } else {
+      // Not signed in, no server to confirm, clear tracking
+      removeDeletedId(id);
+      deletedIds.current.delete(id);
     }
   }, [isSignedIn, getToken]);
 
