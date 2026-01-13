@@ -849,9 +849,9 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
 
                     {company.topSignals.length > 0 && (
                       <div className="community-signals">
-                        <span className="signals-label">Common signals:</span>
+                        <span className="signals-label">Common phrases:</span>
                         {company.topSignals.slice(0, 3).map((sig, j) => (
-                          <span key={j} className="signal-mini">{sig.signal}</span>
+                          <span key={j} className="signal-mini">"{sig.signal}"</span>
                         ))}
                       </div>
                     )}

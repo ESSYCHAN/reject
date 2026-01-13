@@ -615,10 +615,10 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
 
                   {companyIntel.topSignals.length > 0 && (
                     <div className="intel-section">
-                      <strong>Common signals in rejections:</strong>
+                      <strong>Common phrases in rejections:</strong>
                       <ul className="intel-signals">
                         {companyIntel.topSignals.slice(0, 3).map((sig, i) => (
-                          <li key={i}>{sig.signal} <span className="signal-count">({sig.count}×)</span></li>
+                          <li key={i}>"{sig.signal}" <span className="signal-count">({sig.count}×)</span></li>
                         ))}
                       </ul>
                     </div>
@@ -646,10 +646,10 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
           </div>
 
           <div className="result-section">
-            <h3>Signals detected</h3>
+            <h3>Key phrases we spotted</h3>
             <ul className="signals-list">
-              {result.signals.map((signal, i) => (
-                <li key={i}>{signal}</li>
+              {result.signals.map((phrase, i) => (
+                <li key={i}>{phrase}</li>
               ))}
             </ul>
           </div>
@@ -701,7 +701,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
             <div className="result-section no-template-section">
               <h3>Why no follow-up template?</h3>
               <p>
-                Based on the signals in this email, following up would likely be ineffective
+                Based on what we found in this email, following up would likely be ineffective
                 or could even make you look bad. The email may have come from an automated
                 system, explicitly asked not to reply, or showed no genuine opening for
                 future contact.
