@@ -214,9 +214,22 @@ export function useApplicationsSync() {
         saveLocalApplications(merged);
 
         // Push merged back to server (to ensure server has local-only items)
+        // Only push apps that aren't in the deleted list
         if (localApps.length > 0) {
-          await pushToServer(merged);
+          const appsToSync = merged.filter(app => !deletedIds.current.has(app.id));
+          await pushToServer(appsToSync);
         }
+
+        // Clean up deletedIds for apps that are confirmed gone from server
+        // (they weren't in serverApps, so server confirmed delete)
+        const serverIds = new Set(serverApps.map(a => a.id));
+        for (const deletedId of deletedIds.current) {
+          if (!serverIds.has(deletedId)) {
+            // Server confirmed it's gone, safe to remove from tracking
+            deletedIds.current.delete(deletedId);
+          }
+        }
+        saveDeletedIds(deletedIds.current);
 
         console.log(`Sync complete: ${merged.length} total applications`);
       } catch (error) {
@@ -287,11 +300,11 @@ export function useApplicationsSync() {
         });
         if (response.ok) {
           console.log('useApplicationsSync: deleted from server:', id);
-          // Server confirmed delete, can remove from tracking
-          removeDeletedId(id);
-          deletedIds.current.delete(id);
+          // Keep in deletedIds until next page load to prevent race conditions
+          // The ID will be cleaned up naturally when it's no longer on the server
         } else {
           console.error('useApplicationsSync: server delete failed:', response.status);
+          // Keep tracking it so it doesn't come back on refresh
         }
       } catch (error) {
         console.error('Failed to delete from server:', error);
