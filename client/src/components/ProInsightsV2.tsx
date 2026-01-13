@@ -931,14 +931,17 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                 </div>
               )}
 
-              {/* Top Signals */}
+              {/* Top Phrases - renamed from "Signals" for clarity */}
               {patternsData.topSignals.length > 0 && (
                 <div className="top-signals">
-                  <h4>Common Signals in Your Rejections</h4>
+                  <Tooltip content="These are the actual phrases companies used in your rejection emails. Seeing the same phrases repeatedly can reveal patterns in how you're being filtered.">
+                    <h4>What Companies Keep Saying</h4>
+                  </Tooltip>
+                  <p className="signals-hint">Phrases that appeared most often in your rejections:</p>
                   <div className="signals-grid">
-                    {patternsData.topSignals.map((signal, i) => (
+                    {patternsData.topSignals.slice(0, 5).map((signal, i) => (
                       <span key={i} className="signal-tag">
-                        {signal.signal} <span className="signal-count">({signal.count})</span>
+                        "{signal.signal}" <span className="signal-count">({signal.count}x)</span>
                       </span>
                     ))}
                   </div>

@@ -989,6 +989,12 @@
 
 .top-signals h4 {
   font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.signals-hint {
+  font-size: 0.85rem;
+  color: var(--muted);
   margin-bottom: 1rem;
 }
 
