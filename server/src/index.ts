@@ -38,8 +38,8 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://clerk.tryreject.co.uk"],
-      connectSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://api.clerk.com", "https://clerk.tryreject.co.uk"],
+      scriptSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://clerk.tryreject.co.uk", "https://plausible.io"],
+      connectSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://api.clerk.com", "https://clerk.tryreject.co.uk", "https://plausible.io"],
       frameSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://clerk.tryreject.co.uk"],
       imgSrc: ["'self'", "data:", "https://*.clerk.com", "https://*.clerk.accounts.dev", "https://clerk.tryreject.co.uk"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
