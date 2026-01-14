@@ -38,9 +38,9 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://clerk.tryreject.co.uk", "https://plausible.io"],
-      connectSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://api.clerk.com", "https://clerk.tryreject.co.uk", "https://plausible.io"],
-      frameSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://clerk.tryreject.co.uk"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://clerk.tryreject.co.uk", "https://plausible.io", "https://challenges.cloudflare.com", "https://*.hcaptcha.com", "https://*.google.com", "https://*.gstatic.com"],
+      connectSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://api.clerk.com", "https://clerk.tryreject.co.uk", "https://plausible.io", "https://challenges.cloudflare.com", "https://*.hcaptcha.com"],
+      frameSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://clerk.tryreject.co.uk", "https://challenges.cloudflare.com", "https://*.hcaptcha.com", "https://*.google.com"],
       imgSrc: ["'self'", "data:", "https://*.clerk.com", "https://*.clerk.accounts.dev", "https://clerk.tryreject.co.uk"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
