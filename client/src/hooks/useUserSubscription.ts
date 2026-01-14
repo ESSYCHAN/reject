@@ -29,17 +29,21 @@ const defaultUsage = {
   roleFits: { used: 0, limit: 3 }
 };
 
+// TEMPORARY: All features free during beta
+const FREE_FOR_ALL = true;
+
 export function useUserSubscription(): UserData {
   const { isSignedIn } = useUser();
   const { getToken } = useAuth();
-  const [isPro, setIsPro] = useState(false);
+  const [isPro, setIsPro] = useState(FREE_FOR_ALL);
   const [isLoading, setIsLoading] = useState(true);
   const [usage, setUsage] = useState(defaultUsage);
 
   const fetchUserData = useCallback(async () => {
     if (!isSignedIn) {
       setIsLoading(false);
-      setIsPro(false);
+      // TEMPORARY: Free for all during beta, even if not signed in
+      setIsPro(FREE_FOR_ALL);
       setUsage(defaultUsage);
       return;
     }
@@ -59,7 +63,8 @@ export function useUserSubscription(): UserData {
       if (response.ok) {
         const data = await response.json();
         console.log('useUserSubscription: isPro from server:', data.subscription?.isPro);
-        setIsPro(data.subscription?.isPro || false);
+        // TEMPORARY: Override with FREE_FOR_ALL during beta
+        setIsPro(FREE_FOR_ALL || data.subscription?.isPro || false);
         setUsage({
           decodes: data.usage?.decodes || defaultUsage.decodes,
           applications: data.usage?.applications || defaultUsage.applications,
