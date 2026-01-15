@@ -190,14 +190,15 @@
 
 .stage-select {
   flex: 1;
-  min-width: 220px;
-  max-width: 300px;
+  min-width: 280px;
+  max-width: 100%;
   padding: var(--space-sm) var(--space-md);
+  padding-right: var(--space-xl);
   background: white;
   border: 2px solid white;
   border-radius: var(--radius-sm);
   color: var(--text);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
