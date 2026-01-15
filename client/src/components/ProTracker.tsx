@@ -192,8 +192,10 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     }
   };
 
-  const handleDeleteApplication = (id: string) => {
-    deleteAppFromSync(id);
+  const handleDeleteApplication = (id: string, companyName: string) => {
+    if (window.confirm(`Delete application for ${companyName}? This cannot be undone.`)) {
+      deleteAppFromSync(id);
+    }
   };
 
   const getOutcomeClass = (outcome: Outcome) => {
@@ -467,7 +469,7 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                       )}
                       <button
                         className="btn-delete-compact"
-                        onClick={() => handleDeleteApplication(app.id)}
+                        onClick={() => handleDeleteApplication(app.id, app.company)}
                         title="Delete application"
                       >
                         ×
