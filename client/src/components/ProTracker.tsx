@@ -89,6 +89,7 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
   const [sortBy, setSortBy] = useState<'date' | 'company' | 'status'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedAppId, setExpandedAppId] = useState<string | null>(null);
+  const [modalApp, setModalApp] = useState<ApplicationRecord | null>(null);
   const [formData, setFormData] = useState({
     company: '',
     role: '',
@@ -507,6 +508,12 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                         <span className="decoded-date">
                           Decoded {formatDate(app.rejectionAnalysis.decodedAt)}
                         </span>
+                        <button
+                          className="btn-see-full"
+                          onClick={() => setModalApp(app)}
+                        >
+                          See full analysis →
+                        </button>
                       </div>
                     </div>
                   )}
@@ -539,6 +546,52 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
           </>
         )}
       </div>
+
+      {/* Full Analysis Modal */}
+      {modalApp && modalApp.rejectionAnalysis && (
+        <div className="analysis-modal-overlay" onClick={() => setModalApp(null)}>
+          <div className="analysis-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="analysis-modal-header">
+              <div className="modal-title">
+                <h3>{modalApp.company}</h3>
+                <span className="modal-role">{modalApp.role}</span>
+              </div>
+              <button className="modal-close" onClick={() => setModalApp(null)}>×</button>
+            </div>
+
+            <div className="analysis-modal-content">
+              <div className="modal-badges">
+                <span className={`category-badge ${getCategoryClass(modalApp.rejectionAnalysis.category)}`}>
+                  {modalApp.rejectionAnalysis.category}
+                </span>
+                <span className="confidence-badge">
+                  {Math.round(modalApp.rejectionAnalysis.confidence * 100)}% confidence
+                </span>
+                <span className={`reply-badge ${getReplyClass(modalApp.rejectionAnalysis.replyWorthIt)}`}>
+                  Reply: {modalApp.rejectionAnalysis.replyWorthIt}
+                </span>
+              </div>
+
+              <div className="modal-section">
+                <h4>Key Phrases Detected</h4>
+                <ul className="modal-signals">
+                  {modalApp.rejectionAnalysis.signals.map((signal, i) => (
+                    <li key={i}>{signal}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="modal-meta">
+                <span>Applied: {formatDate(modalApp.dateApplied)}</span>
+                {modalApp.daysToResponse !== null && (
+                  <span>Response time: {modalApp.daysToResponse} days</span>
+                )}
+                <span>Decoded: {formatDate(modalApp.rejectionAnalysis.decodedAt)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
