@@ -149,13 +149,13 @@
   color: var(--muted);
 }
 
-/* Interview Stage Selector - Compact Dropdown */
+/* Interview Stage Selector - Prominent Call-to-Action */
 .interview-stage-section {
   margin-top: var(--space-md);
-  padding: var(--space-sm) var(--space-md);
-  background: linear-gradient(135deg, var(--highlight) 0%, rgba(99, 102, 241, 0.08) 100%);
-  border: 2px solid var(--accent);
-  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  background: linear-gradient(135deg, var(--accent) 0%, #9a4a36 100%);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 12px rgba(179, 92, 68, 0.25);
 }
 
 .stage-selector {
@@ -168,10 +168,10 @@
 .stage-selector label {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--text);
+  gap: var(--space-sm);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: white;
   white-space: nowrap;
 }
 
@@ -179,38 +179,44 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  background: var(--accent);
-  color: white;
+  width: 24px;
+  height: 24px;
+  background: white;
+  color: var(--accent);
   border-radius: 50%;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.85rem;
+  font-weight: 800;
 }
 
 .stage-select {
   flex: 1;
-  min-width: 200px;
-  max-width: 280px;
+  min-width: 220px;
+  max-width: 300px;
   padding: var(--space-sm) var(--space-md);
-  background: var(--card);
-  border: 2px solid var(--accent);
+  background: white;
+  border: 2px solid white;
   border-radius: var(--radius-sm);
   color: var(--text);
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
 .stage-select:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.4);
+}
+
+.stage-select:hover {
+  border-color: var(--accent-light);
 }
 
 .stage-hint {
-  font-size: 0.75rem;
-  color: var(--accent);
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 500;
+  font-style: italic;
 }
 
 /* Legacy interview-context styles */
@@ -1440,17 +1446,22 @@
   }
 
   .interview-stage-section {
-    padding: var(--space-xs) var(--space-sm);
+    padding: var(--space-sm) var(--space-md);
   }
 
   .stage-selector {
     flex-direction: column;
     align-items: stretch;
-    gap: var(--space-xs);
+    gap: var(--space-sm);
+  }
+
+  .stage-selector label {
+    justify-content: center;
   }
 
   .stage-select {
     max-width: 100%;
+    min-width: auto;
   }
 
   .stage-hint {
