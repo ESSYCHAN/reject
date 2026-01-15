@@ -1907,6 +1907,105 @@
   color: #c8503c;
 }
 
+/* Expand analysis button */
+.btn-expand-analysis {
+  background: var(--accent);
+  border: none;
+  color: white;
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.btn-expand-analysis:hover,
+.btn-expand-analysis.active {
+  background: #9a4a36;
+}
+
+/* Expanded row state */
+.app-row.expanded {
+  background: var(--highlight);
+  border-color: var(--accent);
+}
+
+/* Rejection analysis panel */
+.app-row-analysis {
+  padding: var(--space-md);
+  border-top: 1px solid var(--border);
+  background: linear-gradient(135deg, rgba(179, 92, 68, 0.05) 0%, rgba(179, 92, 68, 0.02) 100%);
+}
+
+.analysis-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.analysis-header .category-badge {
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.analysis-header .confidence-badge {
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  background: var(--highlight);
+  color: var(--muted);
+}
+
+.analysis-header .reply-badge {
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.analysis-signals {
+  margin-bottom: var(--space-md);
+}
+
+.analysis-signals strong {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text);
+  margin-bottom: var(--space-xs);
+}
+
+.analysis-signals ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.analysis-signals li {
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.analysis-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.decoded-date {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
 /* Responsive compact table */
 @media (max-width: 768px) {
   .app-row-main {

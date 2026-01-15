@@ -88,6 +88,7 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<'date' | 'company' | 'status'>('date');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [expandedAppId, setExpandedAppId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     company: '',
     role: '',
@@ -201,6 +202,30 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     if (outcome.startsWith('rejected')) return 'outcome-rejected';
     if (outcome === 'pending') return 'outcome-pending';
     return '';
+  };
+
+  const getCategoryClass = (category: string) => {
+    switch (category) {
+      case 'Door Open': return 'category-door-open';
+      case 'Soft No': return 'category-soft-no';
+      case 'Template': return 'category-template';
+      case 'Polite Pass': return 'category-polite-pass';
+      case 'Hard No': return 'category-hard-no';
+      default: return '';
+    }
+  };
+
+  const getReplyClass = (worth: string) => {
+    switch (worth) {
+      case 'High': return 'reply-high';
+      case 'Medium': return 'reply-medium';
+      case 'Low': return 'reply-low';
+      default: return '';
+    }
+  };
+
+  const toggleExpand = (appId: string) => {
+    setExpandedAppId(expandedAppId === appId ? null : appId);
   };
 
   // Sort applications
@@ -390,7 +415,7 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
             {/* Compact table view */}
             <div className="applications-table">
               {paginatedApplications.map((app) => (
-                <div key={app.id} className="app-row">
+                <div key={app.id} className={`app-row ${expandedAppId === app.id ? 'expanded' : ''}`}>
                   <div className="app-row-main">
                     <div className="app-row-company">
                       <span className="company-name">{app.company}</span>
@@ -419,6 +444,15 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                       </select>
                     </div>
                     <div className="app-row-actions">
+                      {app.rejectionAnalysis && (
+                        <button
+                          className={`btn-expand-analysis ${expandedAppId === app.id ? 'active' : ''}`}
+                          onClick={() => toggleExpand(app.id)}
+                          title="View decoded analysis"
+                        >
+                          {expandedAppId === app.id ? '▼' : '▶'}
+                        </button>
+                      )}
                       {app.outcome === 'pending' && daysSinceApplied(app.dateApplied)! >= 21 && daysSinceApplied(app.dateApplied)! < GHOST_THRESHOLD_DAYS && (
                         <button
                           className="btn-ghost-compact"
@@ -440,6 +474,40 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                       </button>
                     </div>
                   </div>
+
+                  {/* Expanded rejection analysis panel */}
+                  {expandedAppId === app.id && app.rejectionAnalysis && (
+                    <div className="app-row-analysis">
+                      <div className="analysis-header">
+                        <span className={`category-badge ${getCategoryClass(app.rejectionAnalysis.category)}`}>
+                          {app.rejectionAnalysis.category}
+                        </span>
+                        <span className="confidence-badge">
+                          {Math.round(app.rejectionAnalysis.confidence * 100)}% confidence
+                        </span>
+                        <span className={`reply-badge ${getReplyClass(app.rejectionAnalysis.replyWorthIt)}`}>
+                          Reply: {app.rejectionAnalysis.replyWorthIt}
+                        </span>
+                      </div>
+
+                      {app.rejectionAnalysis.signals && app.rejectionAnalysis.signals.length > 0 && (
+                        <div className="analysis-signals">
+                          <strong>Key phrases detected:</strong>
+                          <ul>
+                            {app.rejectionAnalysis.signals.slice(0, 5).map((signal, i) => (
+                              <li key={i}>{signal}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <div className="analysis-footer">
+                        <span className="decoded-date">
+                          Decoded {formatDate(app.rejectionAnalysis.decodedAt)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
