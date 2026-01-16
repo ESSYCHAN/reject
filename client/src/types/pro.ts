@@ -9,6 +9,12 @@ export interface RejectionAnalysis {
   signals: string[];
   replyWorthIt: string;
   decodedAt: string;
+  // New fields for more insightful analysis
+  stageReached?: 'ats_filter' | 'recruiter_screen' | 'hiring_manager' | 'final_round' | 'unknown';
+  likelyAtsFiltered?: boolean;
+  strategicInsight?: string;
+  nextActions?: string[];
+  whatItMeans?: string;
 }
 
 export interface ApplicationRecord {

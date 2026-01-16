@@ -227,6 +227,18 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     }
   };
 
+  // Format stage reached for display
+  const formatStageReached = (stage: string | undefined): string => {
+    if (!stage) return 'Unknown stage';
+    switch (stage) {
+      case 'ats_filter': return 'ATS Filter (before human review)';
+      case 'recruiter_screen': return 'Recruiter Screen';
+      case 'hiring_manager': return 'Hiring Manager';
+      case 'final_round': return 'Final Round';
+      default: return 'Unknown stage';
+    }
+  };
+
   const toggleExpand = (appId: string) => {
     setExpandedAppId(expandedAppId === appId ? null : appId);
   };
@@ -481,6 +493,12 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                   {/* Expanded rejection analysis panel */}
                   {expandedAppId === app.id && app.rejectionAnalysis && (
                     <div className="app-row-analysis">
+                      {/* Priority 1: Show where they got filtered - most insightful info */}
+                      <div className="filtered-at-banner">
+                        <span className="filtered-at-label">Filtered at:</span>
+                        <span className="filtered-at-stage">{formatStageReached(app.rejectionAnalysis.stageReached)}</span>
+                      </div>
+
                       <div className="analysis-header">
                         <span className={`category-badge ${getCategoryClass(app.rejectionAnalysis.category)}`}>
                           {app.rejectionAnalysis.category}
@@ -493,14 +511,10 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                         </span>
                       </div>
 
-                      {app.rejectionAnalysis.signals && app.rejectionAnalysis.signals.length > 0 && (
-                        <div className="analysis-signals">
-                          <strong>Key phrases detected:</strong>
-                          <ul>
-                            {app.rejectionAnalysis.signals.slice(0, 5).map((signal, i) => (
-                              <li key={i}>{signal}</li>
-                            ))}
-                          </ul>
+                      {/* What it means - the strategic insight */}
+                      {app.rejectionAnalysis.whatItMeans && (
+                        <div className="analysis-what-it-means">
+                          <p>{app.rejectionAnalysis.whatItMeans}</p>
                         </div>
                       )}
 
@@ -560,6 +574,12 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
             </div>
 
             <div className="analysis-modal-content">
+              {/* Priority 1: Where they got filtered */}
+              <div className="modal-filtered-at">
+                <span className="filtered-at-label">Filtered at:</span>
+                <span className="filtered-at-stage">{formatStageReached(modalApp.rejectionAnalysis.stageReached)}</span>
+              </div>
+
               <div className="modal-badges">
                 <span className={`category-badge ${getCategoryClass(modalApp.rejectionAnalysis.category)}`}>
                   {modalApp.rejectionAnalysis.category}
@@ -571,6 +591,34 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                   Reply: {modalApp.rejectionAnalysis.replyWorthIt}
                 </span>
               </div>
+
+              {/* What it means */}
+              {modalApp.rejectionAnalysis.whatItMeans && (
+                <div className="modal-section">
+                  <h4>What This Means</h4>
+                  <p className="modal-insight-text">{modalApp.rejectionAnalysis.whatItMeans}</p>
+                </div>
+              )}
+
+              {/* Strategic insight */}
+              {modalApp.rejectionAnalysis.strategicInsight && (
+                <div className="modal-section">
+                  <h4>Strategic Insight</h4>
+                  <p className="modal-insight-text">{modalApp.rejectionAnalysis.strategicInsight}</p>
+                </div>
+              )}
+
+              {/* Next actions */}
+              {modalApp.rejectionAnalysis.nextActions && modalApp.rejectionAnalysis.nextActions.length > 0 && (
+                <div className="modal-section">
+                  <h4>Recommended Next Steps</h4>
+                  <ul className="modal-next-actions">
+                    {modalApp.rejectionAnalysis.nextActions.map((action, i) => (
+                      <li key={i}>{action}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               <div className="modal-section">
                 <h4>Key Phrases Detected</h4>

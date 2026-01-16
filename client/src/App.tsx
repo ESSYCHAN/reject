@@ -108,7 +108,13 @@ function App() {
         confidence: data.result.confidence,
         signals: data.result.signals,
         replyWorthIt: data.result.reply_worth_it,
-        decodedAt: new Date().toISOString()
+        decodedAt: new Date().toISOString(),
+        // New insightful fields from ATS assessment
+        stageReached: data.result.ats_assessment?.stage_reached,
+        likelyAtsFiltered: data.result.ats_assessment?.likely_ats_filtered,
+        strategicInsight: data.result.ats_assessment?.strategic_insight,
+        nextActions: data.result.next_actions,
+        whatItMeans: data.result.what_it_means
       }
     };
 
@@ -156,7 +162,13 @@ function App() {
         confidence: result.confidence,
         signals: result.signals,
         replyWorthIt: result.reply_worth_it,
-        decodedAt: new Date().toISOString()
+        decodedAt: new Date().toISOString(),
+        // New insightful fields from ATS assessment
+        stageReached: result.ats_assessment?.stage_reached,
+        likelyAtsFiltered: result.ats_assessment?.likely_ats_filtered,
+        strategicInsight: result.ats_assessment?.strategic_insight,
+        nextActions: result.next_actions,
+        whatItMeans: result.what_it_means
       }
     };
 

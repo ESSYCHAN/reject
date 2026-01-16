@@ -2143,6 +2143,104 @@
   color: var(--muted);
 }
 
+/* Filtered At Banner - Priority 1 insight */
+.filtered-at-banner {
+  background: linear-gradient(135deg, var(--accent) 0%, #9a4a36 100%);
+  color: white;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.filtered-at-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.filtered-at-stage {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Modal filtered at - same styling but slightly larger */
+.modal-filtered-at {
+  background: linear-gradient(135deg, var(--accent) 0%, #9a4a36 100%);
+  color: white;
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.modal-filtered-at .filtered-at-label {
+  font-size: 0.9rem;
+}
+
+.modal-filtered-at .filtered-at-stage {
+  font-size: 1rem;
+}
+
+/* What it means section in expanded panel */
+.analysis-what-it-means {
+  background: var(--highlight);
+  border-left: 3px solid var(--accent);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.analysis-what-it-means p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* Modal insight text styling */
+.modal-insight-text {
+  background: var(--highlight);
+  border-left: 3px solid var(--accent);
+  padding: var(--space-md);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Next actions list in modal */
+.modal-next-actions {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.modal-next-actions li {
+  background: var(--highlight);
+  border: 1px solid var(--border);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  color: var(--text);
+  margin-bottom: var(--space-xs);
+  position: relative;
+  padding-left: calc(var(--space-md) + 20px);
+}
+
+.modal-next-actions li::before {
+  content: '\2192';
+  position: absolute;
+  left: var(--space-md);
+  color: var(--accent);
+  font-weight: 700;
+}
+
 /* Responsive compact table */
 @media (max-width: 768px) {
   .app-row-main {
