@@ -243,9 +243,9 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
   return (
     <div className="jd-analyzer">
       <LimitWarning action="role_fit_checks" />
-      <h2>JD Check</h2>
+      <h2>Check Fit</h2>
       <p className="section-desc">
-        Paste a job description. We'll extract what matters and flag what doesn't.
+        Paste a job description. We'll tell you if it's worth applying.
       </p>
 
       <div className="jd-input-section">

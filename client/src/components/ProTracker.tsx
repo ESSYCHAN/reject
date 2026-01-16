@@ -299,7 +299,7 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
       <LimitWarning action="applications" />
       <div className="tracker-header">
         <h2>
-          Pro Application Tracker
+          Applications
           {(isLoading || isSyncing) && <span className="sync-status"> (syncing...)</span>}
         </h2>
         <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>

@@ -208,25 +208,25 @@ function App() {
               className={`nav-btn ${activeTab === 'decoder' ? 'active' : ''}`}
               onClick={() => setActiveTab('decoder')}
             >
-              Decoder
+              Decode
             </button>
             <button
               className={`nav-btn ${activeTab === 'pro-tracker' ? 'active' : ''}`}
               onClick={() => setActiveTab('pro-tracker')}
             >
-              Tracker {isSyncing && <span className="sync-indicator">...</span>}
+              Applications {isSyncing && <span className="sync-indicator">...</span>}
             </button>
             <button
-              className={`nav-btn pro ${activeTab === 'insights' ? 'active' : ''}`}
+              className={`nav-btn ${activeTab === 'jd-check' ? 'active' : ''}`}
+              onClick={() => setActiveTab('jd-check')}
+            >
+              Check Fit
+            </button>
+            <button
+              className={`nav-btn ${activeTab === 'insights' ? 'active' : ''}`}
               onClick={() => setActiveTab('insights')}
             >
               Insights
-            </button>
-            <button
-              className={`nav-btn pro ${activeTab === 'jd-check' ? 'active' : ''}`}
-              onClick={() => setActiveTab('jd-check')}
-            >
-              JD Check
             </button>
           </nav>
           <AuthButtons onAccountClick={() => setActiveTab('account')} />
@@ -244,7 +244,11 @@ function App() {
           {/* Show landing hero for first-time visitors on decoder tab (not when signed in) */}
           {showLanding && activeTab === 'decoder' && !isSignedIn && (
             <>
-              <LandingHero onGetStarted={() => setShowLanding(false)} />
+              <LandingHero
+                onGetStarted={() => setShowLanding(false)}
+                onCheckFit={() => { setShowLanding(false); setActiveTab('jd-check'); }}
+                onTrackApp={() => { setShowLanding(false); setActiveTab('pro-tracker'); }}
+              />
               <PromoStrip />
             </>
           )}

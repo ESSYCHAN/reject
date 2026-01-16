@@ -48,7 +48,91 @@
   line-height: 1.5;
 }
 
-/* Features */
+/* Entry Point Cards */
+.entry-points {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.entry-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.entry-card:hover {
+  border-color: var(--accent);
+  transform: translateX(4px);
+  box-shadow: 0 4px 12px rgba(179, 92, 68, 0.15);
+}
+
+.entry-card.entry-decode:hover {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, rgba(179, 92, 68, 0.05) 0%, transparent 100%);
+}
+
+.entry-card.entry-fit:hover {
+  border-color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, transparent 100%);
+}
+
+.entry-card.entry-track:hover {
+  border-color: #3b82f6;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%);
+}
+
+.entry-icon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+.entry-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.entry-text strong {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.entry-text span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.entry-arrow {
+  font-size: 1.25rem;
+  color: var(--muted);
+  transition: transform 0.2s ease;
+}
+
+.entry-card:hover .entry-arrow {
+  transform: translateX(4px);
+  color: var(--accent);
+}
+
+.entry-card.entry-fit:hover .entry-arrow {
+  color: #10b981;
+}
+
+.entry-card.entry-track:hover .entry-arrow {
+  color: #3b82f6;
+}
+
+/* Legacy Features (keeping for backwards compat) */
 .hero-features {
   display: flex;
   flex-direction: column;

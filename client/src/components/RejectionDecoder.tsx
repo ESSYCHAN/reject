@@ -316,7 +316,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
 
     // Detect if user pasted a JD instead of rejection email
     if (looksLikeJobDescription(emailText)) {
-      setError('This looks like a job description, not a rejection email. Try the JD Check tab instead.');
+      setError('This looks like a job description, not a rejection email. Try the Check Fit tab instead.');
       return;
     }
 

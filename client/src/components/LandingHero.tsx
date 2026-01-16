@@ -2,47 +2,52 @@ import './LandingHero.css';
 
 interface LandingHeroProps {
   onGetStarted: () => void;
+  onCheckFit?: () => void;
+  onTrackApp?: () => void;
 }
 
-export function LandingHero({ onGetStarted }: LandingHeroProps) {
+export function LandingHero({ onGetStarted, onCheckFit, onTrackApp }: LandingHeroProps) {
   return (
     <section className="landing-hero">
       <div className="hero-content">
         <h1 className="hero-title">
-          Stop guessing why you got rejected
+          Your job search companion
         </h1>
         <p className="hero-subtitle">
-          Paste any rejection email. Get the real reason, not the HR script.
+          Decode rejections. Check fit before applying. Track what matters.
         </p>
 
-        <div className="hero-features">
-          <div className="feature">
-            <span className="feature-icon">🔍</span>
-            <div>
-              <strong>Decode the real meaning</strong>
-              <p>AI analyzes hiring language to reveal what they actually meant</p>
+        {/* Smart entry points based on user journey */}
+        <div className="entry-points">
+          <button className="entry-card entry-decode" onClick={onGetStarted}>
+            <span className="entry-icon">&#128274;</span>
+            <div className="entry-text">
+              <strong>Got a rejection?</strong>
+              <span>Decode what it really means</span>
             </div>
-          </div>
-          <div className="feature">
-            <span className="feature-icon">📊</span>
-            <div>
-              <strong>Know where you got filtered</strong>
-              <p>ATS? Recruiter? Hiring manager? Find out exactly where</p>
+            <span className="entry-arrow">&#8594;</span>
+          </button>
+
+          <button className="entry-card entry-fit" onClick={onCheckFit}>
+            <span className="entry-icon">&#127919;</span>
+            <div className="entry-text">
+              <strong>Found a job?</strong>
+              <span>Check if it's worth applying</span>
             </div>
-          </div>
-          <div className="feature">
-            <span className="feature-icon">🎯</span>
-            <div>
-              <strong>Get actionable next steps</strong>
-              <p>Strategic advice based on rejection patterns, not generic tips</p>
+            <span className="entry-arrow">&#8594;</span>
+          </button>
+
+          <button className="entry-card entry-track" onClick={onTrackApp}>
+            <span className="entry-icon">&#128203;</span>
+            <div className="entry-text">
+              <strong>Already applied?</strong>
+              <span>Track your applications</span>
             </div>
-          </div>
+            <span className="entry-arrow">&#8594;</span>
+          </button>
         </div>
 
-        <button className="btn btn-primary hero-cta" onClick={onGetStarted}>
-          Decode Your First Rejection
-        </button>
-        <p className="hero-note">Free to try. No signup required.</p>
+        <p className="hero-note">Free to use. No signup required to start.</p>
       </div>
 
       <div className="hero-demo">
