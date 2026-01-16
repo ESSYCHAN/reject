@@ -101,7 +101,15 @@ function App() {
       source: 'other',
       dateApplied: new Date().toISOString().split('T')[0],
       outcome: data.outcome,
-      daysToResponse: null
+      daysToResponse: null,
+      // Store the rejection analysis so users can view it later
+      rejectionAnalysis: {
+        category: data.result.category,
+        confidence: data.result.confidence,
+        signals: data.result.signals,
+        replyWorthIt: data.result.reply_worth_it,
+        decodedAt: new Date().toISOString()
+      }
     };
 
     // Save using sync hook (handles both local and server)
