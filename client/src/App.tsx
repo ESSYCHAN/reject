@@ -202,7 +202,7 @@ function App() {
     <div className="app">
       <header className="header">
         <div className="header-content">
-          <h1 className="logo" onClick={() => setActiveTab('decoder')} style={{ cursor: 'pointer' }}>REJECT</h1>
+          <h1 className="logo" onClick={() => { setActiveTab('decoder'); if (!isSignedIn) setShowLanding(true); }} style={{ cursor: 'pointer' }}>REJECT</h1>
           <nav className="nav">
             <button
               className={`nav-btn ${activeTab === 'decoder' ? 'active' : ''}`}
