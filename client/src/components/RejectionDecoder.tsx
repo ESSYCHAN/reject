@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '@clerk/clerk-react';
 import { DecodeResponse, ATSAssessment, InterviewStage } from '../types';
 import { ApplicationRecord, SeniorityLevel } from '../types/pro';
 import { decodeEmail } from '../utils/api';
-import { canUseFeature, incrementUsage } from '../utils/usage';
+import { canUseFeature, incrementUsage, loadUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
+import { SignupPrompt, useSignupPrompt } from './SignupPrompt';
 
 // Helper to get human-readable stage label
 function getStageLabel(stage: ATSAssessment['stage_reached']): string {
@@ -245,6 +247,7 @@ interface RejectionDecoderProps {
 }
 
 export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applications = [] }: RejectionDecoderProps) {
+  const { isSignedIn } = useAuth();
   const [emailText, setEmailText] = useState('');
   const [interviewStage, setInterviewStage] = useState<InterviewStage>('none');
   const [result, setResult] = useState<DecodeResponse | null>(null);
@@ -265,6 +268,11 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     topSignals: { signal: string; count: number }[];
   } | null>(null);
   const [companyIntelLoading, setCompanyIntelLoading] = useState(false);
+
+  // Signup prompt state
+  const { shouldShow: shouldShowSignup, dismiss: dismissSignup } = useSignupPrompt();
+  const [showSignupPrompt, setShowSignupPrompt] = useState(false);
+  const [decodeCount, setDecodeCount] = useState(() => loadUsage().decodes_per_month);
 
   // Filter to show only pending/interviewing applications (ones that could receive rejections)
   const linkableApps = applications.filter(app =>
@@ -353,6 +361,14 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
       setResult(response.data);
       // Increment usage only on successful decode
       incrementUsage('decodes_per_month');
+      const newCount = loadUsage().decodes_per_month;
+      setDecodeCount(newCount);
+
+      // Show signup prompt after threshold reached
+      if (shouldShowSignup(newCount, isSignedIn || false)) {
+        // Delay slightly so user sees their result first
+        setTimeout(() => setShowSignupPrompt(true), 1500);
+      }
 
       // Prefer AI-extracted company/role over local regex extraction
       const aiCompany = response.data.extracted_company?.trim();
@@ -466,9 +482,23 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     );
   }
 
+  const handleDismissSignup = () => {
+    setShowSignupPrompt(false);
+    dismissSignup();
+  };
+
   return (
     <div className="decoder">
       <LimitWarning action="decodes_per_month" />
+
+      {/* Signup prompt modal */}
+      {showSignupPrompt && (
+        <SignupPrompt
+          decodeCount={decodeCount}
+          onDismiss={handleDismissSignup}
+          variant="modal"
+        />
+      )}
       <div className="decoder-input">
         <h2>Paste your rejection email</h2>
         <textarea

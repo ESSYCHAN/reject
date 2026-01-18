@@ -1,0 +1,238 @@
+/* Signup Prompt - Modal Variant */
+.signup-prompt-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.signup-prompt-modal {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  max-width: 420px;
+  width: 100%;
+  position: relative;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.signup-prompt-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.signup-prompt-close:hover {
+  color: var(--text);
+}
+
+.signup-prompt-content {
+  padding: 2rem;
+  text-align: center;
+}
+
+.signup-prompt-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.signup-prompt-content h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.signup-prompt-main {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.signup-prompt-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.benefit {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.benefit-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+}
+
+.signup-prompt-btn {
+  width: 100%;
+  padding: 0.875rem 1.5rem;
+  font-size: 1rem;
+}
+
+.signup-prompt-skip {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+}
+
+.signup-prompt-skip:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
+/* Signup Prompt - Banner Variant */
+.signup-prompt-banner {
+  background: linear-gradient(135deg, rgba(179, 92, 68, 0.1) 0%, rgba(179, 92, 68, 0.05) 100%);
+  border: 1px solid rgba(179, 92, 68, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 0.875rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.signup-banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.signup-banner-text {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.signup-banner-text strong {
+  color: var(--accent);
+}
+
+.signup-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.btn-sm {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.signup-banner-dismiss {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.signup-banner-dismiss:hover {
+  color: var(--text);
+}
+
+/* Insights Gate */
+.insights-gate {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 3rem 2rem;
+  text-align: center;
+  max-width: 500px;
+  margin: 2rem auto;
+}
+
+.insights-gate-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.insights-gate h3 {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.insights-gate p {
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  margin-bottom: 1.5rem;
+}
+
+.insights-gate-features {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+  max-width: 280px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.insights-gate-features span {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.insights-gate .btn {
+  padding: 0.875rem 2rem;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .signup-prompt-content {
+    padding: 1.5rem;
+  }
+
+  .signup-banner-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .signup-banner-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .signup-banner-actions .btn {
+    flex: 1;
+  }
+}

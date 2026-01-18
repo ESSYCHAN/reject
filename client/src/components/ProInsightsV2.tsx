@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, useClerk } from '@clerk/clerk-react';
 import { ApplicationRecord, SeniorityLevel, SENIORITY_OPTIONS } from '../types/pro';
 import { canUseFeature, incrementUsage, loadUsage } from '../utils/usage';
 import { generateProInsights, ProInsightsData } from '../utils/proAnalytics';
@@ -7,6 +7,7 @@ import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import { useUserSubscription } from '../hooks/useUserSubscription';
 import { Tooltip } from './Tooltip';
 import './ProInsightsV2.css';
+import './SignupPrompt.css';
 
 // Types for the unified analysis
 interface UnifiedInsight {
@@ -152,6 +153,8 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
   const [loadingCommunity, setLoadingCommunity] = useState(false);
   const [rejectionArchive, setRejectionArchive] = useState<RejectionArchiveEntry[]>([]);
   const [loadingArchive, setLoadingArchive] = useState(false);
+  const [showAllPersonalCompanies, setShowAllPersonalCompanies] = useState(false);
+  const COMPANIES_INITIAL_SHOW = 5;
 
   // Use the hook for reliable Pro status (fetches from server with proper auth)
   const { isPro: isProFromHook, isLoading: isProLoading } = useUserSubscription();
@@ -369,6 +372,11 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
         <UpgradePrompt action="insights_runs" onClose={() => setShowUpgrade(false)} />
       </div>
     );
+  }
+
+  // Gate for non-signed-in users
+  if (!isSignedIn) {
+    return <InsightsGate />;
   }
 
   return (
@@ -732,55 +740,71 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
             <p className="section-hint">Patterns from companies you've applied to multiple times.</p>
 
             {proInsights.companies.length > 0 ? (
-              <div className="companies-list">
-                {proInsights.companies.map((company, i) => (
-                  <div key={i} className="company-card personal">
-                    <div className="company-header">
-                      <h4>{company.company}</h4>
-                      <span className="app-count">{company.totalApplications} applications</span>
-                    </div>
-
-                    <div className="company-outcomes">
-                      {company.outcomes.offer > 0 && (
-                        <span className="outcome-badge outcome-offer">{company.outcomes.offer} offer(s)</span>
-                      )}
-                      {company.outcomes.rejected_final > 0 && (
-                        <span className="outcome-badge outcome-final">{company.outcomes.rejected_final} final round</span>
-                      )}
-                      {company.outcomes.rejected_hm > 0 && (
-                        <span className="outcome-badge outcome-hm">{company.outcomes.rejected_hm} HM stage</span>
-                      )}
-                      {company.outcomes.rejected_recruiter > 0 && (
-                        <span className="outcome-badge outcome-recruiter">{company.outcomes.rejected_recruiter} recruiter</span>
-                      )}
-                      {company.outcomes.rejected_ats > 0 && (
-                        <span className="outcome-badge outcome-ats">{company.outcomes.rejected_ats} ATS</span>
-                      )}
-                      {company.outcomes.ghosted > 0 && (
-                        <span className="outcome-badge outcome-ghosted">{company.outcomes.ghosted} ghosted</span>
-                      )}
-                    </div>
-
-                    {company.avgDaysToResponse && (
-                      <p className="company-response-time">Avg response: {company.avgDaysToResponse} days</p>
-                    )}
-
-                    <p className="company-insight">{company.insight}</p>
-
-                    {company.rejectionCategories.length > 0 && (
-                      <div className="rejection-categories">
-                        <span className="categories-label">Rejection types:</span>
-                        {company.rejectionCategories.map((cat, j) => (
-                          <span key={j} className="category-tag">{cat.category} ({cat.count})</span>
-                        ))}
+              <>
+                <div className="companies-list compact">
+                  {(showAllPersonalCompanies
+                    ? proInsights.companies
+                    : proInsights.companies.slice(0, COMPANIES_INITIAL_SHOW)
+                  ).map((company, i) => (
+                    <div key={i} className="company-card personal compact">
+                      <div className="company-header">
+                        <h4>{company.company}</h4>
+                        <div className="company-meta">
+                          <span className="app-count">{company.totalApplications} apps</span>
+                          {company.avgDaysToResponse && (
+                            <span className="response-time">{company.avgDaysToResponse}d avg</span>
+                          )}
+                        </div>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+
+                      <div className="company-outcomes compact">
+                        {company.outcomes.offer > 0 && (
+                          <span className="outcome-badge outcome-offer">{company.outcomes.offer} offer</span>
+                        )}
+                        {company.outcomes.rejected_final > 0 && (
+                          <span className="outcome-badge outcome-final">{company.outcomes.rejected_final} final</span>
+                        )}
+                        {company.outcomes.rejected_hm > 0 && (
+                          <span className="outcome-badge outcome-hm">{company.outcomes.rejected_hm} HM</span>
+                        )}
+                        {company.outcomes.rejected_recruiter > 0 && (
+                          <span className="outcome-badge outcome-recruiter">{company.outcomes.rejected_recruiter} recruiter</span>
+                        )}
+                        {company.outcomes.rejected_ats > 0 && (
+                          <span className="outcome-badge outcome-ats">{company.outcomes.rejected_ats} ATS</span>
+                        )}
+                        {company.outcomes.ghosted > 0 && (
+                          <span className="outcome-badge outcome-ghosted">{company.outcomes.ghosted} ghosted</span>
+                        )}
+                      </div>
+
+                      <p className="company-insight compact">{company.insight}</p>
+
+                      {company.rejectionCategories.length > 0 && (
+                        <div className="rejection-categories">
+                          <span className="categories-label">Rejection types:</span>
+                          {company.rejectionCategories.map((cat, j) => (
+                            <span key={j} className="category-tag">{cat.category} ({cat.count})</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {proInsights.companies.length > COMPANIES_INITIAL_SHOW && (
+                  <button
+                    className="show-more-btn"
+                    onClick={() => setShowAllPersonalCompanies(!showAllPersonalCompanies)}
+                  >
+                    {showAllPersonalCompanies
+                      ? 'Show less'
+                      : `Show ${proInsights.companies.length - COMPANIES_INITIAL_SHOW} more companies`}
+                  </button>
+                )}
+              </>
             ) : (
-              <div className="no-data-message">
-                <p>Apply to companies multiple times to see your personal patterns. We need at least 2 applications per company.</p>
+              <div className="no-data-message compact">
+                <p>Apply to companies multiple times to see patterns (2+ applications per company).</p>
               </div>
             )}
           </div>
@@ -955,6 +979,30 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Gate component for non-signed-in users
+function InsightsGate() {
+  const { openSignUp } = useClerk();
+
+  return (
+    <div className="insights-gate">
+      <div className="insights-gate-icon">&#128202;</div>
+      <h3>Sign up to see your patterns</h3>
+      <p>
+        Track your applications and decode rejections to unlock personalized insights about your job search.
+      </p>
+      <div className="insights-gate-features">
+        <span>&#10003; See where you're getting filtered (ATS vs human)</span>
+        <span>&#10003; Track progress month-over-month</span>
+        <span>&#10003; Company-specific insights</span>
+        <span>&#10003; Sync across devices</span>
+      </div>
+      <button className="btn btn-primary" onClick={() => openSignUp({})}>
+        Sign up free
+      </button>
     </div>
   );
 }
