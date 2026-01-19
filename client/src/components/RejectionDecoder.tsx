@@ -500,15 +500,6 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
         />
       )}
       <div className="decoder-input">
-        <h2>Paste your rejection email</h2>
-        <textarea
-          value={emailText}
-          onChange={(e) => setEmailText(e.target.value)}
-          placeholder="Paste the rejection email here..."
-          rows={10}
-          maxLength={10000}
-          disabled={loading}
-        />
         <div className="interview-stage-section interview-stage-prominent">
           <div className="stage-question">
             <span className="stage-question-icon">💬</span>
@@ -568,6 +559,15 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
           </div>
           <span className="stage-hint">This helps us understand where in the process you were rejected</span>
         </div>
+        <h2>Paste your rejection email</h2>
+        <textarea
+          value={emailText}
+          onChange={(e) => setEmailText(e.target.value)}
+          placeholder="Paste the rejection email here..."
+          rows={10}
+          maxLength={10000}
+          disabled={loading}
+        />
         <div className="decoder-actions">
           <span className="char-count">{emailText.length}/10,000</span>
           <button
