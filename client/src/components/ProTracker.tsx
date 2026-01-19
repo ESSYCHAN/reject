@@ -353,16 +353,17 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
       <LimitWarning action="applications" />
       <div className="tracker-header">
         <h2>
-          Applications
+          Tracker
           {(isLoading || isSyncing) && <span className="sync-status"> (syncing...)</span>}
         </h2>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Cancel' : '+ Add Application'}
+        <button className="btn btn-secondary" onClick={() => setShowForm(!showForm)}>
+          {showForm ? 'Cancel' : '+ Log Past Application'}
         </button>
       </div>
 
       {showForm && (
         <form className="tracker-form pro-form" onSubmit={handleSubmit}>
+          <p className="form-hint">Quick log for jobs you've already applied to. For new jobs, use <strong>Job Check</strong> to analyze the JD first.</p>
           <div className="form-row">
             <div className="form-group">
               <label>Company *</label>

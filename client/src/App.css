@@ -1170,6 +1170,20 @@
   padding: var(--space-lg);
 }
 
+.form-hint {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--highlight);
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
+}
+
+.form-hint strong {
+  color: var(--accent);
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
