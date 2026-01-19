@@ -509,27 +509,64 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
           maxLength={10000}
           disabled={loading}
         />
-        <div className="interview-stage-section">
-          <div className="stage-selector">
-            <label htmlFor="interview-stage">
-              <span className="stage-icon-highlight">!</span>
-              How far did you get?
-            </label>
-            <select
-              id="interview-stage"
-              value={interviewStage}
-              onChange={(e) => setInterviewStage(e.target.value as InterviewStage)}
-              disabled={loading}
-              className="stage-select"
-            >
-              <option value="none">1. Just Applied (no interviews)</option>
-              <option value="phone_screen">2. Phone/Recruiter Screen</option>
-              <option value="technical">3. Technical Interview</option>
-              <option value="onsite">4. Onsite/Panel Rounds</option>
-              <option value="final_round">5. Final Round</option>
-            </select>
-            <span className="stage-hint">Selecting the right stage gives you better insights</span>
+        <div className="interview-stage-section interview-stage-prominent">
+          <div className="stage-question">
+            <span className="stage-question-icon">💬</span>
+            <span className="stage-question-text">Did you have any interviews for this role?</span>
           </div>
+          <div className="stage-options">
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'none' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('none')}
+              disabled={loading}
+            >
+              <span className="option-number">1</span>
+              <span className="option-label">No interviews</span>
+              <span className="option-desc">Just applied</span>
+            </button>
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'phone_screen' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('phone_screen')}
+              disabled={loading}
+            >
+              <span className="option-number">2</span>
+              <span className="option-label">Recruiter call</span>
+              <span className="option-desc">Phone screen</span>
+            </button>
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'technical' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('technical')}
+              disabled={loading}
+            >
+              <span className="option-number">3</span>
+              <span className="option-label">Technical</span>
+              <span className="option-desc">Coding/skills test</span>
+            </button>
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'onsite' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('onsite')}
+              disabled={loading}
+            >
+              <span className="option-number">4</span>
+              <span className="option-label">Onsite</span>
+              <span className="option-desc">Panel rounds</span>
+            </button>
+            <button
+              type="button"
+              className={`stage-option ${interviewStage === 'final_round' ? 'active' : ''}`}
+              onClick={() => setInterviewStage('final_round')}
+              disabled={loading}
+            >
+              <span className="option-number">5</span>
+              <span className="option-label">Final round</span>
+              <span className="option-desc">Last stage</span>
+            </button>
+          </div>
+          <span className="stage-hint">This helps us understand where in the process you were rejected</span>
         </div>
         <div className="decoder-actions">
           <span className="char-count">{emailText.length}/10,000</span>
