@@ -14,20 +14,11 @@ export function LandingHero({ onGetStarted, onCheckFit, onTrackApp }: LandingHer
           Your job search companion
         </h1>
         <p className="hero-subtitle">
-          Decode rejections. Check fit before applying. Track what matters.
+          Check jobs before applying. Track what matters. Decode rejections.
         </p>
 
         {/* Smart entry points based on user journey */}
         <div className="entry-points">
-          <button className="entry-card entry-decode" onClick={onGetStarted}>
-            <span className="entry-icon">&#128274;</span>
-            <div className="entry-text">
-              <strong>Got a rejection?</strong>
-              <span>Decode what it really means</span>
-            </div>
-            <span className="entry-arrow">&#8594;</span>
-          </button>
-
           <button className="entry-card entry-fit" onClick={onCheckFit}>
             <span className="entry-icon">&#127919;</span>
             <div className="entry-text">
@@ -45,6 +36,15 @@ export function LandingHero({ onGetStarted, onCheckFit, onTrackApp }: LandingHer
             </div>
             <span className="entry-arrow">&#8594;</span>
           </button>
+
+          <button className="entry-card entry-decode" onClick={onGetStarted}>
+            <span className="entry-icon">&#128274;</span>
+            <div className="entry-text">
+              <strong>Got a rejection?</strong>
+              <span>Decode what it really means</span>
+            </div>
+            <span className="entry-arrow">&#8594;</span>
+          </button>
         </div>
 
         <p className="hero-note">Free to use. No signup required to start.</p>
@@ -52,19 +52,19 @@ export function LandingHero({ onGetStarted, onCheckFit, onTrackApp }: LandingHer
 
       <div className="hero-demo">
         <div className="demo-card">
-          <div className="demo-label">Example Analysis</div>
+          <div className="demo-label">Example Job Check</div>
           <div className="demo-content">
             <div className="demo-category">
-              <span className="category-badge category-soft-no">Soft No</span>
-              <span className="confidence">87% confidence</span>
+              <span className="category-badge category-door-open">75 Fit Score</span>
+              <span className="confidence">Good match</span>
             </div>
             <div className="demo-insight">
-              <strong>What it means:</strong>
-              <p>"We went with other candidates" = You made it past ATS but got filtered at recruiter screen. The timing (3 days) suggests a quick human review, not deep consideration.</p>
+              <strong>TL;DR:</strong>
+              <p>Strong fit for your experience. Requirements are realistic, salary is transparent, and direct apply is worth it. One red flag: "fast-paced" often means understaffed.</p>
             </div>
             <div className="demo-stage">
-              <span className="stage-badge stage-recruiter">Recruiter Screen</span>
-              <span className="stage-note">Filtered before hiring manager</span>
+              <span className="stage-badge stage-recruiter">Worth applying</span>
+              <span className="stage-note">Save or mark as applied</span>
             </div>
           </div>
         </div>

@@ -205,28 +205,28 @@ function App() {
           <h1 className="logo" onClick={() => { setActiveTab('decoder'); if (!isSignedIn) setShowLanding(true); }} style={{ cursor: 'pointer' }}>REJECT</h1>
           <nav className="nav">
             <button
+              className={`nav-btn ${activeTab === 'jd-check' ? 'active' : ''}`}
+              onClick={() => setActiveTab('jd-check')}
+            >
+              Job Check
+            </button>
+            <button
+              className={`nav-btn ${activeTab === 'pro-tracker' ? 'active' : ''}`}
+              onClick={() => setActiveTab('pro-tracker')}
+            >
+              Tracker {isSyncing && <span className="sync-indicator">...</span>}
+            </button>
+            <button
               className={`nav-btn ${activeTab === 'decoder' ? 'active' : ''}`}
               onClick={() => setActiveTab('decoder')}
             >
               Decode
             </button>
             <button
-              className={`nav-btn ${activeTab === 'pro-tracker' ? 'active' : ''}`}
-              onClick={() => setActiveTab('pro-tracker')}
-            >
-              Applications {isSyncing && <span className="sync-indicator">...</span>}
-            </button>
-            <button
-              className={`nav-btn ${activeTab === 'jd-check' ? 'active' : ''}`}
-              onClick={() => setActiveTab('jd-check')}
-            >
-              Check Fit
-            </button>
-            <button
               className={`nav-btn ${activeTab === 'insights' ? 'active' : ''}`}
               onClick={() => setActiveTab('insights')}
             >
-              Insights
+              Patterns
             </button>
           </nav>
           <AuthButtons onAccountClick={() => setActiveTab('account')} />
