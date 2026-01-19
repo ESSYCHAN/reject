@@ -274,9 +274,9 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [decodeCount, setDecodeCount] = useState(() => loadUsage().decodes_per_month);
 
-  // Filter to show only pending/interviewing applications (ones that could receive rejections)
+  // Filter to show only applied/interviewing/ghosted applications (ones that could receive rejections)
   const linkableApps = applications.filter(app =>
-    app.outcome === 'pending' || app.outcome === 'ghosted'
+    app.outcome === 'applied' || app.outcome === 'interviewing' || app.outcome === 'ghosted'
   );
 
   // Listen for Pro status sync to clear upgrade prompt if user just became Pro

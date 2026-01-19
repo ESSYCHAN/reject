@@ -6,12 +6,16 @@ import {
   Outcome,
   SENIORITY_OPTIONS,
   SOURCE_OPTIONS,
-  OUTCOME_OPTIONS
+  SAVED_STATUS_OPTIONS,
+  APPLIED_STATUS_OPTIONS,
+  isSavedStatus
 } from '../types/pro';
 import { loadUsage, saveUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import { useApplicationsSync } from '../hooks/useApplicationsSync';
 import { useUserSubscription } from '../hooks/useUserSubscription';
+
+type FilterTab = 'all' | 'saved' | 'applied';
 
 interface ProTrackerProps {
   onApplicationsChange?: (apps: ApplicationRecord[]) => void;
@@ -90,6 +94,9 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedAppId, setExpandedAppId] = useState<string | null>(null);
   const [modalApp, setModalApp] = useState<ApplicationRecord | null>(null);
+  const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  const [editingNotes, setEditingNotes] = useState<string | null>(null);
+  const [notesText, setNotesText] = useState('');
   const [formData, setFormData] = useState({
     company: '',
     role: '',
@@ -114,15 +121,15 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     }
   }, [isPro, showUpgrade]);
 
-  // Auto-ghost old pending applications
+  // Auto-ghost old applied applications that haven't received a response
   useEffect(() => {
-    const pendingApps = applications.filter(app => app.outcome === 'pending');
-    const appsToGhost = pendingApps.filter(app => {
+    const appliedApps = applications.filter(app => app.outcome === 'applied');
+    const appsToGhost = appliedApps.filter(app => {
       const days = daysSinceApplied(app.dateApplied);
       return days !== null && days >= GHOST_THRESHOLD_DAYS;
     });
 
-    // Mark each old pending app as ghosted
+    // Mark each old applied app as ghosted
     appsToGhost.forEach(app => {
       const days = daysSinceApplied(app.dateApplied);
       saveApplication({
@@ -133,19 +140,44 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     });
   }, [applications, saveApplication]);
 
+  // Filter applications by tab
+  const filteredByTab = useMemo(() => {
+    switch (filterTab) {
+      case 'saved':
+        return applications.filter(a => isSavedStatus(a.outcome));
+      case 'applied':
+        return applications.filter(a => !isSavedStatus(a.outcome));
+      default:
+        return applications;
+    }
+  }, [applications, filterTab]);
+
   const stats = useMemo(() => {
     const total = applications.length;
-    if (total === 0) return { total: 0, ghostRate: 0, rejectRate: 0, successRate: 0 };
+    const savedCount = applications.filter(a => isSavedStatus(a.outcome)).length;
+    const appliedCount = applications.filter(a => !isSavedStatus(a.outcome)).length;
 
-    const ghosted = applications.filter(a => a.outcome === 'ghosted').length;
-    const rejected = applications.filter(a => a.outcome.startsWith('rejected')).length;
-    const success = applications.filter(a => ['offer', 'rejected_final', 'rejected_hm'].includes(a.outcome)).length;
+    if (appliedCount === 0) return {
+      total,
+      savedCount,
+      appliedCount,
+      ghostRate: 0,
+      rejectRate: 0,
+      successRate: 0
+    };
+
+    const appliedApps = applications.filter(a => !isSavedStatus(a.outcome));
+    const ghosted = appliedApps.filter(a => a.outcome === 'ghosted').length;
+    const rejected = appliedApps.filter(a => a.outcome.startsWith('rejected')).length;
+    const success = appliedApps.filter(a => ['offer', 'rejected_final', 'rejected_hm'].includes(a.outcome)).length;
 
     return {
       total,
-      ghostRate: Math.round((ghosted / total) * 100),
-      rejectRate: Math.round((rejected / total) * 100),
-      successRate: Math.round((success / total) * 100)
+      savedCount,
+      appliedCount,
+      ghostRate: Math.round((ghosted / appliedCount) * 100),
+      rejectRate: Math.round((rejected / appliedCount) * 100),
+      successRate: Math.round((success / appliedCount) * 100)
     };
   }, [applications]);
 
@@ -171,7 +203,7 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
       industry: '', // Can be inferred from company name
       source: formData.source,
       dateApplied: formData.dateApplied,
-      outcome: 'pending',
+      outcome: 'applied',
       daysToResponse: null // Auto-calculated when rejection is linked
     };
 
@@ -203,7 +235,8 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     if (outcome === 'offer') return 'outcome-offer';
     if (outcome === 'ghosted') return 'outcome-ghosted';
     if (outcome.startsWith('rejected')) return 'outcome-rejected';
-    if (outcome === 'pending') return 'outcome-pending';
+    if (isSavedStatus(outcome)) return 'outcome-saved';
+    if (outcome === 'applied' || outcome === 'interviewing') return 'outcome-pending';
     return '';
   };
 
@@ -243,9 +276,9 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     setExpandedAppId(expandedAppId === appId ? null : appId);
   };
 
-  // Sort applications
+  // Sort applications (using filtered list)
   const sortedApplications = useMemo(() => {
-    const sorted = [...applications].sort((a, b) => {
+    const sorted = [...filteredByTab].sort((a, b) => {
       let comparison = 0;
       switch (sortBy) {
         case 'date':
@@ -261,7 +294,28 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
       return sortOrder === 'desc' ? -comparison : comparison;
     });
     return sorted;
-  }, [applications, sortBy, sortOrder]);
+  }, [filteredByTab, sortBy, sortOrder]);
+
+  // Handle notes editing
+  const startEditingNotes = (app: ApplicationRecord) => {
+    setEditingNotes(app.id);
+    setNotesText(app.notes || '');
+  };
+
+  const saveNotes = (appId: string) => {
+    updateApplication(appId, { notes: notesText });
+    setEditingNotes(null);
+    setNotesText('');
+  };
+
+  // Get fit score color class
+  const getFitScoreClass = (score: number): string => {
+    if (score >= 80) return 'fit-strong';
+    if (score >= 65) return 'fit-good';
+    if (score >= 50) return 'fit-moderate';
+    if (score >= 35) return 'fit-weak';
+    return 'fit-poor';
+  };
 
   // Pagination
   const totalPages = Math.ceil(sortedApplications.length / ITEMS_PER_PAGE);
@@ -373,18 +427,40 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
         </form>
       )}
 
+      {/* Filter tabs */}
+      <div className="filter-tabs">
+        <button
+          className={`filter-tab ${filterTab === 'all' ? 'active' : ''}`}
+          onClick={() => { setFilterTab('all'); setCurrentPage(1); }}
+        >
+          All ({stats.total})
+        </button>
+        <button
+          className={`filter-tab ${filterTab === 'saved' ? 'active' : ''}`}
+          onClick={() => { setFilterTab('saved'); setCurrentPage(1); }}
+        >
+          Saved ({stats.savedCount})
+        </button>
+        <button
+          className={`filter-tab ${filterTab === 'applied' ? 'active' : ''}`}
+          onClick={() => { setFilterTab('applied'); setCurrentPage(1); }}
+        >
+          Applied ({stats.appliedCount})
+        </button>
+      </div>
+
       <div className="stats-grid">
         <div className="stat-card">
-          <span className="stat-value">{stats.total}</span>
-          <span className="stat-label">Total</span>
+          <span className="stat-value">{stats.savedCount}</span>
+          <span className="stat-label">Saved</span>
+        </div>
+        <div className="stat-card">
+          <span className="stat-value">{stats.appliedCount}</span>
+          <span className="stat-label">Applied</span>
         </div>
         <div className="stat-card">
           <span className="stat-value">{stats.successRate}%</span>
           <span className="stat-label">Got Past ATS</span>
-        </div>
-        <div className="stat-card">
-          <span className="stat-value">{stats.rejectRate}%</span>
-          <span className="stat-label">Rejected</span>
         </div>
         <div className="stat-card">
           <span className="stat-value">{stats.ghostRate}%</span>
@@ -430,45 +506,83 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
             {/* Compact table view */}
             <div className="applications-table">
               {paginatedApplications.map((app) => (
-                <div key={app.id} className={`app-row ${expandedAppId === app.id ? 'expanded' : ''}`}>
+                <div key={app.id} className={`app-row ${expandedAppId === app.id ? 'expanded' : ''} ${isSavedStatus(app.outcome) ? 'saved-job' : ''}`}>
                   <div className="app-row-main">
                     <div className="app-row-company">
-                      <span className="company-name">{app.company}</span>
-                      <span className="role-name">{app.role}</span>
+                      <span className="company-name">
+                        {app.company}
+                        {app.fitAnalysis && (
+                          <span className={`fit-score-mini ${getFitScoreClass(app.fitAnalysis.fitScore)}`}>
+                            {app.fitAnalysis.fitScore}
+                          </span>
+                        )}
+                      </span>
+                      <span className="role-name">
+                        {app.role}
+                        {app.jobUrl && (
+                          <a href={app.jobUrl} target="_blank" rel="noopener noreferrer" className="job-link" title="View job posting">
+                            ↗
+                          </a>
+                        )}
+                      </span>
                     </div>
                     <div className="app-row-date">
                       {formatDate(app.dateApplied)}
-                      {app.outcome === 'pending' && daysSinceApplied(app.dateApplied) !== null && (
+                      {app.outcome === 'applied' && daysSinceApplied(app.dateApplied) !== null && (
                         <span className={`days-badge ${daysSinceApplied(app.dateApplied)! >= 21 ? 'warning' : ''}`}>
                           {daysSinceApplied(app.dateApplied)}d
                         </span>
                       )}
-                      {app.daysToResponse !== null && app.outcome !== 'pending' && (
+                      {app.daysToResponse !== null && !isSavedStatus(app.outcome) && app.outcome !== 'applied' && (
                         <span className="days-badge">{app.daysToResponse}d</span>
                       )}
                     </div>
                     <div className="app-row-status">
                       <select
-                        className={`status-select-compact ${getOutcomeClass(app.outcome)}`}
+                        className={`status-select-compact ${getOutcomeClass(app.outcome)} ${isSavedStatus(app.outcome) ? 'saved-status' : ''}`}
                         value={app.outcome}
                         onChange={(e) => updateApplication(app.id, { outcome: e.target.value as Outcome })}
                       >
-                        {OUTCOME_OPTIONS.map((opt) => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
+                        {isSavedStatus(app.outcome) ? (
+                          <>
+                            <optgroup label="Saved">
+                              {SAVED_STATUS_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Applied">
+                              {APPLIED_STATUS_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </optgroup>
+                          </>
+                        ) : (
+                          <>
+                            <optgroup label="Applied">
+                              {APPLIED_STATUS_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Saved">
+                              {SAVED_STATUS_OPTIONS.map((opt) => (
+                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                              ))}
+                            </optgroup>
+                          </>
+                        )}
                       </select>
                     </div>
                     <div className="app-row-actions">
-                      {app.rejectionAnalysis && (
+                      {(app.rejectionAnalysis || app.fitAnalysis || app.notes !== undefined) && (
                         <button
                           className={`btn-expand-analysis ${expandedAppId === app.id ? 'active' : ''}`}
                           onClick={() => toggleExpand(app.id)}
-                          title="View decoded analysis"
+                          title={app.fitAnalysis ? 'View fit analysis' : app.rejectionAnalysis ? 'View decoded analysis' : 'View notes'}
                         >
                           {expandedAppId === app.id ? '▼' : '▶'}
                         </button>
                       )}
-                      {app.outcome === 'pending' && daysSinceApplied(app.dateApplied)! >= 21 && daysSinceApplied(app.dateApplied)! < GHOST_THRESHOLD_DAYS && (
+                      {app.outcome === 'applied' && daysSinceApplied(app.dateApplied)! >= 21 && daysSinceApplied(app.dateApplied)! < GHOST_THRESHOLD_DAYS && (
                         <button
                           className="btn-ghost-compact"
                           onClick={() => updateApplication(app.id, {
@@ -529,6 +643,76 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                           See full analysis →
                         </button>
                       </div>
+                    </div>
+                  )}
+
+                  {/* Fit analysis panel for saved jobs */}
+                  {expandedAppId === app.id && app.fitAnalysis && !app.rejectionAnalysis && (
+                    <div className="app-row-fit-analysis">
+                      <div className="fit-analysis-header">
+                        <span className={`fit-score-badge ${getFitScoreClass(app.fitAnalysis.fitScore)}`}>
+                          {app.fitAnalysis.fitScore} Fit Score
+                        </span>
+                        <span className="fit-verdict">{app.fitAnalysis.verdict.replace('_', ' ')}</span>
+                      </div>
+
+                      {app.fitAnalysis.highlights.length > 0 && (
+                        <div className="fit-section">
+                          <h5>Highlights</h5>
+                          <ul className="fit-list highlights">
+                            {app.fitAnalysis.highlights.map((h, i) => (
+                              <li key={i}>{h}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {app.fitAnalysis.concerns.length > 0 && (
+                        <div className="fit-section">
+                          <h5>Concerns</h5>
+                          <ul className="fit-list concerns">
+                            {app.fitAnalysis.concerns.map((c, i) => (
+                              <li key={i}>{c}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      <p className="fit-recommendation">{app.fitAnalysis.recommendation}</p>
+                    </div>
+                  )}
+
+                  {/* Notes section (always expandable) */}
+                  {expandedAppId === app.id && (
+                    <div className="app-row-notes">
+                      <div className="notes-header">
+                        <h5>Notes</h5>
+                        {editingNotes !== app.id && (
+                          <button className="btn-edit-notes" onClick={() => startEditingNotes(app)}>
+                            {app.notes ? 'Edit' : 'Add notes'}
+                          </button>
+                        )}
+                      </div>
+                      {editingNotes === app.id ? (
+                        <div className="notes-edit">
+                          <textarea
+                            value={notesText}
+                            onChange={(e) => setNotesText(e.target.value)}
+                            placeholder="Add notes about this job (research, prep tasks, interview notes...)"
+                            rows={3}
+                          />
+                          <div className="notes-actions">
+                            <button className="btn btn-primary btn-small" onClick={() => saveNotes(app.id)}>
+                              Save
+                            </button>
+                            <button className="btn btn-secondary btn-small" onClick={() => setEditingNotes(null)}>
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="notes-content">{app.notes || 'No notes yet'}</p>
+                      )}
                     </div>
                   )}
                 </div>

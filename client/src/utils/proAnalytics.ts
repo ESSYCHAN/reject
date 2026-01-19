@@ -1,5 +1,5 @@
 // Pro Analytics - Progress Tracking, Company Intelligence, Rejection Pattern Aggregation
-import { ApplicationRecord } from '../types/pro';
+import { ApplicationRecord, isAppliedStatus } from '../types/pro';
 
 // ============ MONTHLY STATS HISTORY ============
 
@@ -37,7 +37,9 @@ export function calculateMonthlyStats(applications: ApplicationRecord[]): Monthl
 
   for (const [month, apps] of Object.entries(byMonth)) {
     const total = apps.length;
-    const resolved = apps.filter(a => a.outcome !== 'pending');
+    // Only count applied applications (not saved/wishlist jobs)
+    const appliedApps = apps.filter(a => isAppliedStatus(a.outcome));
+    const resolved = appliedApps.filter(a => a.outcome !== 'applied');
     const responses = resolved.filter(a => a.outcome !== 'ghosted').length;
     const ghosted = resolved.filter(a => a.outcome === 'ghosted').length;
     const interviews = apps.filter(a =>
@@ -158,7 +160,14 @@ export interface CompanyIntelligence {
   company: string;
   totalApplications: number;
   outcomes: {
-    pending: number;
+    // Saved statuses
+    saved: number;
+    researching: number;
+    preparing: number;
+    ready_to_apply: number;
+    // Applied statuses
+    applied: number;
+    interviewing: number;
     ghosted: number;
     rejected_ats: number;
     rejected_recruiter: number;
@@ -190,7 +199,14 @@ export function analyzeCompanies(applications: ApplicationRecord[]): CompanyInte
     if (apps.length < 2) continue;
 
     const outcomes = {
-      pending: 0,
+      // Saved statuses
+      saved: 0,
+      researching: 0,
+      preparing: 0,
+      ready_to_apply: 0,
+      // Applied statuses
+      applied: 0,
+      interviewing: 0,
       ghosted: 0,
       rejected_ats: 0,
       rejected_recruiter: 0,
@@ -204,7 +220,9 @@ export function analyzeCompanies(applications: ApplicationRecord[]): CompanyInte
     let daysCount = 0;
 
     for (const app of apps) {
-      outcomes[app.outcome]++;
+      if (outcomes[app.outcome] !== undefined) {
+        outcomes[app.outcome]++;
+      }
 
       if (app.daysToResponse != null && app.daysToResponse > 0) {
         totalDays += app.daysToResponse;

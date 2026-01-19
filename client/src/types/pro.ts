@@ -1,7 +1,12 @@
 export type SeniorityLevel = 'intern' | 'junior' | 'mid' | 'senior' | 'staff' | 'principal' | 'director' | 'vp' | 'c-level';
 export type CompanySize = 'startup' | 'small' | 'mid' | 'large' | 'enterprise';
 export type ApplicationSource = 'linkedin' | 'company_site' | 'referral' | 'recruiter' | 'job_board' | 'direct' | 'other';
-export type Outcome = 'pending' | 'ghosted' | 'rejected_ats' | 'rejected_recruiter' | 'rejected_hm' | 'rejected_final' | 'offer';
+// Pre-application statuses (wishlist/saved)
+export type SavedStatus = 'saved' | 'researching' | 'preparing' | 'ready_to_apply';
+// Post-application statuses
+export type AppliedStatus = 'applied' | 'interviewing' | 'ghosted' | 'rejected_ats' | 'rejected_recruiter' | 'rejected_hm' | 'rejected_final' | 'offer';
+// Combined outcome type
+export type Outcome = SavedStatus | AppliedStatus;
 
 export interface RejectionAnalysis {
   category: string;
@@ -17,6 +22,17 @@ export interface RejectionAnalysis {
   whatItMeans?: string;
 }
 
+// Fit analysis from JD Check (stored with saved jobs)
+export interface FitAnalysis {
+  fitScore: number; // 0-100
+  verdict: 'strong_fit' | 'good_fit' | 'moderate_fit' | 'weak_fit' | 'poor_fit';
+  highlights: string[];
+  concerns: string[];
+  recommendation: string;
+  analyzedAt: string;
+  jobUrl?: string;
+}
+
 export interface ApplicationRecord {
   id: string;
   company: string;
@@ -25,11 +41,15 @@ export interface ApplicationRecord {
   companySize: CompanySize;
   industry: string | null;
   source: ApplicationSource;
-  dateApplied: string;
+  dateApplied: string; // For saved jobs, this is the date saved
+  dateSaved?: string; // When job was first saved (for wishlist)
   outcome: Outcome;
   daysToResponse: number | null;
   rejectionEmailId?: string;
   rejectionAnalysis?: RejectionAnalysis;
+  fitAnalysis?: FitAnalysis; // From JD Check
+  notes?: string; // User notes for research, prep, etc.
+  jobUrl?: string; // Link to the job posting
 }
 
 export interface UserProfile {
@@ -110,8 +130,18 @@ export const SOURCE_OPTIONS: { value: ApplicationSource; label: string }[] = [
   { value: 'other', label: 'Other' }
 ];
 
-export const OUTCOME_OPTIONS: { value: Outcome; label: string }[] = [
-  { value: 'pending', label: 'Pending' },
+// Pre-application (saved/wishlist) statuses
+export const SAVED_STATUS_OPTIONS: { value: SavedStatus; label: string }[] = [
+  { value: 'saved', label: 'Saved' },
+  { value: 'researching', label: 'Researching' },
+  { value: 'preparing', label: 'Preparing' },
+  { value: 'ready_to_apply', label: 'Ready to Apply' }
+];
+
+// Post-application statuses
+export const APPLIED_STATUS_OPTIONS: { value: AppliedStatus; label: string }[] = [
+  { value: 'applied', label: 'Applied' },
+  { value: 'interviewing', label: 'Interviewing' },
   { value: 'ghosted', label: 'Ghosted' },
   { value: 'rejected_ats', label: 'Rejected (ATS)' },
   { value: 'rejected_recruiter', label: 'Rejected (Recruiter)' },
@@ -119,3 +149,19 @@ export const OUTCOME_OPTIONS: { value: Outcome; label: string }[] = [
   { value: 'rejected_final', label: 'Rejected (Final Round)' },
   { value: 'offer', label: 'Offer' }
 ];
+
+// All outcome options combined
+export const OUTCOME_OPTIONS: { value: Outcome; label: string }[] = [
+  ...SAVED_STATUS_OPTIONS,
+  ...APPLIED_STATUS_OPTIONS
+];
+
+// Helper to check if status is pre-application
+export const isSavedStatus = (status: Outcome): status is SavedStatus => {
+  return ['saved', 'researching', 'preparing', 'ready_to_apply'].includes(status);
+};
+
+// Helper to check if status is post-application
+export const isAppliedStatus = (status: Outcome): status is AppliedStatus => {
+  return !isSavedStatus(status);
+};

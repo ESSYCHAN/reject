@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ApplicationRecord, SeniorityLevel, CompanySize, ApplicationSource, SOURCE_OPTIONS } from '../types/pro';
+import { ApplicationRecord, SeniorityLevel, CompanySize, ApplicationSource, SOURCE_OPTIONS, FitAnalysis, SavedStatus } from '../types/pro';
 import { canUseFeature, incrementUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import { useUserSubscription } from '../hooks/useUserSubscription';
@@ -101,14 +101,48 @@ interface JDAnalyzerProps {
   onAddToTracker?: (app: Omit<ApplicationRecord, 'id'>) => void;
 }
 
+// Calculate fit score from analysis
+function calculateFitScore(result: JDAnalysis): number {
+  let score = 70; // Base score
+
+  // Deduct for red flags
+  result.red_flags.forEach(flag => {
+    if (flag.severity === 'major') score -= 15;
+    else if (flag.severity === 'moderate') score -= 8;
+    else score -= 3;
+  });
+
+  // Boost if direct apply is worth it
+  if (result.application_strategy.direct_apply_worth_it) score += 10;
+
+  // Boost if realistic experience requirements
+  if (result.reality_check.is_realistic) score += 5;
+
+  // Boost if salary is disclosed
+  if (result.salary_insight.mentioned) score += 5;
+
+  return Math.max(0, Math.min(100, score));
+}
+
+// Get verdict from fit score
+function getFitVerdict(score: number): FitAnalysis['verdict'] {
+  if (score >= 80) return 'strong_fit';
+  if (score >= 65) return 'good_fit';
+  if (score >= 50) return 'moderate_fit';
+  if (score >= 35) return 'weak_fit';
+  return 'poor_fit';
+}
+
 export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
   const [jobDescription, setJobDescription] = useState('');
+  const [jobUrl, setJobUrl] = useState('');
   const [result, setResult] = useState<JDAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [addedToTracker, setAddedToTracker] = useState(false);
+  const [addedToTracker, setAddedToTracker] = useState<'applied' | 'saved' | null>(null);
   const [selectedSource, setSelectedSource] = useState<ApplicationSource>('linkedin');
+  const [selectedSavedStatus, setSelectedSavedStatus] = useState<SavedStatus>('saved');
 
   // Use the hook for reliable Pro status (fetches from server with proper auth)
   const { isPro } = useUserSubscription();
@@ -167,7 +201,7 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
     setError(null);
     setResult(null);
     setShowUpgrade(false);
-    setAddedToTracker(false);
+    setAddedToTracker(null);
 
     try {
       const data = await analyzeJD(jobDescription);
@@ -206,7 +240,74 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
     }
   };
 
-  const handleAddToTracker = () => {
+  // Build fit analysis from result
+  const buildFitAnalysis = (): FitAnalysis | undefined => {
+    if (!result) return undefined;
+
+    const fitScore = calculateFitScore(result);
+    const highlights: string[] = [];
+    const concerns: string[] = [];
+
+    // Add highlights
+    if (result.application_strategy.direct_apply_worth_it) {
+      highlights.push('Direct application recommended');
+    }
+    if (result.reality_check.is_realistic) {
+      highlights.push('Realistic experience requirements');
+    }
+    if (result.salary_insight.mentioned) {
+      highlights.push(`Salary: ${result.salary_insight.range || 'disclosed'}`);
+    }
+    result.must_haves.slice(0, 3).forEach(mh => highlights.push(mh));
+
+    // Add concerns from red flags
+    result.red_flags.forEach(flag => {
+      concerns.push(`${flag.issue} (${flag.severity})`);
+    });
+
+    return {
+      fitScore,
+      verdict: getFitVerdict(fitScore),
+      highlights,
+      concerns,
+      recommendation: result.tldr,
+      analyzedAt: new Date().toISOString(),
+      jobUrl: jobUrl || undefined
+    };
+  };
+
+  // Save job for later (wishlist)
+  const handleSaveForLater = () => {
+    if (!result || !onAddToTracker) return;
+
+    // Check for duplicates
+    if (isDuplicate(result.company, result.role_title)) {
+      setError(`${result.company} - ${result.role_title} is already in your tracker`);
+      return;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const newApp: Omit<ApplicationRecord, 'id'> = {
+      company: result.company,
+      role: result.role_title,
+      seniorityLevel: mapSeniority(result.seniority),
+      companySize: mapCompanySize(result.company_size),
+      industry: '',
+      source: selectedSource,
+      dateApplied: today,
+      dateSaved: today,
+      outcome: selectedSavedStatus,
+      daysToResponse: null,
+      fitAnalysis: buildFitAnalysis(),
+      jobUrl: jobUrl || undefined
+    };
+
+    onAddToTracker(newApp);
+    setAddedToTracker('saved');
+  };
+
+  // Mark as applied (existing behavior)
+  const handleMarkApplied = () => {
     if (!result || !onAddToTracker) return;
 
     // Check for duplicates
@@ -223,12 +324,14 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
       industry: '',
       source: selectedSource,
       dateApplied: new Date().toISOString().split('T')[0],
-      outcome: 'pending',
-      daysToResponse: null
+      outcome: 'applied',
+      daysToResponse: null,
+      fitAnalysis: buildFitAnalysis(),
+      jobUrl: jobUrl || undefined
     };
 
     onAddToTracker(newApp);
-    setAddedToTracker(true);
+    setAddedToTracker('applied');
   };
 
   // Show upgrade prompt if limit reached
@@ -249,6 +352,14 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
       </p>
 
       <div className="jd-input-section">
+        <input
+          type="url"
+          value={jobUrl}
+          onChange={(e) => setJobUrl(e.target.value)}
+          placeholder="Job URL (optional) - helps you find it later"
+          className="job-url-input"
+          disabled={loading}
+        />
         <textarea
           value={jobDescription}
           onChange={(e) => setJobDescription(e.target.value)}
@@ -285,24 +396,52 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
                 <span className="tag">{result.remote_policy}</span>
               </div>
             </div>
+            {/* Fit Score Badge */}
+            {result && (
+              <div className={`fit-score-badge fit-${getFitVerdict(calculateFitScore(result))}`}>
+                <span className="fit-score-number">{calculateFitScore(result)}</span>
+                <span className="fit-score-label">Fit Score</span>
+              </div>
+            )}
             {onAddToTracker && (
               <div className="result-actions">
                 {addedToTracker ? (
-                  <span className="added-confirmation">Added to Tracker</span>
+                  <span className="added-confirmation">
+                    {addedToTracker === 'saved' ? 'Saved for later' : 'Added as applied'}
+                  </span>
                 ) : (
-                  <div className="add-to-tracker-form">
-                    <select
-                      value={selectedSource}
-                      onChange={(e) => setSelectedSource(e.target.value as ApplicationSource)}
-                      className="source-select"
-                    >
-                      {SOURCE_OPTIONS.map(opt => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                    <button className="btn btn-primary" onClick={handleAddToTracker}>
-                      + Add to Tracker
-                    </button>
+                  <div className="tracker-action-buttons">
+                    <div className="action-row">
+                      <select
+                        value={selectedSource}
+                        onChange={(e) => setSelectedSource(e.target.value as ApplicationSource)}
+                        className="source-select"
+                      >
+                        {SOURCE_OPTIONS.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="action-row action-buttons">
+                      <div className="save-for-later-group">
+                        <select
+                          value={selectedSavedStatus}
+                          onChange={(e) => setSelectedSavedStatus(e.target.value as SavedStatus)}
+                          className="saved-status-select"
+                        >
+                          <option value="saved">Save for later</option>
+                          <option value="researching">Researching</option>
+                          <option value="preparing">Preparing</option>
+                          <option value="ready_to_apply">Ready to apply</option>
+                        </select>
+                        <button className="btn btn-secondary" onClick={handleSaveForLater}>
+                          Save
+                        </button>
+                      </div>
+                      <button className="btn btn-primary" onClick={handleMarkApplied}>
+                        Mark Applied
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
