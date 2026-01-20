@@ -77,8 +77,6 @@ export function PromoStrip() {
   return (
     <div className="promo-strip">
       <div className="promo-content">
-        <span className="promo-stat">2,847</span> rejection emails decoded
-        <span className="promo-divider">•</span>
         <span className="promo-stat">73%</span> of rejections happen before human review
         <span className="promo-divider">•</span>
         <span className="promo-stat">Free</span> to start
