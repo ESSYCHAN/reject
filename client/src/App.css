@@ -2580,12 +2580,24 @@
 }
 
 .fit-recommendation {
-  font-size: 0.9rem;
-  color: var(--text);
-  padding: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
   background: var(--card);
   border-radius: var(--radius-sm);
   border-left: 3px solid #3b82f6;
+}
+
+.fit-recommendation h5 {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0 0 0.25rem 0;
+  font-weight: 600;
+}
+
+.fit-recommendation p {
+  font-size: 0.9rem;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.5;
 }
 
 /* Notes section */

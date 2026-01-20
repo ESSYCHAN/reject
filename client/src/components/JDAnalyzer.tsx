@@ -448,8 +448,9 @@ export function JDAnalyzer({ onAddToTracker }: JDAnalyzerProps) {
             )}
           </div>
 
-          {/* TL;DR */}
+          {/* What to expect */}
           <div className="result-section tldr-section">
+            <h4>What to expect</h4>
             <p className="tldr">{result.tldr}</p>
           </div>
 

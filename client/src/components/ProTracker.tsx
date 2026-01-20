@@ -679,7 +679,10 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                         </div>
                       )}
 
-                      <p className="fit-recommendation">{app.fitAnalysis.recommendation}</p>
+                      <div className="fit-recommendation">
+                        <h5>What to expect</h5>
+                        <p>{app.fitAnalysis.recommendation}</p>
+                      </div>
                     </div>
                   )}
 

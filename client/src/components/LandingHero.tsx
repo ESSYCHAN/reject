@@ -59,7 +59,7 @@ export function LandingHero({ onGetStarted, onCheckFit, onTrackApp }: LandingHer
               <span className="confidence">Good match</span>
             </div>
             <div className="demo-insight">
-              <strong>TL;DR:</strong>
+              <strong>What to expect:</strong>
               <p>Strong fit for your experience. Requirements are realistic, salary is transparent, and direct apply is worth it. One red flag: "fast-paced" often means understaffed.</p>
             </div>
             <div className="demo-stage">
