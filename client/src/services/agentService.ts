@@ -303,6 +303,51 @@ class AgentService {
   }
 
   /**
+   * Upload and parse a CV file
+   */
+  async uploadCV(file: File): Promise<{ text: string; filename: string }> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${this.baseUrl}/upload/cv`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Upload failed: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Export CV as PDF
+   */
+  async exportCV(sections: {
+    name?: string;
+    contact?: string;
+    summary?: string;
+    experience?: string[];
+    education?: string[];
+    skills?: string[];
+  }): Promise<Blob> {
+    const response = await fetch(`${this.baseUrl}/export/cv`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ sections }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Export failed: ${response.statusText}`);
+    }
+
+    return response.blob();
+  }
+
+  /**
    * Reset conversation
    */
   resetConversation(): void {

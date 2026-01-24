@@ -18,8 +18,11 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
   const [selectedAgent, setSelectedAgent] = useState(initialAgent);
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [showAgentPicker, setShowAgentPicker] = useState(false);
+  const [uploadedCV, setUploadedCV] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     agentService.healthCheck().then(setIsConnected);
@@ -105,6 +108,50 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
     setMessages([]);
     agentService.resetConversation();
     setShowAgentPicker(false);
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const result = await agentService.uploadCV(file);
+      setUploadedCV(result.text);
+
+      // Add a message showing the CV was uploaded
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: `[Uploaded CV: ${result.filename}]`,
+        timestamp: new Date()
+      }]);
+
+      // Auto-send to the agent for analysis
+      const response = await agentService.chat({
+        message: `Here's my CV to review:\n\n${result.text}`,
+        agent: selectedAgent,
+        context: { cvText: result.text }
+      });
+
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: response.response,
+        agent: response.agent_used,
+        timestamp: new Date()
+      }]);
+    } catch (error) {
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: 'Failed to upload file. Make sure it\'s a PDF or DOCX file.',
+        timestamp: new Date()
+      }]);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const currentAgent = AGENTS.find(a => a.id === selectedAgent);
@@ -236,7 +283,34 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
       )}
 
       <div className="chat-input-container">
+        {uploadedCV && (
+          <div className="uploaded-cv-badge">
+            <span>CV loaded</span>
+            <button onClick={() => setUploadedCV(null)} title="Remove CV">×</button>
+          </div>
+        )}
         <div className="chat-input-wrapper">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".pdf,.docx"
+            style={{ display: 'none' }}
+          />
+          <button
+            className="attach-button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isLoading || isUploading}
+            title="Upload CV (PDF/DOCX)"
+          >
+            {isUploading ? (
+              <span className="upload-spinner"></span>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+              </svg>
+            )}
+          </button>
           <textarea
             ref={inputRef}
             value={input}
@@ -250,7 +324,7 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
           </button>
         </div>
-        <p className="input-hint">Press Enter to send, Shift+Enter for new line</p>
+        <p className="input-hint">Press Enter to send, Shift+Enter for new line • Attach CV with 📎</p>
       </div>
     </div>
   );

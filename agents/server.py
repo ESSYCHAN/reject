@@ -1,13 +1,22 @@
 """FastAPI server to expose REJECT agents as REST API for the React frontend."""
 
 import os
+import io
 import uuid
-from typing import Optional
-from fastapi import FastAPI, HTTPException
+from typing import Optional, List
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
 import google.generativeai as genai
+import httpx
+from PyPDF2 import PdfReader
+from docx import Document
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.units import inch
 
 # Load environment
 load_dotenv()
@@ -51,6 +60,25 @@ class ChatResponse(BaseModel):
     response: str
     agent_used: str
     conversation_id: str
+
+
+class JobSearchRequest(BaseModel):
+    keywords: str
+    location: str
+    remote_only: Optional[bool] = False
+
+
+class JobSearchResult(BaseModel):
+    title: str
+    company: str
+    location: str
+    salary: Optional[str] = None
+    url: str
+    description: Optional[str] = None
+
+
+class CVExportRequest(BaseModel):
+    sections: dict  # {name, contact, summary, experience, education, skills}
 
 
 # Agent system prompts - KEEP RESPONSES SHORT AND CLEAN
@@ -228,6 +256,168 @@ Please respond helpfully as the assistant."""
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/upload/cv")
+async def upload_cv(file: UploadFile = File(...)):
+    """Parse uploaded CV (PDF or DOCX) and extract text."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No file provided")
+
+    filename = file.filename.lower()
+    content = await file.read()
+
+    try:
+        if filename.endswith('.pdf'):
+            # Parse PDF
+            pdf_reader = PdfReader(io.BytesIO(content))
+            text = ""
+            for page in pdf_reader.pages:
+                text += page.extract_text() or ""
+        elif filename.endswith('.docx'):
+            # Parse DOCX
+            doc = Document(io.BytesIO(content))
+            text = "\n".join([para.text for para in doc.paragraphs])
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type. Use PDF or DOCX.")
+
+        return {"text": text.strip(), "filename": file.filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error parsing file: {str(e)}")
+
+
+@app.post("/export/cv")
+async def export_cv(request: CVExportRequest):
+    """Generate a PDF CV from structured data."""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=0.5*inch, bottomMargin=0.5*inch)
+    styles = getSampleStyleSheet()
+
+    # Custom styles
+    name_style = ParagraphStyle('Name', parent=styles['Heading1'], fontSize=18, spaceAfter=6)
+    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=12, spaceBefore=12, spaceAfter=6, textColor='#333')
+    body_style = ParagraphStyle('Body', parent=styles['Normal'], fontSize=10, spaceAfter=4)
+
+    story = []
+    sections = request.sections
+
+    # Name
+    if sections.get('name'):
+        story.append(Paragraph(sections['name'], name_style))
+
+    # Contact
+    if sections.get('contact'):
+        story.append(Paragraph(sections['contact'], body_style))
+
+    story.append(Spacer(1, 12))
+
+    # Summary
+    if sections.get('summary'):
+        story.append(Paragraph("PROFESSIONAL SUMMARY", section_style))
+        story.append(Paragraph(sections['summary'], body_style))
+
+    # Experience
+    if sections.get('experience'):
+        story.append(Paragraph("EXPERIENCE", section_style))
+        for exp in sections['experience'] if isinstance(sections['experience'], list) else [sections['experience']]:
+            story.append(Paragraph(exp, body_style))
+
+    # Education
+    if sections.get('education'):
+        story.append(Paragraph("EDUCATION", section_style))
+        for edu in sections['education'] if isinstance(sections['education'], list) else [sections['education']]:
+            story.append(Paragraph(edu, body_style))
+
+    # Skills
+    if sections.get('skills'):
+        story.append(Paragraph("SKILLS", section_style))
+        skills_text = sections['skills'] if isinstance(sections['skills'], str) else ", ".join(sections['skills'])
+        story.append(Paragraph(skills_text, body_style))
+
+    doc.build(story)
+    buffer.seek(0)
+
+    return StreamingResponse(
+        buffer,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=cv.pdf"}
+    )
+
+
+@app.post("/search/jobs")
+async def search_jobs(request: JobSearchRequest):
+    """Search for jobs using Adzuna API (free tier available)."""
+    # Adzuna API - free tier: 250 requests/month
+    app_id = os.getenv("ADZUNA_APP_ID")
+    app_key = os.getenv("ADZUNA_APP_KEY")
+
+    if not app_id or not app_key:
+        # Return mock results if no API key configured
+        return {
+            "jobs": [
+                {
+                    "title": f"{request.keywords} - Example Role",
+                    "company": "Example Company",
+                    "location": request.location,
+                    "salary": "$80,000 - $120,000",
+                    "url": "https://example.com/job",
+                    "description": "This is a sample job listing. Configure ADZUNA_APP_ID and ADZUNA_APP_KEY for real results."
+                }
+            ],
+            "note": "Configure Adzuna API keys for real job search results"
+        }
+
+    try:
+        # Determine country code from location
+        location_lower = request.location.lower()
+        if "uk" in location_lower or "london" in location_lower or "manchester" in location_lower:
+            country = "gb"
+        elif "us" in location_lower or "new york" in location_lower or "san francisco" in location_lower:
+            country = "us"
+        elif "canada" in location_lower or "toronto" in location_lower:
+            country = "ca"
+        elif "australia" in location_lower or "sydney" in location_lower:
+            country = "au"
+        else:
+            country = "gb"  # Default to UK
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"https://api.adzuna.com/v1/api/jobs/{country}/search/1",
+                params={
+                    "app_id": app_id,
+                    "app_key": app_key,
+                    "what": request.keywords,
+                    "where": request.location,
+                    "results_per_page": 10,
+                    "content-type": "application/json"
+                }
+            )
+
+            if response.status_code != 200:
+                raise HTTPException(status_code=response.status_code, detail="Job search API error")
+
+            data = response.json()
+            jobs = []
+
+            for result in data.get("results", []):
+                salary = None
+                if result.get("salary_min") and result.get("salary_max"):
+                    salary = f"${int(result['salary_min']):,} - ${int(result['salary_max']):,}"
+
+                jobs.append({
+                    "title": result.get("title", ""),
+                    "company": result.get("company", {}).get("display_name", ""),
+                    "location": result.get("location", {}).get("display_name", ""),
+                    "salary": salary,
+                    "url": result.get("redirect_url", ""),
+                    "description": result.get("description", "")[:200] + "..." if result.get("description") else None
+                })
+
+            return {"jobs": jobs}
+
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=500, detail=f"Job search error: {str(e)}")
 
 
 if __name__ == "__main__":
