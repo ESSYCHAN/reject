@@ -53,6 +53,31 @@
   border-color: var(--accent);
 }
 
+/* AI Coach Button - Special Styling */
+.nav-btn-ai {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border-color: #6366f1;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-btn-ai:hover {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  border-color: #4f46e5;
+  color: white;
+}
+
+.nav-btn-ai.active {
+  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%);
+  border-color: #4338ca;
+}
+
+.nav-btn-ai .ai-icon {
+  font-size: 0.9rem;
+}
+
 /* Main */
 .main {
   flex: 1;

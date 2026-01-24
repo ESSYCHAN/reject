@@ -4,9 +4,10 @@ interface LandingHeroProps {
   onGetStarted: () => void;
   onCheckFit?: () => void;
   onTrackApp?: () => void;
+  onAICoach?: () => void;
 }
 
-export function LandingHero({ onGetStarted, onCheckFit, onTrackApp }: LandingHeroProps) {
+export function LandingHero({ onGetStarted, onCheckFit, onTrackApp, onAICoach }: LandingHeroProps) {
   return (
     <section className="landing-hero">
       <div className="hero-content">
@@ -14,11 +15,20 @@ export function LandingHero({ onGetStarted, onCheckFit, onTrackApp }: LandingHer
           Your job search companion
         </h1>
         <p className="hero-subtitle">
-          Check jobs before applying. Track what matters. Decode rejections.
+          AI-powered career coaching. Check jobs. Build CVs. Practice interviews. Decode rejections.
         </p>
 
         {/* Smart entry points based on user journey */}
         <div className="entry-points">
+          <button className="entry-card entry-ai" onClick={onAICoach}>
+            <span className="entry-icon">✨</span>
+            <div className="entry-text">
+              <strong>Talk to AI Coach</strong>
+              <span>CV help, job search, interview prep</span>
+            </div>
+            <span className="entry-arrow">&#8594;</span>
+          </button>
+
           <button className="entry-card entry-fit" onClick={onCheckFit}>
             <span className="entry-icon">&#127919;</span>
             <div className="entry-text">

@@ -1,0 +1,30 @@
+# Docker Compose for local development
+version: '3.8'
+
+services:
+  agents:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JSEARCH_API_KEY=${JSEARCH_API_KEY}
+      - ADZUNA_APP_ID=${ADZUNA_APP_ID}
+      - ADZUNA_API_KEY=${ADZUNA_API_KEY}
+      - PORT=8080
+    volumes:
+      - .:/app
+    restart: unless-stopped
+
+  # Optional: Run ADK dev UI
+  adk-dev:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    command: ["npx", "@google/adk-devtools", "web", "--port", "8000", "--host", "0.0.0.0"]
+    volumes:
+      - .:/app
+    profiles:
+      - dev

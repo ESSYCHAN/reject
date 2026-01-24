@@ -91,6 +91,26 @@
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%);
 }
 
+/* AI Coach - special gradient styling */
+.entry-card.entry-ai {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-color: #6366f1;
+}
+
+.entry-card.entry-ai:hover {
+  border-color: #4f46e5;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.25);
+}
+
+.entry-card.entry-ai .entry-icon {
+  font-size: 1.5rem;
+}
+
+.entry-card.entry-ai:hover .entry-arrow {
+  color: #6366f1;
+}
+
 .entry-icon {
   font-size: 1.75rem;
   flex-shrink: 0;

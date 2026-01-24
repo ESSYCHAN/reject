@@ -9,13 +9,14 @@ import { SubscriptionManager } from './components/SubscriptionManager';
 import { EmailCapture } from './components/EmailCapture';
 import { AuthButtons, useAuth, syncUserToServer } from './components/AuthButtons';
 import { LandingHero, PromoStrip } from './components/LandingHero';
+import { AgentChat } from './components/AgentChat';
 import { DecodeResponse } from './types';
 import { ApplicationRecord } from './types/pro';
 import { setProStatus, syncProStatusFromServer, loadUsage } from './utils/usage';
 import { useApplicationsSync } from './hooks/useApplicationsSync';
 import './App.css';
 
-type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'faq' | 'account';
+type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'ai-coach' | 'faq' | 'account';
 
 // Check if user has used the app before
 function hasUsedAppBefore(): boolean {
@@ -228,6 +229,12 @@ function App() {
             >
               Patterns
             </button>
+            <button
+              className={`nav-btn nav-btn-ai ${activeTab === 'ai-coach' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ai-coach')}
+            >
+              <span className="ai-icon">✨</span> AI Coach
+            </button>
           </nav>
           <AuthButtons onAccountClick={() => setActiveTab('account')} />
         </div>
@@ -248,6 +255,7 @@ function App() {
                 onGetStarted={() => setShowLanding(false)}
                 onCheckFit={() => { setShowLanding(false); setActiveTab('jd-check'); }}
                 onTrackApp={() => { setShowLanding(false); setActiveTab('pro-tracker'); }}
+                onAICoach={() => { setShowLanding(false); setActiveTab('ai-coach'); }}
               />
               <PromoStrip />
             </>
@@ -265,6 +273,7 @@ function App() {
           )}
           {activeTab === 'insights' && <ProInsightsV2 applications={proApplications} />}
           {activeTab === 'jd-check' && <JDAnalyzer onAddToTracker={handleAddFromJD} />}
+          {activeTab === 'ai-coach' && <AgentChat />}
           {activeTab === 'faq' && <FAQ />}
           {activeTab === 'account' && (
             <div className="account-page">

@@ -41,3 +41,10 @@ server/subscribers.json
 
 # Server env specifically
 server/.env
+
+# Python virtual environments
+venv/
+agents/venv/
+agents/.env
+__pycache__/
+*.pyc
