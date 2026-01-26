@@ -207,6 +207,10 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
 
   return (
     <div className="agent-chat">
+      <div className="beta-notice">
+        <span className="beta-badge">BETA</span>
+        <span>AI Coach is in testing. We're actively improving it based on your feedback.</span>
+      </div>
       <div className="chat-header">
         <div className="header-left">
           <button className="agent-selector-btn" onClick={() => setShowAgentPicker(!showAgentPicker)}>

@@ -1,5 +1,31 @@
 /* Agent Chat - Redesigned */
 
+/* Beta Notice */
+.beta-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-lg);
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.beta-badge {
+  padding: 0.15rem 0.5rem;
+  background: #fbbf24;
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.5px;
+}
+
+.beta-notice span:last-child {
+  color: var(--muted);
+}
+
 .agent-chat {
   display: flex;
   flex-direction: column;
