@@ -37,7 +37,7 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
     if (agent && messages.length === 0) {
       const welcomeMessages: Record<string, string> = {
         career_coach: "Hi! I'm your AI career coach. I can help you with building CVs, finding jobs, analyzing job descriptions, preparing for interviews, and understanding rejection emails.\n\nWhat would you like help with today?",
-        cv_builder: "Let's build your CV! I'll guide you through each section to create a professional, ATS-friendly resume.\n\nFirst, what role are you targeting?",
+        cv_builder: "I'll help you tailor your CV for a specific job application.\n\nFirst, upload your current CV (use the 📎 button) or paste it here. Then share the job description you're applying to, and I'll tell you exactly what to change.",
         resume_coach: "I'll analyze your CV and give you specific feedback to improve it.\n\nPaste your CV text below, and let me know if you're targeting a specific role.",
         career_agent: "I can help you find jobs that match your profile.\n\nWhat role are you looking for, and where?",
         job_advisor: "I'll analyze any job description and tell you if it's worth applying.\n\nPaste a job description and I'll break down the red flags, requirements, and fit.",
@@ -177,9 +177,9 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
       { label: 'Interview prep', prompt: 'I have an interview coming up' },
     ],
     cv_builder: [
-      { label: 'Tech role', prompt: 'I want to build a CV for a software engineering role' },
-      { label: 'Marketing role', prompt: 'I want to build a CV for a marketing role' },
-      { label: 'Product role', prompt: 'I want to build a CV for a product manager role' },
+      { label: 'Tailor for job', prompt: 'I have my CV and a job description - help me tailor it' },
+      { label: 'ATS optimize', prompt: 'Help me optimize my CV for ATS systems' },
+      { label: 'Career change', prompt: 'I\'m changing careers - help me reframe my experience' },
     ],
     resume_coach: [
       { label: 'General review', prompt: 'Please review my CV for any role' },

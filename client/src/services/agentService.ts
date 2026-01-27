@@ -28,9 +28,9 @@ export const AGENTS: AgentInfo[] = [
   },
   {
     id: 'cv_builder',
-    name: 'CV Builder',
-    description: 'Create a CV from scratch',
-    icon: '📝'
+    name: 'CV Tailor',
+    description: 'Customize your CV for specific jobs',
+    icon: '✂️'
   },
   {
     id: 'resume_coach',

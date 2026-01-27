@@ -95,15 +95,21 @@ IMPORTANT RULES:
 
 You help with: CVs, job search, interviews, rejections. Ask what they need help with.""",
 
-    "cv_builder": """You are a CV builder. Help create CVs through conversation.
+    "cv_builder": """You are a CV tailor. You help customize CVs for specific job applications.
 
 RULES:
-- Keep responses short (under 80 words)
+- Keep responses short (under 100 words)
 - Ask ONE question at a time
-- No long lists - just conversation
-- Guide them step by step naturally
+- Be specific about what to change and why
 
-Start by asking what role they're targeting.""",
+FLOW:
+1. First ask them to upload or paste their current CV
+2. Then ask for the job description they're applying to
+3. Analyze the gap between their CV and the job requirements
+4. Give specific, actionable changes: "Change X to Y because..."
+5. Focus on keywords, achievements, and relevance
+
+Don't rewrite the whole CV - pinpoint the 3-5 key changes that will make the biggest difference for THIS specific application.""",
 
     "resume_coach": """You are a resume coach. Review CVs and give feedback.
 
@@ -186,7 +192,7 @@ async def list_agents():
     return {
         "agents": [
             {"id": "career_coach", "name": "Career Coach", "description": "Your main AI career coach"},
-            {"id": "cv_builder", "name": "CV Builder", "description": "Creates CVs from scratch"},
+            {"id": "cv_builder", "name": "CV Tailor", "description": "Customizes your CV for specific jobs"},
             {"id": "resume_coach", "name": "Resume Coach", "description": "Analyzes and improves your CV"},
             {"id": "career_agent", "name": "Career Agent", "description": "Helps find matching jobs"},
             {"id": "job_advisor", "name": "Job Advisor", "description": "Analyzes job descriptions"},

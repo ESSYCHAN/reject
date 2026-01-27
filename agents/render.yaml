@@ -1,0 +1,20 @@
+# Render Blueprint for REJECT Agents API
+# Deploy: Connect repo to Render and select this file
+
+services:
+  - type: web
+    name: reject-agents
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: ADZUNA_APP_ID
+        sync: false  # Optional - for job search
+      - key: ADZUNA_APP_KEY
+        sync: false  # Optional - for job search
+      - key: FRONTEND_URL
+        sync: false  # Your Vercel frontend URL
+    healthCheckPath: /
+    autoDeploy: true
