@@ -21,8 +21,12 @@ from reportlab.lib.units import inch
 # Load environment
 load_dotenv()
 
-# Configure Gemini
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+# Configure Gemini (gracefully handle missing key)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+else:
+    print("WARNING: GEMINI_API_KEY not set - AI features will not work")
 
 # Initialize FastAPI
 app = FastAPI(
@@ -40,6 +44,7 @@ app.add_middleware(
         "http://localhost:5175",
         "http://localhost:3000",
         "https://tryreject.co.uk",
+        "https://www.tryreject.co.uk",
         os.getenv("FRONTEND_URL", ""),
     ],
     allow_credentials=True,
