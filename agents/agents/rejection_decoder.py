@@ -1,12 +1,12 @@
-"""Rejection Decoder Agent - Analyzes rejection emails and provides coaching."""
+"""Rejection Decoder Agent - IMPROVED - Auto-detects patterns and provides intelligence."""
 
 from google.adk import LlmAgent, FunctionTool
 
 
-# Tool: Decode rejection email
+# Tool: Decode rejection email with AUTO-DETECTION
 decode_rejection = FunctionTool(
     name="decode_rejection",
-    description="Analyze a rejection email to determine what it really means, what stage it was sent from, and what the candidate can learn.",
+    description="Automatically analyze rejection email to determine ATS vs human, what really happened, and actionable next steps.",
     parameters={
         "type": "object",
         "properties": {
@@ -31,116 +31,170 @@ decode_rejection = FunctionTool(
     },
     execute=lambda params: {
         "status": "success",
-        "instruction": f"""Analyze this rejection email and provide:
+        "instruction": f"""AUTOMATICALLY decode this rejection with NO questions:
 
-        1. **Stage Detection**
-           - Where in the process was this sent?
-           - ATS/automated (before human review)
-           - Recruiter screen
-           - Hiring manager review
-           - Post-interview
-           - Final round rejection
-           - Offer stage
+**1. DETECTION (Auto-classify):**
 
-        2. **What It Really Means**
-           - Decode the corporate speak
-           - What's the actual reason (as far as can be inferred)?
-           - Is this a form letter or personalized?
+Determine rejection stage by analyzing language patterns:
 
-        3. **Likelihood Assessment**
-           - Was this competitive or were they never in the running?
-           - Signs they were a strong candidate
-           - Signs it was a quick filter
+**ATS AUTO-REJECT signals:**
+- Received within 24 hours of application
+- Generic phrases: "reviewed your application", "other candidates", "keep on file"
+- No specific feedback
+- Sent from noreply@ or automated@ email
+- Template language with no personalization
+- VERDICT: "You never reached a human"
 
-        4. **What They Can Learn**
-           - If ATS: Likely keyword/qualification mismatch
-           - If recruiter: Positioning or fit issues
-           - If post-interview: Specific feedback (if any)
+**RECRUITER SCREEN signals:**
+- Received 2-7 days after application
+- Some personalization (uses your name, mentions specific requirement)
+- May reference "reviewing your background"
+- VERDICT: "A recruiter reviewed but filtered you out"
 
-        5. **Actionable Next Steps**
-           - Should they reapply in the future?
-           - How to improve for similar roles
-           - Whether to ask for feedback (and how)
+**POST-INTERVIEW signals:**
+- Follows an actual interview
+- May mention "great to meet you", references the interview
+- Sometimes includes vague feedback
+- VERDICT: "You interviewed but weren't selected"
 
-        6. **Emotional Support**
-           - Normalize the rejection
-           - Perspective on the process
-           - Encouragement to continue
+**FINAL ROUND signals:**
+- You met multiple people
+- May mention "difficult decision", "strong candidate pool"
+- Sometimes encourages future applications
+- VERDICT: "You were close but lost to someone else"
 
-        Rejection email: {params['rejection_text']}
-        Job: {params.get('job_title', 'Not specified')}
-        Company: {params.get('company', 'Not specified')}
-        Context: {params.get('application_context', 'None provided')}"""
+**2. TRANSLATION (Decode corporate speak):**
+
+Common phrases and what they REALLY mean:
+- "Moved forward with candidates whose experience more closely matches" = You lacked a specific requirement OR internal candidate
+- "Highly competitive role" = Many applicants, you didn't stand out enough
+- "Not the right fit at this time" = Vague - could be skills, culture, or budget
+- "Keep your resume on file" = Standard line, rarely meaningful
+- "Encourage you to apply for future roles" = Sometimes genuine IF you made it to final rounds
+
+**3. LIKELIHOOD ASSESSMENT:**
+
+Were you competitive?
+- **ATS reject**: Never in the running - keyword/qualification mismatch
+- **Recruiter reject**: Possibly competitive but outranked on paper
+- **Post-interview reject**: You were competitive - came down to interview performance or culture fit
+- **Final round reject**: Very competitive - minor differences made the decision
+
+**4. ROOT CAUSE (What really happened):**
+
+Identify the actual reason:
+- Missing hard requirement (degree, years, certification)
+- Resume didn't highlight relevant experience clearly
+- ATS keywords missing
+- Overqualified/underqualified
+- Salary expectations mismatch
+- Culture/team fit concerns (if post-interview)
+- Another candidate was stronger/internal hire
+
+**5. ACTIONABLE NEXT STEPS:**
+
+Be SPECIFIC:
+- **If ATS**: Add keywords [list 3-5 specific ones], adjust job titles, highlight [specific experience]
+- **If recruiter**: Reposition your CV to emphasize [X], add metrics to [Y section]
+- **If post-interview**: Practice [specific type] questions, address [weakness shown]
+- **Should they reapply?**: Yes if [X changes] / Wait [timeframe] / No because [reason]
+- **Follow up or not?**: Only worth it if [condition met]
+
+**6. EMOTIONAL CONTEXT (Normalize it):**
+
+- If ATS: "This wasn't about you - 73% of applications get filtered before humans see them"
+- If recruiter: "This means you met basic requirements but were outcompeted on specific criteria"
+- If post-interview: "Making it to interviews means you're qualified - this was about fit or style"
+- Provide realistic expectations: "Most job searches involve 5-10 rejections per offer"
+
+**7. PATTERN DETECTION (if multiple rejections shared):**
+
+If this is not their first rejection, note:
+- Same stage repeatedly? → Systemic issue to fix
+- Different stages? → Normal job search variance
+- ATS every time? → CV needs keyword optimization
+- Post-interview always? → Interview skills need work
+
+---
+
+Rejection email: {params['rejection_text']}
+Job: {params.get('job_title', 'Not specified')}
+Company: {params.get('company', 'Not specified')}
+Context: {params.get('application_context', 'None provided')}
+
+**OUTPUT FORMAT:**
+- verdict: [One clear sentence on what happened]
+- stage: [ATS/Recruiter/Post-Interview/Final Round]
+- confidence: [High/Medium/Low] in this assessment
+- root_cause: [2-3 sentences on why]
+- action_items: [3-5 specific bullets of what to do]
+- encouragement: [2-3 sentences of perspective]
+- reapply: [Yes/No/Wait and why]"""
     }
 )
 
 
-# Tool: Analyze rejection patterns
-analyze_patterns = FunctionTool(
-    name="analyze_rejection_patterns",
-    description="Analyze multiple rejections to identify patterns and systemic issues.",
+# Tool: Pattern Intelligence (AUTOMATIC)
+auto_analyze_patterns = FunctionTool(
+    name="analyze_rejection_intelligence",
+    description="Automatically detect patterns across rejections and identify systemic issues WITHOUT asking for more data.",
     parameters={
         "type": "object",
         "properties": {
-            "rejections": {
+            "rejection_count": {
+                "type": "integer",
+                "description": "How many rejections they've shared so far"
+            },
+            "stages_so_far": {
                 "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "company": {"type": "string"},
-                        "role": {"type": "string"},
-                        "stage": {"type": "string"},
-                        "rejection_text": {"type": "string"}
-                    }
-                },
-                "description": "List of rejection data"
+                "items": {"type": "string"},
+                "description": "List of rejection stages detected so far (ATS, recruiter, etc.)"
             }
         },
-        "required": ["rejections"]
+        "required": ["rejection_count"]
     },
     execute=lambda params: {
         "status": "success",
-        "instruction": """Analyze these rejections for patterns:
+        "instruction": f"""User has shared {params['rejection_count']} rejection(s).
+        Stages: {params.get('stages_so_far', [])}
 
-        1. **Stage Distribution**
-           - How many at each stage?
-           - If mostly ATS: CV/keyword issues
-           - If mostly recruiter: Positioning issues
-           - If mostly post-interview: Interview performance
+        AUTOMATICALLY provide intelligence:
 
-        2. **Common Themes**
-           - Similar reasons across rejections?
-           - Role type patterns?
-           - Company type patterns?
+**IF rejection_count >= 3:**
+Identify the pattern:
+- All ATS rejects? → "Your CV isn't passing automated filters. You need keyword optimization ASAP."
+- All recruiter rejects? → "Recruiters are reviewing you but filtering out. Your positioning/experience narrative needs work."
+- Mixed stages? → "This is normal variance. Keep improving incrementally."
+- All post-interview? → "You're getting interviews but not converting. Focus on interview skills."
 
-        3. **Systemic Issues**
-           - What's the root cause?
-           - CV issues vs interview issues vs targeting issues
+**PROACTIVE RECOMMENDATIONS:**
+Don't wait to be asked - tell them:
+1. "Based on [X] pattern, here's what to fix first: [specific action]"
+2. "Your conversion rate is [Y]% which is [normal/low/concerning]"
+3. "Next rejection, try [Z] approach differently"
 
-        4. **Recommendations**
-           - Prioritized list of what to fix
-           - Specific actions to take
-           - What to try differently
+**BENCHMARK CONTEXT:**
+- Industry avg: 100 applications → 10-20 phone screens → 2-5 final interviews → 1-2 offers
+- If they're below these benchmarks, say which stage is the blocker
 
-        5. **Encouragement**
-           - Contextualize their success rate
-           - Industry norms for applications:interviews
-           - Progress indicators"""
+**UNSOLICITED ADVICE (Be proactive):**
+"Here's what I'd do if I were you right now: [3 specific actions in priority order]"
+
+Never say "let me know if you want more analysis" - GIVE the analysis."""
     }
 )
 
 
-# Tool: Draft follow-up
-draft_followup = FunctionTool(
-    name="draft_rejection_followup",
-    description="Draft a professional follow-up email to request feedback after rejection.",
+# Tool: Smart follow-up (Templates + strategy)
+draft_smart_followup = FunctionTool(
+    name="draft_followup_strategy",
+    description="Generate follow-up email WITH strategic advice on when/if to send it.",
     parameters={
         "type": "object",
         "properties": {
             "rejection_stage": {
                 "type": "string",
-                "enum": ["ats", "recruiter", "post_phone_screen", "post_interview", "final_round"],
-                "description": "At what stage they were rejected"
+                "description": "Stage they were rejected (ATS/recruiter/post-interview/final-round)"
             },
             "company": {
                 "type": "string",
@@ -148,138 +202,147 @@ draft_followup = FunctionTool(
             },
             "interviewer_name": {
                 "type": "string",
-                "description": "Name of interviewer/contact if known"
-            },
-            "what_to_ask": {
-                "type": "string",
-                "description": "What specific feedback they want"
+                "description": "Name of contact if known"
             }
         },
         "required": ["rejection_stage", "company"]
     },
     execute=lambda params: {
         "status": "success",
-        "instruction": f"""Draft a professional follow-up email for:
+        "instruction": f"""Create follow-up email AND strategic guidance:
 
-        Stage: {params['rejection_stage']}
-        Company: {params['company']}
-        Contact: {params.get('interviewer_name', 'Unknown')}
-        Specific question: {params.get('what_to_ask', 'General feedback')}
+Stage: {params['rejection_stage']}
+Company: {params['company']}
+Contact: {params.get('interviewer_name', 'Unknown')}
 
-        Guidelines:
-        - Keep it SHORT (3-5 sentences max)
-        - Be gracious, not defensive
-        - Make the ask specific and easy to answer
-        - Don't ask if ATS rejection (no one to ask)
-        - Express genuine interest in feedback
-        - Leave door open for future opportunities
+**STRATEGIC ASSESSMENT:**
 
-        Provide:
-        - email_subject: Short, professional subject line
-        - email_body: The email text
-        - when_to_send: Timing advice
-        - expectations: Realistic expectations for response"""
+**If ATS reject:**
+- verdict: "Don't follow up - no one to follow up with"
+- rationale: "Automated rejection, no human reviewed your application"
+- alternative: "Reapply in 6-12 months with improved CV"
+
+**If recruiter reject:**
+- verdict: "Low-value follow-up - unlikely to get response"
+- rationale: "Recruiters filter hundreds of CVs and rarely provide individual feedback"
+- alternative: "Focus on improving CV for next applications"
+
+**If post-interview reject:**
+- verdict: "WORTH following up - but keep it SHORT"
+- timing: "Send within 24-48 hours of rejection"
+- expectations: "30% response rate for brief feedback"
+
+**If final round reject:**
+- verdict: "DEFINITELY follow up - you were close"
+- timing: "Send within 24 hours"
+- expectations: "50% response rate, sometimes detailed feedback"
+
+**EMAIL TEMPLATE (if worth sending):**
+
+Subject: Thank you - [Job Title] opportunity
+
+Body:
+"Hi [Name],
+
+Thank you for considering me for the [Role]. While disappointed, I appreciated learning about [specific thing from interview].
+
+If you have a moment, I'd value any brief feedback on where I could improve as a candidate.
+
+I'd welcome the chance to be considered for future openings at [Company].
+
+Best,
+[Name]"
+
+**KEY RULES:**
+- 3-5 sentences MAX
+- No defensive language
+- Specific question (not "any feedback?")
+- Leaves door open
+- Shows genuine interest
+
+**WHEN TO SEND:** [specific timing]
+**REALISTIC EXPECTATIONS:** [what they might get back]
+**IF NO RESPONSE:** [what to do - usually nothing]"""
     }
 )
 
 
-# The Rejection Decoder Agent
+# The Rejection Decoder Agent - IMPROVED
 rejection_decoder_agent = LlmAgent(
     name="rejection_decoder",
     model="gemini-2.0-flash",
-    description="Analyzes rejection emails to explain what happened, why, and what to do next. Provides emotional support and actionable advice.",
-    instruction="""You are a supportive career coach who helps people understand and learn from job rejections. You decode corporate speak, identify patterns, and help them improve.
+    description="Automatically decodes rejections with intelligence. No questions - just analysis and action.",
+    instruction="""You are an intelligent rejection decoder. You DON'T ask questions - you ANALYZE and ADVISE.
 
-## Your Philosophy
+## Your Approach: AUTO-DECODE
 
-Rejection is information, not failure. Every "no" teaches something and gets them closer to the right "yes."
+When someone shares a rejection:
 
-## When Someone Shares a Rejection
+1. **IMMEDIATELY analyze** - don't ask clarifying questions
+2. **AUTO-DETECT the stage** - ATS vs recruiter vs post-interview
+3. **TRANSLATE corporate speak** - what it really means
+4. **IDENTIFY root cause** - why it actually happened
+5. **PROVIDE specific actions** - not generic advice
+6. **NORMALIZE the experience** - context and perspective
+7. **OFFER strategic guidance** - follow up or not, what's next
 
-### 1. Acknowledge Their Feelings
-- Rejections sting - validate that
-- Don't minimize or rush to silver linings
-- Then shift to constructive analysis
+## Intelligence Principles
 
-### 2. Decode the Email
+**PATTERN DETECTION:**
+- After 2+ rejections → Automatically identify patterns
+- Don't wait to be asked - flag systemic issues
+- Proactively suggest: "Here's what I'm seeing across your rejections..."
 
-**Stage Detection**
-Identify where this happened:
-- **ATS/Auto-reject**: Generic, fast, no human saw the application
-- **Recruiter Screen**: Post-resume review, before interviews
-- **Post-Interview**: After speaking with humans
-- **Final Round**: Close but didn't make it
-- **Post-Offer**: Rare but happens (rescinded offers)
+**BENCHMARKING:**
+- Provide context: "Getting rejected at ATS stage 70% of the time is common"
+- Compare to industry norms without being asked
+- Set realistic expectations
 
-**Translation**
-Decode common phrases:
-- "Moved forward with candidates whose experience more closely matches" =
-  You didn't have a specific requirement (or they had internal candidate)
-- "Highly competitive role" =
-  Many applicants, you didn't stand out enough
-- "Not the right fit at this time" =
-  Vague - could be skills, culture, or just better candidates
-- "Keep your resume on file" =
-  Standard line, rarely means anything
-- "Encourage you to apply for future roles" =
-  Sometimes genuine, especially if you made it far
+**PROACTIVE COACHING:**
+- Don't just decode - suggest improvements
+- Link rejections to CV/interview fixes
+- Offer to route to Resume Coach or Interview Coach
 
-### 3. Help Them Learn
-
-Based on the stage:
-
-**ATS Rejection**
-- CV likely didn't have right keywords
-- May not have met minimum requirements
-- Check: Did they apply to a realistic role?
-
-**Recruiter Rejection**
-- Resume didn't tell a compelling story
-- Positioning may be off
-- May have been outcompeted on specific criteria
-
-**Post-Interview Rejection**
-- Interview performance matters
-- Could be technical, behavioral, or culture fit
-- Worth asking for specific feedback
-
-### 4. Actionable Next Steps
-
-- What to improve for next time
-- Whether to follow up (and how)
-- How to reframe for future applications
-- Similar roles that might be better fits
-
-### 5. Emotional Support
-
-- Normalize the process (most applications don't succeed)
-- Share perspective (top candidates get rejected all the time)
-- Encourage persistence
-- Celebrate what they did right
-
-## Pattern Analysis
-
-When they've had multiple rejections:
-- Look for common stages (all ATS = CV issue)
-- Look for common feedback themes
-- Identify if they're targeting wrong roles
-- Calculate realistic expectations
+**EMOTIONAL INTELLIGENCE:**
+- Acknowledge feelings briefly
+- Then shift to constructive action
+- Be honest but encouraging
 
 ## Communication Style
-- Empathetic first, analytical second
-- Honest but not harsh
-- Focus on what's controllable
-- Celebrate small wins
-- Be the supportive friend who's also strategic
+
+✅ **DO:**
+- Start with clear verdict: "This was an ATS auto-reject. Here's what happened..."
+- Be direct about root cause
+- Give specific action items
+- Provide unsolicited strategic advice
+- Connect to other agents proactively
+
+❌ **DON'T:**
+- Ask "can you share more context?" - work with what you have
+- Say "without more info I can't help" - make educated inferences
+- Give generic advice like "keep trying" - be SPECIFIC
+- Wait to be asked for follow-up templates - offer them
+- Sugarcoat if CV has real issues
+
+## After Analysis
+
+ALWAYS end with proactive offers:
+- "Want me to analyze your CV to fix the keyword issue?"
+- "I can search for better-fit roles if you'd like"
+- "Should I help you prep for interviews differently?"
+
+Don't wait for them to ask - be their proactive coach.
 
 ## Remember
-- Rejection is part of every successful job search
-- The goal is to learn and improve, not to dwell
-- Help them see progress, not just setbacks
-- Sometimes the rejection was about them; sometimes it wasn't""",
+
+- Rejection is DATA, not failure
+- Your job is to extract learning and drive action
+- Users need SPEED and CLARITY, not more questions
+- Be the coach who spots patterns they can't see
+- Connect dots across rejections automatically""",
     tools=[
         decode_rejection,
-        analyze_patterns,
-        draft_followup,
+        auto_analyze_patterns,
+        draft_smart_followup,
     ]
 )
