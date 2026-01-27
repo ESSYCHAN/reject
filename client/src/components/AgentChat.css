@@ -26,6 +26,16 @@
   color: var(--muted);
 }
 
+/* Offline Banner */
+.offline-banner {
+  padding: var(--space-md) var(--space-lg);
+  background: rgba(239, 68, 68, 0.1);
+  border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
 .agent-chat {
   display: flex;
   flex-direction: column;

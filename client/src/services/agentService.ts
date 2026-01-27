@@ -309,13 +309,19 @@ class AgentService {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${this.baseUrl}/upload/cv`, {
-      method: 'POST',
-      body: formData,
-    });
+    let response;
+    try {
+      response = await fetch(`${this.baseUrl}/upload/cv`, {
+        method: 'POST',
+        body: formData,
+      });
+    } catch (networkError) {
+      throw new Error(`Network error - is the agents server running at ${this.baseUrl}?`);
+    }
 
     if (!response.ok) {
-      throw new Error(`Upload failed: ${response.statusText}`);
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Upload failed: ${response.status} ${response.statusText}`);
     }
 
     return response.json();

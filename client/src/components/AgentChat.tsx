@@ -142,10 +142,12 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
         timestamp: new Date()
       }]);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('CV upload error:', error);
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: 'Failed to upload file. Make sure it\'s a PDF or DOCX file.',
+        content: `Failed to upload file: ${errorMessage}\n\nMake sure:\n• The file is a PDF or DOCX\n• The agents server is running (port 8080)\n• The file isn't too large`,
         timestamp: new Date()
       }]);
     } finally {
@@ -211,6 +213,11 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
         <span className="beta-badge">BETA</span>
         <span>AI Coach is in testing. We're actively improving it based on your feedback.</span>
       </div>
+      {isConnected === false && (
+        <div className="offline-banner">
+          <strong>AI Coach is temporarily unavailable.</strong> We're working on it! Your other features still work normally.
+        </div>
+      )}
       <div className="chat-header">
         <div className="header-left">
           <button className="agent-selector-btn" onClick={() => setShowAgentPicker(!showAgentPicker)}>
