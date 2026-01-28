@@ -295,25 +295,30 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   // Detect if text looks like a job description rather than a rejection email
   const looksLikeJobDescription = (text: string): boolean => {
     const lower = text.toLowerCase();
+    // Strong indicators that this is a job description (structural elements)
     const jdIndicators = [
       'responsibilities:', 'qualifications:', 'requirements:',
-      'about the role', 'what you\'ll do', 'what we\'re looking for',
-      'years of experience', 'bachelor\'s degree', 'must have',
-      'nice to have', 'benefits:', 'compensation:', 'salary range',
-      'apply now', 'job description', 'about us', 'we are looking for',
-      'join our team', 'this position', 'the ideal candidate'
+      'what you\'ll do', 'what we\'re looking for',
+      'years of experience required', 'bachelor\'s degree required',
+      'nice to have:', 'benefits:', 'compensation:', 'salary range',
+      'apply now', 'job description', 'we are hiring',
+      'join our team', 'the ideal candidate will'
     ];
+    // Indicators that this is a rejection email
     const rejectionIndicators = [
-      'unfortunately', 'regret to inform', 'not moving forward',
-      'other candidates', 'decided not to', 'thank you for applying',
+      'unfortunately', 'regret', 'regrettably', 'not moving forward',
+      'other candidates', 'decided not to', 'thank you for', 'applying',
       'after careful', 'we will not', 'position has been filled',
-      'not selected', 'moved forward with', 'appreciate your interest'
+      'not selected', 'moved forward with', 'appreciate your interest',
+      'were not selected', 'wish you all the best', 'your job search',
+      'keep you on file', 'future opportunities', 'we encourage you'
     ];
 
     const jdScore = jdIndicators.filter(ind => lower.includes(ind)).length;
     const rejectionScore = rejectionIndicators.filter(ind => lower.includes(ind)).length;
 
-    return jdScore >= 2 && rejectionScore < 2;
+    // Only flag as job description if strong JD indicators AND no rejection indicators
+    return jdScore >= 2 && rejectionScore === 0;
   };
 
   const handleDecode = async () => {
