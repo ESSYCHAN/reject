@@ -180,7 +180,21 @@ class AgentService {
     );
 
     if (!response.ok) {
-      throw new Error(`Chat failed: ${response.statusText}`);
+      let errorMessage = `Chat failed: ${response.status} ${response.statusText}`.trim();
+      const errorText = await response.text();
+      if (errorText) {
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData?.detail && typeof errorData.detail === 'string') {
+            errorMessage = errorData.detail;
+          } else {
+            errorMessage = errorText;
+          }
+        } catch {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();

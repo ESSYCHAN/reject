@@ -84,10 +84,11 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
         timestamp: new Date()
       }]);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: `Connection error. Make sure the agents server is running.\n\nRun: cd agents && source venv/bin/activate && python server.py`,
+        content: `Agent error: ${errorMessage}\n\nIf this looks like a connection issue, make sure the agents server is running.\n\nRun: cd agents && source venv/bin/activate && python server.py`,
         timestamp: new Date()
       }]);
     } finally {

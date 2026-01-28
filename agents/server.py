@@ -19,8 +19,11 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.units import inch
 
-# Load environment
+# Load environment (cwd first, then local agents/.env if present)
 load_dotenv()
+LOCAL_ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(LOCAL_ENV_PATH):
+    load_dotenv(LOCAL_ENV_PATH, override=False)
 
 # Configure Gemini (gracefully handle missing key)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -387,6 +390,12 @@ async def chat(request: ChatRequest):
     if agent_id not in AGENT_PROMPTS:
         raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
 
+    if not GEMINI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="GEMINI_API_KEY not configured. Set it in agents/.env and restart the server."
+        )
+
     # Get or create conversation
     conv_id = request.conversation_id or str(uuid.uuid4())
     if conv_id not in conversations:
@@ -546,7 +555,7 @@ async def search_jobs(request: JobSearchRequest):
     """Search for jobs using Adzuna API (free tier available)."""
     # Adzuna API - free tier: 250 requests/month
     app_id = os.getenv("ADZUNA_APP_ID")
-    app_key = os.getenv("ADZUNA_APP_KEY")
+    app_key = os.getenv("ADZUNA_APP_KEY") or os.getenv("ADZUNA_API_KEY")
 
     if not app_id or not app_key:
         # Return mock results if no API key configured
