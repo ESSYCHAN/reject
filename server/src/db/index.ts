@@ -72,9 +72,15 @@ export async function initDatabase() {
         outcome TEXT,
         days_to_response INTEGER,
         rejection_analysis JSONB,
+        fit_analysis JSONB,
+        notes TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Add fit_analysis and notes columns if they don't exist (migration for existing DBs)
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS fit_analysis JSONB;
+      ALTER TABLE applications ADD COLUMN IF NOT EXISTS notes TEXT;
 
       -- Subscribers table (for newsletter/email collection)
       CREATE TABLE IF NOT EXISTS subscribers (

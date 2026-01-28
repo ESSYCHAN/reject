@@ -34,7 +34,7 @@ router.get('/', requireAuth(), async (req: Request, res: Response) => {
   try {
     const result = await db.query(
       `SELECT id, company, role, seniority_level, company_size, industry, source,
-              date_applied, outcome, days_to_response, rejection_analysis, updated_at
+              date_applied, outcome, days_to_response, rejection_analysis, fit_analysis, notes, updated_at
        FROM applications
        WHERE user_id = $1
        ORDER BY COALESCE(date_applied, created_at) DESC`,
@@ -59,6 +59,8 @@ router.get('/', requireAuth(), async (req: Request, res: Response) => {
       outcome: row.outcome,
       daysToResponse: row.days_to_response,
       rejectionAnalysis: row.rejection_analysis,
+      fitAnalysis: row.fit_analysis,
+      notes: row.notes,
       updatedAt: row.updated_at
     }));
 
@@ -97,8 +99,8 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
       await db.query(
         `INSERT INTO applications (id, user_id, company, role, seniority_level, company_size,
                                    industry, source, date_applied, outcome, days_to_response,
-                                   rejection_analysis, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, CURRENT_TIMESTAMP)
+                                   rejection_analysis, fit_analysis, notes, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
          ON CONFLICT (id) DO UPDATE SET
            company = EXCLUDED.company,
            role = EXCLUDED.role,
@@ -110,6 +112,8 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
            outcome = EXCLUDED.outcome,
            days_to_response = EXCLUDED.days_to_response,
            rejection_analysis = EXCLUDED.rejection_analysis,
+           fit_analysis = EXCLUDED.fit_analysis,
+           notes = EXCLUDED.notes,
            updated_at = CURRENT_TIMESTAMP`,
         [
           app.id,
@@ -123,7 +127,9 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
           app.dateApplied || null,
           app.outcome || 'pending',
           app.daysToResponse || null,
-          app.rejectionAnalysis ? JSON.stringify(app.rejectionAnalysis) : null
+          app.rejectionAnalysis ? JSON.stringify(app.rejectionAnalysis) : null,
+          app.fitAnalysis ? JSON.stringify(app.fitAnalysis) : null,
+          app.notes || null
         ]
       );
     }
