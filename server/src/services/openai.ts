@@ -201,15 +201,32 @@ stage_reached values:
 - "final_round": Made it to final interviews before rejection
 - "unknown": Not enough signals to determine
 
-SIGNALS FOR ATS FILTERING (likely_ats_filtered: true):
+=== CRITICAL: STAGE DETERMINATION RULES (APPLY IN ORDER) ===
+
+1. If email mentions ANY interview, call, meeting, or conversation → NOT ats_filter
+2. If email mentions reviewing "your experience", "your background", "your qualifications" specifically → recruiter_screen (a human looked)
+3. If email only says "after careful consideration" or "after reviewing your application" without specifics → ats_filter
+4. If email mentions "other candidates" with more specific qualifications → recruiter_screen (comparison happened)
+5. If email is purely generic template with no personalization whatsoever → ats_filter
+6. DEFAULT: When genuinely ambiguous with no clear signals either way → ats_filter (most rejections are ATS)
+
+SIGNALS FOR ATS FILTERING (stage_reached: "ats_filter"):
 - Very fast rejection (same day or next day after applying)
 - Completely generic language with no personalization
 - No mention of any interview, call, or conversation
 - Automated sender (no-reply, careers@, recruiting@)
 - Template rejection with no role-specific details
 - "After careful review of your application" without specifics
+- Generic "unfortunately" or "regrettably" openings with boilerplate
 
-SIGNALS FOR HUMAN REVIEW (likely_ats_filtered: false):
+SIGNALS FOR RECRUITER SCREEN (stage_reached: "recruiter_screen"):
+- Mentions reviewing "your experience" or "your background" (implies human review)
+- Says things like "we can see you have valuable experience" (specific observation)
+- Mentions comparing to "other candidates" with qualifications
+- Any hint that a human evaluated the application (even briefly)
+- Personalized rejection from recruiting team (not just automated)
+
+SIGNALS FOR HIRING MANAGER+ (stage_reached: "hiring_manager" or "final_round"):
 - References to specific interviews, calls, or conversations
 - Named person sending the rejection
 - Mentions specific skills, projects, or discussion topics
@@ -404,9 +421,10 @@ export async function decodeRejectionEmail(emailText: string, interviewStage?: I
           content: `Analyze this rejection email:\n\n${emailText}\n\n${hasNoReply ? 'NOTE: This email contains no-reply indicators. Factor this into your analysis.' : ''}${interviewContext}`
         }
       ],
-      temperature: 0.15, // Lower temperature for more consistent classification
+      temperature: 0, // Zero temperature for fully deterministic, consistent results
       max_tokens: 1500, // Increased for ATS assessment
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
+      seed: 42 // Fixed seed for reproducibility
     });
 
     const content = response.choices[0]?.message?.content;
