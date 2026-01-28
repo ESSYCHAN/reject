@@ -3,6 +3,7 @@
 import os
 import io
 import uuid
+import asyncio
 from typing import Optional, List
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -341,7 +342,12 @@ conversations: dict = {}
 
 def get_model():
     """Get Gemini model instance."""
-    return genai.GenerativeModel('gemini-2.0-flash')
+    return genai.GenerativeModel(
+        'gemini-2.0-flash',
+        generation_config=genai.types.GenerationConfig(
+            max_output_tokens=2048,  # Limit response length to prevent timeouts
+        )
+    )
 
 
 @app.get("/")
@@ -417,9 +423,19 @@ Conversation History:{history_text}
 User: {request.message}
 Please respond helpfully as the assistant."""
 
-        # Generate response
-        response = model.generate_content(full_prompt)
-        assistant_response = response.text
+        # Generate response with timeout (run blocking call in thread pool)
+        loop = asyncio.get_event_loop()
+        try:
+            response = await asyncio.wait_for(
+                loop.run_in_executor(None, model.generate_content, full_prompt),
+                timeout=60.0  # 60 second timeout for AI response
+            )
+            assistant_response = response.text
+        except asyncio.TimeoutError:
+            raise HTTPException(
+                status_code=504,
+                detail="AI response timed out. Please try again with a shorter message."
+            )
 
         # Save to history
         conv["history"].append({"role": "user", "content": request.message})
@@ -431,6 +447,10 @@ Please respond helpfully as the assistant."""
             conversation_id=conv_id
         )
 
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="AI response timed out. Please try again.")
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

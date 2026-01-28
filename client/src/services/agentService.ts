@@ -120,6 +120,33 @@ class AgentService {
   }
 
   /**
+   * Fetch with timeout support
+   */
+  private async fetchWithTimeout(
+    url: string,
+    options: RequestInit,
+    timeoutMs: number = 90000
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal,
+      });
+      return response;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out. The AI is taking longer than usual - please try again.');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }
+
+  /**
    * Health check
    */
   async healthCheck(): Promise<boolean> {
@@ -135,18 +162,22 @@ class AgentService {
    * Chat with an agent
    */
   async chat(request: ChatRequest): Promise<ChatResponse> {
-    const response = await fetch(`${this.baseUrl}/chat`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    const response = await this.fetchWithTimeout(
+      `${this.baseUrl}/chat`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: request.message,
+          agent: request.agent || 'career_coach',
+          conversation_id: request.conversationId || this.conversationId,
+          context: request.context,
+        }),
       },
-      body: JSON.stringify({
-        message: request.message,
-        agent: request.agent || 'career_coach',
-        conversation_id: request.conversationId || this.conversationId,
-        context: request.context,
-      }),
-    });
+      120000 // 2 minute timeout for AI responses
+    );
 
     if (!response.ok) {
       throw new Error(`Chat failed: ${response.statusText}`);
@@ -311,17 +342,24 @@ class AgentService {
 
     let response;
     try {
-      response = await fetch(`${this.baseUrl}/upload/cv`, {
-        method: 'POST',
-        body: formData,
-      });
-    } catch (networkError) {
+      response = await this.fetchWithTimeout(
+        `${this.baseUrl}/upload/cv`,
+        {
+          method: 'POST',
+          body: formData,
+        },
+        60000 // 1 minute timeout for file upload
+      );
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('timed out')) {
+        throw error;
+      }
       throw new Error(`Network error - is the agents server running at ${this.baseUrl}?`);
     }
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `Upload failed: ${response.status} ${response.statusText}`);
+      throw new Error(errorData.detail || `Upload failed: ${response.status}`);
     }
 
     return response.json();
