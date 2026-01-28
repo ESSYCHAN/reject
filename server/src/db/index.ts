@@ -152,7 +152,6 @@ export async function upsertUser(userId: string, email: string) {
     );
     if (existingUser.rows.length > 0) {
       oldUserId = existingUser.rows[0].id;
-      console.log(`upsertUser: found existing user ${oldUserId} with email ${emailValue}, will migrate to ${userId}`);
 
       // Clear email from old user FIRST to avoid unique constraint violation
       await query(
@@ -174,7 +173,6 @@ export async function upsertUser(userId: string, email: string) {
 
   // Now migrate data from old user if needed
   if (oldUserId) {
-    console.log(`upsertUser: migrating data from ${oldUserId} to ${userId}`);
 
     // Migrate subscription (copy to new user)
     await query(
@@ -208,8 +206,6 @@ export async function upsertUser(userId: string, email: string) {
       `UPDATE rejection_data SET user_id = $1 WHERE user_id = $2`,
       [userId, oldUserId]
     );
-
-    console.log(`upsertUser: migration complete from ${oldUserId} to ${userId}`);
   }
 }
 

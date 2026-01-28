@@ -222,19 +222,16 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
       try {
         const user = await clerkClient.users.getUser(userId);
         email = user.emailAddresses?.[0]?.emailAddress;
-        console.log(`User sync: fetched email ${email} for userId ${userId}`);
-      } catch (clerkError) {
-        // Log but don't fail - user can still be synced with null email
-        console.error('Failed to get user from Clerk (continuing anyway):', clerkError);
+      } catch {
+        // Clerk lookup failed, continue without email
       }
     }
 
     // Try to upsert the user - if this fails, still return success if we can
     try {
       await db.upsertUser(userId, email || '');
-      console.log(`User sync: successfully upserted user ${userId} with email ${email || 'null'}`);
     } catch (dbError) {
-      console.error('Failed to upsert user (continuing):', dbError);
+      console.error('Failed to upsert user:', dbError);
     }
 
     // Check if this email has a Pro subscription we should link
@@ -245,7 +242,6 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
           [email, 'active', 'pro']
         );
         if (existingSub.rows[0] && existingSub.rows[0].id !== userId) {
-          console.log(`User sync: Found Pro subscription for ${email}, linking to ${userId}`);
           await db.updateSubscription(userId, {
             status: existingSub.rows[0].status,
             planType: existingSub.rows[0].plan_type

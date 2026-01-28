@@ -6,22 +6,17 @@ const router = Router();
 
 // Helper to ensure user exists in database before inserting applications
 async function ensureUserExists(userId: string): Promise<void> {
-  console.log(`ensureUserExists: starting for ${userId}`);
   try {
     // Try to get user email from Clerk
     let email: string | null = null;
     try {
       const user = await clerkClient.users.getUser(userId);
       email = user.emailAddresses?.[0]?.emailAddress || null;
-      console.log(`ensureUserExists: got email ${email} from Clerk`);
-    } catch (clerkError) {
-      // Clerk lookup failed, continue without email
-      console.log(`ensureUserExists: Clerk lookup failed, continuing without email`, clerkError);
+    } catch {
+      // Clerk lookup failed, continue without email (don't log to reduce noise)
     }
 
-    console.log(`ensureUserExists: upserting user ${userId} with email ${email || 'null'}`);
     await db.upsertUser(userId, email || '');
-    console.log(`ensureUserExists: user upserted successfully`);
   } catch (error) {
     console.error('Error ensuring user exists:', error);
     throw error;
@@ -88,16 +83,17 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
   }
 
   try {
-    console.log(`Sync: starting for user ${userId}, ${applications.length} apps`);
+    // Only log summary, not each individual app (reduces log volume)
+    if (applications.length > 0) {
+      console.log(`Sync: ${applications.length} apps for user ${userId.substring(0, 8)}...`);
+    }
 
     // Ensure user exists in database first (for foreign key constraint)
     await ensureUserExists(userId);
-    console.log(`Sync: user ensured`);
 
-    // Upsert each application
+    // Upsert each application (no per-app logging to avoid rate limits)
     for (let i = 0; i < applications.length; i++) {
       const app = applications[i];
-      console.log(`Sync: upserting app ${i + 1}/${applications.length}: ${app.id?.substring(0, 8)}...`);
       await db.query(
         `INSERT INTO applications (id, user_id, company, role, seniority_level, company_size,
                                    industry, source, date_applied, outcome, days_to_response,
