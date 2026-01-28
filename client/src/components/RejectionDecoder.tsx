@@ -38,7 +38,8 @@ interface ExtractedInfo {
 }
 
 function extractFromEmail(emailText: string): ExtractedInfo {
-  const text = emailText.trim();
+  // Normalize dashes (en-dash, em-dash) to regular hyphens for consistent matching
+  const text = emailText.trim().replace(/[–—]/g, '-');
   let company: string | null = null;
   let role: string | null = null;
 
@@ -220,6 +221,31 @@ function normalizeCompany(name: string): string {
     .trim();
 }
 
+function normalizeRole(role: string): string {
+  return role
+    .toLowerCase()
+    .replace(/[–—]/g, '-')  // Normalize dashes
+    .replace(/\s+(team|department|group|division)$/i, '')  // Remove team suffixes
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function rolesMatch(role1: string, role2: string): boolean {
+  const n1 = normalizeRole(role1);
+  const n2 = normalizeRole(role2);
+  // Exact match
+  if (n1 === n2) return true;
+  // One contains the other (e.g. "mid-level data scientist" contains "data scientist")
+  if (n1.includes(n2) || n2.includes(n1)) return true;
+  // Check if core role words match (e.g. "data scientist" in both)
+  const words1 = n1.split(/[\s-]+/).filter(w => w.length > 2);
+  const words2 = n2.split(/[\s-]+/).filter(w => w.length > 2);
+  const commonWords = words1.filter(w => words2.includes(w));
+  // If at least 2 significant words match, consider it a match
+  return commonWords.length >= 2;
+}
+
 
 // Get human-readable outcome label
 function getOutcomeLabel(outcome: ApplicationRecord['outcome']): string {
@@ -274,9 +300,10 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [decodeCount, setDecodeCount] = useState(() => loadUsage().decodes_per_month);
 
-  // Filter to show only applied/interviewing/ghosted applications (ones that could receive rejections)
+  // Filter to show applications that could receive rejections (including already rejected for re-linking)
   const linkableApps = applications.filter(app =>
-    app.outcome === 'applied' || app.outcome === 'interviewing' || app.outcome === 'ghosted'
+    app.outcome === 'applied' || app.outcome === 'interviewing' ||
+    app.outcome === 'ghosted' || app.outcome === 'rejected'
   );
 
   // Listen for Pro status sync to clear upgrade prompt if user just became Pro
@@ -391,16 +418,31 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
         setEditedRole(updatedExtracted.role || '');
       }
 
-      // Try to auto-match with existing applications by company name (fuzzy)
+      // Try to auto-match with existing applications by company name (fuzzy) and role
       const companyToMatch = aiCompany || extractedInfo.company;
+      const roleToMatch = aiRole || extractedInfo.role;
       if (companyToMatch && linkableApps.length > 0) {
         const normalizedExtracted = normalizeCompany(companyToMatch);
-        const matches = linkableApps.filter(app => {
+
+        // First, find all company matches
+        const companyMatches = linkableApps.filter(app => {
           const normalizedApp = normalizeCompany(app.company);
           return normalizedApp === normalizedExtracted ||
             normalizedApp.includes(normalizedExtracted) ||
             normalizedExtracted.includes(normalizedApp);
         });
+
+        // If we have role info and multiple company matches, prioritize role matches
+        let matches = companyMatches;
+        if (roleToMatch && companyMatches.length > 1) {
+          const roleMatches = companyMatches.filter(app =>
+            app.position && rolesMatch(app.position, roleToMatch)
+          );
+          // Use role matches if we found any, otherwise fall back to all company matches
+          if (roleMatches.length > 0) {
+            matches = roleMatches;
+          }
+        }
 
         if (matches.length > 0) {
           setMatchingAppIds(matches.map(m => m.id));
