@@ -39,7 +39,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       scriptSrc: ["'self'", "'unsafe-inline'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://clerk.tryreject.co.uk", "https://plausible.io", "https://challenges.cloudflare.com", "https://*.hcaptcha.com", "https://*.google.com", "https://*.gstatic.com"],
-      connectSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://api.clerk.com", "https://clerk.tryreject.co.uk", "https://plausible.io", "https://challenges.cloudflare.com", "https://*.hcaptcha.com"],
+      connectSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://api.clerk.com", "https://clerk.tryreject.co.uk", "https://plausible.io", "https://challenges.cloudflare.com", "https://*.hcaptcha.com", "https://*.up.railway.app"],
       frameSrc: ["'self'", "https://*.clerk.accounts.dev", "https://clerk.com", "https://clerk.tryreject.co.uk", "https://challenges.cloudflare.com", "https://*.hcaptcha.com", "https://*.google.com"],
       imgSrc: ["'self'", "data:", "https://*.clerk.com", "https://*.clerk.accounts.dev", "https://clerk.tryreject.co.uk"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
