@@ -515,3 +515,206 @@ export async function fetchUserAgentContext(token: string): Promise<UserAgentCon
     return null;
   }
 }
+
+/**
+ * Compute UserAgentContext from local ApplicationRecord[] data
+ * This ensures consistency between tracker display and agent context
+ */
+export function computeUserAgentContext(applications: Array<{
+  id: string;
+  company: string;
+  role: string;
+  seniorityLevel: string;
+  companySize: string;
+  industry: string | null;
+  source: string;
+  dateApplied: string;
+  outcome: string;
+  daysToResponse: number | null;
+  rejectionAnalysis?: {
+    category: string;
+    stageReached?: string;
+  };
+  fitAnalysis?: {
+    fitScore: number;
+  };
+}>): UserAgentContext | null {
+  if (!applications || applications.length === 0) {
+    return null;
+  }
+
+  // Filter to only applied applications (exclude saved/wishlist)
+  const savedStatuses = ['saved', 'researching', 'preparing', 'ready_to_apply'];
+  const appliedApps = applications.filter(app => !savedStatuses.includes(app.outcome));
+
+  if (appliedApps.length === 0) {
+    return null;
+  }
+
+  // Count outcomes
+  const offers = appliedApps.filter(a => a.outcome === 'offer').length;
+  const interviewing = appliedApps.filter(a => a.outcome === 'interviewing').length;
+  const ghosted = appliedApps.filter(a => a.outcome === 'ghosted').length;
+  const rejected = appliedApps.filter(a => a.outcome.startsWith('rejected_')).length;
+  const pending = appliedApps.filter(a => a.outcome === 'applied').length;
+
+  // Rejection breakdown by stage
+  const atsRejections = appliedApps.filter(a => a.outcome === 'rejected_ats').length;
+  const recruiterRejections = appliedApps.filter(a => a.outcome === 'rejected_recruiter').length;
+  const hmRejections = appliedApps.filter(a => a.outcome === 'rejected_hm').length;
+  const finalRejections = appliedApps.filter(a => a.outcome === 'rejected_final').length;
+
+  // Calculate rates
+  const total = appliedApps.length;
+  const offerRate = total > 0 ? ((offers / total) * 100).toFixed(1) + '%' : '0%';
+  const interviewRate = total > 0 ? (((offers + interviewing) / total) * 100).toFixed(1) + '%' : '0%';
+  const ghostRate = total > 0 ? ((ghosted / total) * 100).toFixed(1) + '%' : '0%';
+
+  // Rejection categories from rejection analysis
+  const byCategory: Record<string, number> = {};
+  appliedApps.forEach(app => {
+    if (app.rejectionAnalysis?.category) {
+      const cat = app.rejectionAnalysis.category;
+      byCategory[cat] = (byCategory[cat] || 0) + 1;
+    }
+  });
+
+  // Average days to response
+  const responseDays = appliedApps
+    .filter(a => a.daysToResponse !== null && a.daysToResponse !== undefined)
+    .map(a => a.daysToResponse as number);
+  const avgDaysToResponse = responseDays.length > 0
+    ? Math.round(responseDays.reduce((a, b) => a + b, 0) / responseDays.length)
+    : 0;
+
+  // Infer seniority from most common
+  const seniorityCounts: Record<string, number> = {};
+  appliedApps.forEach(app => {
+    const s = app.seniorityLevel || 'unknown';
+    seniorityCounts[s] = (seniorityCounts[s] || 0) + 1;
+  });
+  const inferredSeniority = Object.entries(seniorityCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+
+  // Top industries
+  const industryCounts: Record<string, number> = {};
+  appliedApps.forEach(app => {
+    if (app.industry) {
+      industryCounts[app.industry] = (industryCounts[app.industry] || 0) + 1;
+    }
+  });
+  const topIndustries = Object.entries(industryCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([ind]) => ind);
+
+  // Preferred company sizes
+  const sizeCounts: Record<string, number> = {};
+  appliedApps.forEach(app => {
+    const s = app.companySize || 'unknown';
+    sizeCounts[s] = (sizeCounts[s] || 0) + 1;
+  });
+  const preferredCompanySizes = Object.entries(sizeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([size]) => size);
+
+  // Top roles
+  const roleCounts: Record<string, number> = {};
+  appliedApps.forEach(app => {
+    const r = app.role || 'Unknown Role';
+    roleCounts[r] = (roleCounts[r] || 0) + 1;
+  });
+  const topRoles = Object.entries(roleCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([role]) => role);
+
+  // Top companies by application count
+  const companyStats: Record<string, { applications: number; rejections: number; lastOutcome: string | null }> = {};
+  appliedApps.forEach(app => {
+    const c = app.company;
+    if (!companyStats[c]) {
+      companyStats[c] = { applications: 0, rejections: 0, lastOutcome: null };
+    }
+    companyStats[c].applications++;
+    if (app.outcome.startsWith('rejected_')) {
+      companyStats[c].rejections++;
+    }
+    companyStats[c].lastOutcome = app.outcome;
+  });
+  const topCompanies = Object.entries(companyStats)
+    .sort((a, b) => b[1].applications - a[1].applications)
+    .slice(0, 10)
+    .map(([company, stats]) => ({
+      company,
+      applications: stats.applications,
+      rejections: stats.rejections,
+      lastOutcome: stats.lastOutcome,
+      mostCommonStage: null,
+      communityInsights: null
+    }));
+
+  // Recent activity (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+  const recentApps = appliedApps.filter(app => {
+    const appDate = new Date(app.dateApplied);
+    return appDate >= thirtyDaysAgo;
+  });
+  const applicationsLast30Days = recentApps.length;
+  const rejectionsLast30Days = recentApps.filter(a => a.outcome.startsWith('rejected_')).length;
+  const responsesLast30Days = recentApps.filter(a => !['applied', 'ghosted'].includes(a.outcome)).length;
+
+  // Recent applications (last 10)
+  const recentApplications = appliedApps
+    .sort((a, b) => new Date(b.dateApplied).getTime() - new Date(a.dateApplied).getTime())
+    .slice(0, 10)
+    .map(app => ({
+      company: app.company,
+      role: app.role,
+      outcome: app.outcome,
+      dateApplied: app.dateApplied,
+      rejectionCategory: app.rejectionAnalysis?.category || null,
+      fitScore: app.fitAnalysis?.fitScore || null
+    }));
+
+  return {
+    userProfile: {
+      inferredSeniority,
+      topIndustries,
+      preferredCompanySizes,
+      topRoles,
+      applicationCount: appliedApps.length
+    },
+    successMetrics: {
+      totalApplications: total,
+      offers,
+      interviewing,
+      ghosted,
+      rejected,
+      pending,
+      offerRate,
+      interviewRate,
+      ghostRate
+    },
+    rejectionPatterns: {
+      total: rejected,
+      byStage: {
+        ats: atsRejections,
+        recruiter: recruiterRejections,
+        hiringManager: hmRejections,
+        finalRound: finalRejections
+      },
+      byCategory,
+      avgDaysToResponse
+    },
+    topCompanies,
+    recentActivity: {
+      applicationsLast30Days,
+      rejectionsLast30Days,
+      responsesLast30Days
+    },
+    recentApplications
+  };
+}

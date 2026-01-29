@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { agentService, AGENTS, ChatMessage, UserAgentContext, fetchUserAgentContext } from '../services/agentService';
+import { agentService, AGENTS, ChatMessage, UserAgentContext, computeUserAgentContext } from '../services/agentService';
+import { ApplicationRecord } from '../types/pro';
 import './AgentChat.css';
 
 interface AgentChatProps {
@@ -10,10 +11,12 @@ interface AgentChatProps {
     jobDescription?: string;
     targetRole?: string;
   };
+  /** Applications from the synced tracker - ensures consistency with tracker display */
+  applications?: ApplicationRecord[];
 }
 
-export function AgentChat({ initialAgent = 'career_coach', initialContext }: AgentChatProps) {
-  const { getToken, isSignedIn } = useAuth();
+export function AgentChat({ initialAgent = 'career_coach', initialContext, applications }: AgentChatProps) {
+  useAuth(); // Hook required for Clerk context
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -22,30 +25,22 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
   const [showAgentPicker, setShowAgentPicker] = useState(false);
   const [uploadedCV, setUploadedCV] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [userContext, setUserContext] = useState<UserAgentContext | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch user context on mount (for personalized agent responses)
-  useEffect(() => {
-    async function loadUserContext() {
-      if (!isSignedIn) return;
-      try {
-        const token = await getToken();
-        if (token) {
-          const context = await fetchUserAgentContext(token);
-          if (context) {
-            setUserContext(context);
-            console.log('[AgentChat] User context loaded:', context.successMetrics.totalApplications, 'applications');
-          }
-        }
-      } catch (error) {
-        console.warn('[AgentChat] Failed to load user context:', error);
-      }
+  // Compute user context from applications prop (ensures sync with tracker)
+  const userContext = useMemo<UserAgentContext | null>(() => {
+    if (!applications || applications.length === 0) {
+      console.log('[AgentChat] No applications provided, context will be null');
+      return null;
     }
-    loadUserContext();
-  }, [isSignedIn, getToken]);
+    const context = computeUserAgentContext(applications);
+    if (context) {
+      console.log('[AgentChat] Computed context from', applications.length, 'applications:', context.successMetrics.totalApplications, 'tracked');
+    }
+    return context;
+  }, [applications]);
 
   useEffect(() => {
     agentService.healthCheck().then(setIsConnected);

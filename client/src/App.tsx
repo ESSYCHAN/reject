@@ -273,7 +273,7 @@ function App() {
           )}
           {activeTab === 'insights' && <ProInsightsV2 applications={proApplications} />}
           {activeTab === 'jd-check' && <JDAnalyzer onAddToTracker={handleAddFromJD} />}
-          {activeTab === 'ai-coach' && <AgentChat />}
+          {activeTab === 'ai-coach' && <AgentChat applications={proApplications} />}
           {activeTab === 'faq' && <FAQ />}
           {activeTab === 'account' && (
             <div className="account-page">
