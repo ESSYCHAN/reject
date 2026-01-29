@@ -303,7 +303,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   // Filter to show applications that could receive rejections (including already rejected for re-linking)
   const linkableApps = applications.filter(app =>
     app.outcome === 'applied' || app.outcome === 'interviewing' ||
-    app.outcome === 'ghosted' || app.outcome === 'rejected'
+    app.outcome === 'ghosted' || app.outcome.startsWith('rejected')
   );
 
   // Listen for Pro status sync to clear upgrade prompt if user just became Pro
@@ -436,7 +436,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
         let matches = companyMatches;
         if (roleToMatch && companyMatches.length > 1) {
           const roleMatches = companyMatches.filter(app =>
-            app.position && rolesMatch(app.position, roleToMatch)
+            app.role && rolesMatch(app.role, roleToMatch)
           );
           // Use role matches if we found any, otherwise fall back to all company matches
           if (roleMatches.length > 0) {
