@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
-import { agentService, AGENTS, ChatMessage } from '../services/agentService';
+import { useAuth } from '@clerk/clerk-react';
+import { agentService, AGENTS, ChatMessage, UserAgentContext, fetchUserAgentContext } from '../services/agentService';
 import './AgentChat.css';
 
 interface AgentChatProps {
@@ -12,6 +13,7 @@ interface AgentChatProps {
 }
 
 export function AgentChat({ initialAgent = 'career_coach', initialContext }: AgentChatProps) {
+  const { getToken, isSignedIn } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -20,9 +22,30 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
   const [showAgentPicker, setShowAgentPicker] = useState(false);
   const [uploadedCV, setUploadedCV] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [userContext, setUserContext] = useState<UserAgentContext | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch user context on mount (for personalized agent responses)
+  useEffect(() => {
+    async function loadUserContext() {
+      if (!isSignedIn) return;
+      try {
+        const token = await getToken();
+        if (token) {
+          const context = await fetchUserAgentContext(token);
+          if (context) {
+            setUserContext(context);
+            console.log('[AgentChat] User context loaded:', context.successMetrics.totalApplications, 'applications');
+          }
+        }
+      } catch (error) {
+        console.warn('[AgentChat] Failed to load user context:', error);
+      }
+    }
+    loadUserContext();
+  }, [isSignedIn, getToken]);
 
   useEffect(() => {
     agentService.healthCheck().then(setIsConnected);
@@ -71,10 +94,17 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
 
     try {
       console.log('[AgentChat] Sending message to agent:', selectedAgent);
+      // Build context with user data for personalized responses
+      const enrichedContext = {
+        ...initialContext,
+        cvText: uploadedCV || initialContext?.cvText,
+        userContext: userContext || undefined
+      };
+
       const response = await agentService.chat({
         message: userMessage.content,
         agent: selectedAgent,
-        context: initialContext
+        context: enrichedContext
       });
       console.log('[AgentChat] Response received:', response);
 

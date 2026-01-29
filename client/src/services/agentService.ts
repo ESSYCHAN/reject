@@ -64,6 +64,59 @@ export const AGENTS: AgentInfo[] = [
   }
 ];
 
+// User context from the backend for personalized agent responses
+export interface UserAgentContext {
+  userProfile: {
+    inferredSeniority: string | null;
+    topIndustries: string[];
+    preferredCompanySizes: string[];
+    topRoles: string[];
+    applicationCount: number;
+  };
+  successMetrics: {
+    totalApplications: number;
+    offers: number;
+    interviewing: number;
+    ghosted: number;
+    rejected: number;
+    pending: number;
+    offerRate: string;
+    interviewRate: string;
+    ghostRate: string;
+  };
+  rejectionPatterns: {
+    total: number;
+    byStage: {
+      ats: number;
+      recruiter: number;
+      hiringManager: number;
+      finalRound: number;
+    };
+    byCategory: Record<string, number>;
+    avgDaysToResponse: number;
+  };
+  topCompanies: Array<{
+    company: string;
+    applications: number;
+    rejections: number;
+    lastOutcome: string | null;
+    mostCommonStage: string | null;
+  }>;
+  recentActivity: {
+    applicationsLast30Days: number;
+    rejectionsLast30Days: number;
+    responsesLast30Days: number;
+  };
+  recentApplications: Array<{
+    company: string;
+    role: string;
+    outcome: string;
+    dateApplied: string | null;
+    rejectionCategory: string | null;
+    fitScore: number | null;
+  }>;
+}
+
 export interface ChatRequest {
   message: string;
   agent?: string;
@@ -72,6 +125,8 @@ export interface ChatRequest {
     cvText?: string;
     jobDescription?: string;
     targetRole?: string;
+    // Enhanced context from user data
+    userContext?: UserAgentContext;
   };
 }
 
@@ -425,3 +480,31 @@ class AgentService {
 
 // Export singleton instance
 export const agentService = new AgentService();
+
+// API URL for main backend (not agents)
+const API_URL = import.meta.env.VITE_API_URL || '';
+
+/**
+ * Fetch user context from the main backend for personalized agent responses
+ * This includes application history, rejection patterns, success metrics
+ */
+export async function fetchUserAgentContext(token: string): Promise<UserAgentContext | null> {
+  try {
+    const response = await fetch(`${API_URL}/api/agents/context`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      console.warn('[agentService] Failed to fetch user context:', response.status);
+      return null;
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.warn('[agentService] Error fetching user context:', error);
+    return null;
+  }
+}

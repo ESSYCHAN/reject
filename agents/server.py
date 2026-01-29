@@ -414,6 +414,69 @@ async def chat(request: ChatRequest):
             if request.context.get("targetRole"):
                 context_text += f"\n\nTarget Role: {request.context['targetRole']}"
 
+            # Add user context for personalized responses
+            user_ctx = request.context.get("userContext")
+            if user_ctx:
+                context_text += "\n\n--- USER'S APPLICATION HISTORY ---"
+
+                # User profile
+                profile = user_ctx.get("userProfile", {})
+                if profile.get("applicationCount", 0) > 0:
+                    context_text += f"\nProfile: {profile.get('applicationCount')} applications tracked"
+                    if profile.get("inferredSeniority"):
+                        context_text += f", targeting {profile.get('inferredSeniority')} level roles"
+                    if profile.get("topRoles"):
+                        context_text += f"\nTop roles applied to: {', '.join(profile.get('topRoles', []))}"
+                    if profile.get("topIndustries"):
+                        context_text += f"\nIndustries: {', '.join(profile.get('topIndustries', []))}"
+
+                # Success metrics
+                metrics = user_ctx.get("successMetrics", {})
+                if metrics.get("totalApplications", 0) > 0:
+                    context_text += f"\n\nSuccess Metrics:"
+                    context_text += f"\n- Total applications: {metrics.get('totalApplications')}"
+                    context_text += f"\n- Offers: {metrics.get('offers')} ({metrics.get('offerRate', '0%')})"
+                    context_text += f"\n- Currently interviewing: {metrics.get('interviewing')}"
+                    context_text += f"\n- Ghosted: {metrics.get('ghosted')} ({metrics.get('ghostRate', '0%')})"
+                    context_text += f"\n- Rejected: {metrics.get('rejected')}"
+
+                # Rejection patterns
+                patterns = user_ctx.get("rejectionPatterns", {})
+                if patterns.get("total", 0) > 0:
+                    context_text += f"\n\nRejection Patterns ({patterns.get('total')} rejections):"
+                    stages = patterns.get("byStage", {})
+                    if stages.get("ats", 0) > 0:
+                        context_text += f"\n- ATS stage: {stages.get('ats')}"
+                    if stages.get("recruiter", 0) > 0:
+                        context_text += f"\n- Recruiter screen: {stages.get('recruiter')}"
+                    if stages.get("hiringManager", 0) > 0:
+                        context_text += f"\n- Hiring manager: {stages.get('hiringManager')}"
+                    if stages.get("finalRound", 0) > 0:
+                        context_text += f"\n- Final round: {stages.get('finalRound')}"
+                    if patterns.get("avgDaysToResponse", 0) > 0:
+                        context_text += f"\n- Avg response time: {int(patterns.get('avgDaysToResponse'))} days"
+
+                # Top companies
+                top_companies = user_ctx.get("topCompanies", [])
+                if top_companies:
+                    context_text += f"\n\nTop Companies Applied To:"
+                    for company in top_companies[:3]:
+                        context_text += f"\n- {company.get('company')}: {company.get('applications')} apps"
+                        if company.get('rejections', 0) > 0:
+                            context_text += f" ({company.get('rejections')} rejections)"
+                        if company.get('lastOutcome'):
+                            context_text += f", last: {company.get('lastOutcome')}"
+
+                # Recent applications
+                recent = user_ctx.get("recentApplications", [])
+                if recent:
+                    context_text += f"\n\nRecent Applications:"
+                    for app in recent[:5]:
+                        context_text += f"\n- {app.get('company')} ({app.get('role')}): {app.get('outcome') or 'pending'}"
+
+                context_text += "\n--- END USER HISTORY ---\n"
+                context_text += "\nUse this context to provide personalized advice. Reference specific patterns when relevant."
+
         # Build conversation history
         history_text = ""
         for msg in conv["history"][-10:]:
