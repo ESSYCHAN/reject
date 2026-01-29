@@ -13,8 +13,24 @@ export const ApplicationSourceSchema = z.enum([
   'linkedin', 'company_site', 'referral', 'recruiter', 'job_board', 'direct', 'other'
 ]);
 
+// Pre-application (saved/wishlist) statuses
+export const SavedStatusSchema = z.enum([
+  'saved', 'researching', 'preparing', 'ready_to_apply'
+]);
+
+// Post-application statuses
+export const AppliedStatusSchema = z.enum([
+  'applied', 'interviewing', 'ghosted', 'rejected_ats', 'rejected_recruiter', 'rejected_hm', 'rejected_final', 'offer'
+]);
+
+// Combined outcome - all possible statuses
 export const OutcomeSchema = z.enum([
-  'pending', 'ghosted', 'rejected_ats', 'rejected_recruiter', 'rejected_hm', 'rejected_final', 'offer'
+  // Saved/wishlist
+  'saved', 'researching', 'preparing', 'ready_to_apply',
+  // Applied
+  'applied', 'interviewing', 'ghosted', 'rejected_ats', 'rejected_recruiter', 'rejected_hm', 'rejected_final', 'offer',
+  // Legacy (map to applied)
+  'pending'
 ]);
 
 export const ApplicationRecordSchema = z.object({
