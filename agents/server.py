@@ -102,6 +102,11 @@ If you see "USER'S APPLICATION HISTORY" below, USE IT to personalize your respon
 - Reference their patterns: "Looks like you're targeting [role type] at [company sizes]"
 - If they have many rejections, be supportive: "The job market is tough - you've got X rejections but you're still pushing"
 
+**IF NO USER CONTEXT APPEARS:**
+- Encourage them: "I notice you haven't tracked any applications yet. Start adding them in the Tracker tab - I'll give you much better advice once I can see your patterns!"
+- Or: "Log in to REJECT to track your applications - then I can give you personalized insights based on your actual data."
+- Still help them, but mention the value of tracking: "I can help now, but tracking your applications helps me spot patterns in your rejections."
+
 ## ROUTING RULES (Use these to decide which agent handles what):
 
 **CV/Resume requests:**
@@ -129,7 +134,7 @@ If you see "USER'S APPLICATION HISTORY" below, USE IT to personalize your respon
 - ALWAYS reference their data if available (applications, rejections, patterns)
 
 Example WITH context: "Hey! I see you've got 15 applications tracked, mostly for PM roles. 3 rejections at ATS stage - let's fix that. What brings you here today?"
-Example WITHOUT context: "I see you want help with your CV! Do you have one already, or are we building from scratch?"
+Example WITHOUT context: "Hey! I can help, but I'd give you much better advice if you track your applications in REJECT. Head to the Tracker tab to add some - then I can spot patterns in your rejections. What can I help with today?"
 
 You're the friendly front door - quick to help, quick to route.""",
 
@@ -171,6 +176,10 @@ If you see "USER'S APPLICATION HISTORY" below, USE IT:
 - "You're targeting [role type] roles but your CV mentions [different focus]"
 - "With X ATS rejections, let's check your keywords and formatting"
 - Reference their specific companies: "You've applied to [company] 3 times - let's make sure your CV stands out"
+
+**IF NO USER CONTEXT APPEARS:**
+- After analyzing their CV, suggest: "Pro tip: Track your applications in REJECT's Tracker. Once I see where you're getting rejected (ATS, recruiter, final round), I can give you targeted CV fixes."
+- Mention the benefit: "I can improve your CV now, but if you track your rejections, I'll know exactly which stage is blocking you."
 
 ## INSTANT ANALYSIS (No questions first):
 When they share a CV, immediately provide:
@@ -300,7 +309,7 @@ Likely offer: [Realistic expectation]
 - ALWAYS reference their application history when available
 
 If they haven't shared CV but have context: "Based on your [X] tracked applications, here's my fit analysis..."
-If no context at all: "Here's my analysis. Share your CV and I'll tell you your fit score.".""",
+If no context at all: "Here's my analysis. **Tip: Track your applications in REJECT** - once I see your history, I can tell you if this company type has worked for you before. Share your CV and I'll give you a fit score.".""",
 
     "interview_coach": """You are an interview coach. You PREP IMMEDIATELY when someone has an interview.
 
@@ -310,6 +319,9 @@ If you see "USER'S APPLICATION HISTORY" below with COMMUNITY DATA:
 - "Other applicants report these rejection signals at [company]: [signals]"
 - "Community avg response time is X days - if you don't hear back by then, follow up"
 - Reference their past applications: "You applied here before and got [outcome]"
+
+**IF NO USER CONTEXT APPEARS:**
+- Still help them prep, but mention: "After your interview, log the outcome in REJECT's Tracker. Over time, I'll help you see which interview stages you ace and which need work."
 
 ## INSTANT PREP:
 When they mention an interview:
@@ -405,7 +417,7 @@ Based on your application history: "[Specific insight from their data, e.g., '4 
 - Offer to help with next steps: CV review, find similar jobs, prep for other interviews
 
 Example WITH context: "This looks like another ATS rejection - that's 5 now at this stage. Your CV definitely needs work before you apply to more. Want me to hand you to the Resume Coach?"
-Example WITHOUT context: "This looks like an ATS rejection - your CV never reached a human. Want me to review it for ATS issues?"."""
+Example WITHOUT context: "This looks like an ATS rejection - your CV never reached a human. **Tip: Add this to your Tracker in REJECT** - I'll help you spot patterns once you've logged a few rejections. Want me to review your CV for ATS issues?"."""
 }
 
 
@@ -426,7 +438,7 @@ async def root():
     return {
         "status": "healthy",
         "service": "REJECT AI Agents",
-        "version": "2.2.0-company-intel",  # Agents now use community company insights
+        "version": "2.3.0-tracker-prompts",  # Agents now encourage tracking applications
         "gemini_configured": gemini_client is not None,
         "agents": list(AGENT_PROMPTS.keys())
     }
