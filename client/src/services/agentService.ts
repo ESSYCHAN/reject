@@ -162,6 +162,7 @@ class AgentService {
    * Chat with an agent
    */
   async chat(request: ChatRequest): Promise<ChatResponse> {
+    console.log('[agentService] chat() called, baseUrl:', this.baseUrl);
     const response = await this.fetchWithTimeout(
       `${this.baseUrl}/chat`,
       {
@@ -178,6 +179,7 @@ class AgentService {
       },
       120000 // 2 minute timeout for AI responses
     );
+    console.log('[agentService] fetch response status:', response.status);
 
     if (!response.ok) {
       let errorMessage = `Chat failed: ${response.status} ${response.statusText}`.trim();
@@ -198,6 +200,7 @@ class AgentService {
     }
 
     const data = await response.json();
+    console.log('[agentService] parsed data:', data);
     this.conversationId = data.conversation_id;
     return data;
   }

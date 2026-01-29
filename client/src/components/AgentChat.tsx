@@ -70,11 +70,13 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
     setIsLoading(true);
 
     try {
+      console.log('[AgentChat] Sending message to agent:', selectedAgent);
       const response = await agentService.chat({
         message: userMessage.content,
         agent: selectedAgent,
         context: initialContext
       });
+      console.log('[AgentChat] Response received:', response);
 
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
@@ -84,6 +86,7 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
         timestamp: new Date()
       }]);
     } catch (error) {
+      console.error('[AgentChat] Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       setMessages(prev => [...prev, {
         id: crypto.randomUUID(),
