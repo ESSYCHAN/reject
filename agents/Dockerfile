@@ -14,8 +14,8 @@ RUN apt-get update && apt-get install -y \
 # Copy requirements first for better caching
 COPY requirements.txt .
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies (force reinstall to avoid cache issues)
+RUN pip install --no-cache-dir --upgrade -r requirements.txt
 
 # Copy application code
 COPY . .

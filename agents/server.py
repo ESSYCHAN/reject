@@ -358,7 +358,7 @@ async def root():
     return {
         "status": "healthy",
         "service": "REJECT AI Agents",
-        "version": "1.0.0",
+        "version": "2.0.0-genai",  # Updated to confirm new deployment
         "gemini_configured": gemini_client is not None,
         "agents": list(AGENT_PROMPTS.keys())
     }
