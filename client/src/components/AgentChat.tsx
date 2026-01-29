@@ -85,6 +85,30 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
         agent: response.agent_used,
         timestamp: new Date()
       }]);
+
+      // Auto-detect agent routing from response and switch agents
+      const responseText = response.response.toLowerCase();
+      const routingPatterns: Record<string, string> = {
+        'resume coach': 'resume_coach',
+        'cv builder': 'cv_builder',
+        'interview coach': 'interview_coach',
+        'career agent': 'career_agent',
+        'job advisor': 'job_advisor',
+        'rejection decoder': 'rejection_decoder',
+      };
+
+      for (const [pattern, agentId] of Object.entries(routingPatterns)) {
+        if ((responseText.includes('route') || responseText.includes('pass') || responseText.includes('hand'))
+            && responseText.includes(pattern) && selectedAgent !== agentId) {
+          console.log('[AgentChat] Auto-routing to:', agentId);
+          // Delay the switch slightly so user sees the routing message
+          setTimeout(() => {
+            setSelectedAgent(agentId);
+            agentService.resetConversation();
+          }, 1500);
+          break;
+        }
+      }
     } catch (error) {
       console.error('[AgentChat] Error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
