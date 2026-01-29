@@ -10,7 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import httpx
 from PyPDF2 import PdfReader
 from docx import Document
@@ -25,10 +26,11 @@ LOCAL_ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 if os.path.exists(LOCAL_ENV_PATH):
     load_dotenv(LOCAL_ENV_PATH, override=False)
 
-# Configure Gemini (gracefully handle missing key)
+# Configure Gemini client (gracefully handle missing key)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+gemini_client = None
 if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+    gemini_client = genai.Client(api_key=GEMINI_API_KEY)
 else:
     print("WARNING: GEMINI_API_KEY not set - AI features will not work")
 
@@ -343,25 +345,21 @@ If this is their 3rd+ rejection: "I'm noticing a pattern - [insight about what m
 conversations: dict = {}
 
 
-def get_model():
-    """Get Gemini model instance."""
-    return genai.GenerativeModel(
-        'gemini-2.0-flash',
-        generation_config=genai.types.GenerationConfig(
-            max_output_tokens=2048,  # Limit response length to prevent timeouts
-        )
+def get_generation_config():
+    """Get generation config for Gemini."""
+    return types.GenerateContentConfig(
+        max_output_tokens=2048,  # Limit response length to prevent timeouts
     )
 
 
 @app.get("/")
 async def root():
     """Health check and API info."""
-    api_key = os.getenv("GEMINI_API_KEY")
     return {
         "status": "healthy",
         "service": "REJECT AI Agents",
         "version": "1.0.0",
-        "gemini_configured": bool(api_key and len(api_key) > 10),
+        "gemini_configured": gemini_client is not None,
         "agents": list(AGENT_PROMPTS.keys())
     }
 
@@ -390,7 +388,7 @@ async def chat(request: ChatRequest):
     if agent_id not in AGENT_PROMPTS:
         raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
 
-    if not GEMINI_API_KEY:
+    if not gemini_client:
         raise HTTPException(
             status_code=503,
             detail="GEMINI_API_KEY not configured. Set it in agents/.env and restart the server."
@@ -404,7 +402,6 @@ async def chat(request: ChatRequest):
     conv = conversations[conv_id]
 
     try:
-        model = get_model()
         system_prompt = AGENT_PROMPTS[agent_id]
 
         # Add context if provided
@@ -432,11 +429,18 @@ Conversation History:{history_text}
 User: {request.message}
 Please respond helpfully as the assistant."""
 
-        # Generate response with timeout (run blocking call in thread pool)
+        # Generate response with timeout using the new client API
+        def generate():
+            return gemini_client.models.generate_content(
+                model='gemini-2.0-flash',
+                contents=full_prompt,
+                config=get_generation_config()
+            )
+
         loop = asyncio.get_event_loop()
         try:
             response = await asyncio.wait_for(
-                loop.run_in_executor(None, model.generate_content, full_prompt),
+                loop.run_in_executor(None, generate),
                 timeout=60.0  # 60 second timeout for AI response
             )
             assistant_response = response.text
