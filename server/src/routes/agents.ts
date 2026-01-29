@@ -118,22 +118,46 @@ router.get('/context', requireAuth(), async (req: Request, res: Response) => {
       return acc;
     }, {} as Record<string, number>);
 
-    const topCompanies = Object.entries(companyFrequency)
+    const topCompanyNames = Object.entries(companyFrequency)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 5)
-      .map(([company, count]) => {
-        const companyApps = applications.filter(a => a.company === company);
-        const companyRejections = companyApps.filter(a => a.outcome?.startsWith('rejected'));
-        return {
-          company,
-          applications: count,
-          rejections: companyRejections.length,
-          lastOutcome: companyApps[0]?.outcome || null,
-          mostCommonStage: companyRejections.length > 0
-            ? companyRejections[0]?.outcome?.replace('rejected_', '') || null
-            : null
-        };
-      });
+      .map(([company]) => company);
+
+    // Fetch community stats for top companies (in parallel)
+    const communityStatsPromises = topCompanyNames.map(company =>
+      db.getCompanyStats(company).catch(() => null)
+    );
+    const communityStatsResults = await Promise.all(communityStatsPromises);
+    const communityStatsMap = new Map<string, any>();
+    topCompanyNames.forEach((company, i) => {
+      if (communityStatsResults[i]) {
+        communityStatsMap.set(company.toLowerCase(), communityStatsResults[i]);
+      }
+    });
+
+    const topCompanies = topCompanyNames.map(company => {
+      const count = companyFrequency[company];
+      const companyApps = applications.filter(a => a.company === company);
+      const companyRejections = companyApps.filter(a => a.outcome?.startsWith('rejected'));
+      const communityStats = communityStatsMap.get(company.toLowerCase());
+
+      return {
+        company,
+        applications: count,
+        rejections: companyRejections.length,
+        lastOutcome: companyApps[0]?.outcome || null,
+        mostCommonStage: companyRejections.length > 0
+          ? companyRejections[0]?.outcome?.replace('rejected_', '') || null
+          : null,
+        // Add community intelligence
+        communityInsights: communityStats ? {
+          totalCommunityApps: communityStats.totalApplications,
+          communityGhostRate: communityStats.ghostRate,
+          avgResponseDays: communityStats.avgDaysToResponse,
+          topSignals: communityStats.topSignals?.slice(0, 3) || []
+        } : null
+      };
+    });
 
     // 6. Recent activity (last 30 days)
     const thirtyDaysAgo = new Date();

@@ -253,12 +253,18 @@ NOT: "What role are you looking for? What location? What salary?".""",
 
     "job_advisor": """You are a job advisor. You ANALYZE IMMEDIATELY when given a job description.
 
-## 🔍 USER CONTEXT (CHECK THIS FIRST!)
+## 🔍 USER CONTEXT & COMPANY INTEL (CHECK THIS FIRST!)
 If you see "USER'S APPLICATION HISTORY" below, USE IT for personalized analysis:
 - "Given your experience getting interviews at [company size], this [size] company is a good/bad match"
 - "This role is [similar to/different from] the [role type] positions you've been targeting"
 - "Warning: You applied to this company before and [outcome]"
 - "This is [level] role but you've been applying to [their level] - might be a step down/up"
+
+**COMPANY INTELLIGENCE (look for 📊 COMMUNITY DATA):**
+- "REJECT community data shows this company has [X%] ghost rate - be prepared"
+- "Other applicants report avg response time of X days"
+- "Top rejection signals from other users: [signals] - watch out for these"
+- Use this intel in your FIT SCORE and recommendation
 
 ## INSTANT ANALYSIS (No questions):
 When they paste a JD:
@@ -298,6 +304,13 @@ If no context at all: "Here's my analysis. Share your CV and I'll tell you your 
 
     "interview_coach": """You are an interview coach. You PREP IMMEDIATELY when someone has an interview.
 
+## 🔍 USER CONTEXT & COMPANY INTEL (CHECK THIS FIRST!)
+If you see "USER'S APPLICATION HISTORY" below with COMMUNITY DATA:
+- "Based on REJECT community data, [company] has a [X%] ghost rate - prepare for delays"
+- "Other applicants report these rejection signals at [company]: [signals]"
+- "Community avg response time is X days - if you don't hear back by then, follow up"
+- Reference their past applications: "You applied here before and got [outcome]"
+
 ## INSTANT PREP:
 When they mention an interview:
 
@@ -305,9 +318,9 @@ When they mention an interview:
 
 Then immediately provide:
 
-**🏢 COMPANY CONTEXT:**
+**🏢 COMPANY CONTEXT (use community intel if available):**
 - What they're known for
-- What they value in candidates
+- Community data: ghost rate, response times, common rejection signals
 - Interview style/process
 
 **📝 LIKELY QUESTIONS:**
@@ -343,12 +356,17 @@ When practicing:
 
     "rejection_decoder": """You are a rejection decoder. You DECODE IMMEDIATELY when someone shares a rejection.
 
-## 🔍 USER CONTEXT (CHECK THIS FIRST!)
+## 🔍 USER CONTEXT & COMPANY INTEL (CHECK THIS FIRST!)
 If you see "USER'S APPLICATION HISTORY" below, THIS IS CRITICAL - USE IT:
 - Reference their ACTUAL rejection count: "This is rejection #X for you..."
 - Identify REAL patterns: "I see X of your Y rejections were at [stage] - there's a pattern here"
-- Company-specific insight: "You've applied to [company] before - their pattern shows [insight]"
 - Compare to their success: "You've got X offers though, so you know how to close when you get past ATS"
+
+**COMPANY INTELLIGENCE (look for 📊 COMMUNITY DATA):**
+- "This company has a [X%] ghost rate across REJECT users - this rejection is [normal/unusual]"
+- "The top rejection signals others report: [signals] - does this match your situation?"
+- "Community avg response was X days, you heard back in Y - that's [faster/slower] than usual"
+- If user applied to this company before: "You applied here before and got [outcome]"
 
 ## INSTANT DECODE:
 When they paste a rejection:
@@ -408,7 +426,7 @@ async def root():
     return {
         "status": "healthy",
         "service": "REJECT AI Agents",
-        "version": "2.1.0-context-aware",  # Agents now explicitly use user context
+        "version": "2.2.0-company-intel",  # Agents now use community company insights
         "gemini_configured": gemini_client is not None,
         "agents": list(AGENT_PROMPTS.keys())
     }
@@ -506,16 +524,27 @@ async def chat(request: ChatRequest):
                     if patterns.get("avgDaysToResponse", 0) > 0:
                         context_text += f"\n- Avg response time: {int(patterns.get('avgDaysToResponse'))} days"
 
-                # Top companies
+                # Top companies with community intelligence
                 top_companies = user_ctx.get("topCompanies", [])
                 if top_companies:
-                    context_text += f"\n\nTop Companies Applied To:"
+                    context_text += f"\n\nTop Companies Applied To (with Community Intel):"
                     for company in top_companies[:3]:
                         context_text += f"\n- {company.get('company')}: {company.get('applications')} apps"
                         if company.get('rejections', 0) > 0:
                             context_text += f" ({company.get('rejections')} rejections)"
                         if company.get('lastOutcome'):
                             context_text += f", last: {company.get('lastOutcome')}"
+                        # Add community insights if available
+                        community = company.get('communityInsights')
+                        if community:
+                            context_text += f"\n  📊 COMMUNITY DATA: {community.get('totalCommunityApps', 0)} total apps from REJECT users"
+                            if community.get('communityGhostRate'):
+                                context_text += f", ghost rate: {community.get('communityGhostRate')}"
+                            if community.get('avgResponseDays'):
+                                context_text += f", avg response: {community.get('avgResponseDays')} days"
+                            signals = community.get('topSignals', [])
+                            if signals:
+                                context_text += f"\n  ⚠️ Top rejection signals: {', '.join(signals[:3])}"
 
                 # Recent applications
                 recent = user_ctx.get("recentApplications", [])

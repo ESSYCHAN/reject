@@ -101,6 +101,13 @@ export interface UserAgentContext {
     rejections: number;
     lastOutcome: string | null;
     mostCommonStage: string | null;
+    // Community intelligence from other REJECT users
+    communityInsights: {
+      totalCommunityApps: number;
+      communityGhostRate: string;
+      avgResponseDays: number;
+      topSignals: string[];
+    } | null;
   }>;
   recentActivity: {
     applicationsLast30Days: number;
