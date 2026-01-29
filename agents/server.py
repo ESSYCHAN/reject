@@ -10,6 +10,7 @@ import os
 import io
 import uuid
 import asyncio
+import random
 from typing import Optional, List, Any
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File
@@ -153,6 +154,43 @@ class CVExportRequest(BaseModel):
 # routing, tool support, and user context protocols. See root_agent.py,
 # cv_builder.py, resume_coach.py, career_agent.py, job_advisor.py,
 # interview_coach.py, rejection_decoder.py
+
+
+# Rate limit retry configuration
+MAX_RETRIES = 3
+BASE_DELAY = 1.0  # seconds
+MAX_DELAY = 10.0  # seconds
+
+
+def is_rate_limit_error(error: Exception) -> bool:
+    """Check if an error is a rate limit (429) error."""
+    error_str = str(error).lower()
+    return (
+        "429" in error_str or
+        "resource_exhausted" in error_str or
+        "rate limit" in error_str or
+        "quota" in error_str
+    )
+
+
+async def run_with_retry(coro_func, *args, **kwargs):
+    """Run an async function with exponential backoff retry for rate limits."""
+    last_error = None
+
+    for attempt in range(MAX_RETRIES):
+        try:
+            return await coro_func(*args, **kwargs)
+        except Exception as e:
+            last_error = e
+            if is_rate_limit_error(e) and attempt < MAX_RETRIES - 1:
+                # Exponential backoff with jitter
+                delay = min(BASE_DELAY * (2 ** attempt) + random.uniform(0, 1), MAX_DELAY)
+                print(f"Rate limit hit, retrying in {delay:.1f}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                await asyncio.sleep(delay)
+            else:
+                raise
+
+    raise last_error
 
 
 @app.get("/")
@@ -330,41 +368,58 @@ async def chat(request: ChatRequest):
                 state=state
             )
 
-        # Run the agent and collect response
+        # Run the agent with retry logic for rate limits
+        async def execute_agent():
+            """Execute the agent and collect response."""
+            text = ""
+            responding_agent = agent_id
+
+            async for event in adk_runner.run_async(
+                user_id=user_id,
+                session_id=conv_id,
+                new_message=types.Content(
+                    role="user",
+                    parts=[types.Part(text=message_text)]
+                )
+            ):
+                # Track which agent responded
+                if hasattr(event, 'author') and event.author and event.author != "user":
+                    responding_agent = event.author
+
+                # Check for errors in event
+                if hasattr(event, 'error_message') and event.error_message:
+                    raise Exception(f"Agent error: {event.error_message}")
+
+                # Collect text from final response
+                if hasattr(event, 'is_final_response') and event.is_final_response():
+                    if event.content and event.content.parts:
+                        for part in event.content.parts:
+                            if hasattr(part, 'text') and part.text:
+                                text += part.text
+                    break
+                # Fallback: collect text from any non-tool events
+                elif event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if hasattr(part, 'text') and part.text:
+                            text += part.text
+
+            return text, responding_agent
+
+        # Execute with retry for rate limits
         response_text = ""
         agent_used = agent_id
 
-        async for event in adk_runner.run_async(
-            user_id=user_id,
-            session_id=conv_id,
-            new_message=types.Content(
-                role="user",
-                parts=[types.Part(text=message_text)]
-            )
-        ):
-            # Track which agent responded
-            if hasattr(event, 'author') and event.author and event.author != "user":
-                agent_used = event.author
-
-            # Check for errors
-            if hasattr(event, 'error_message') and event.error_message:
-                raise HTTPException(
-                    status_code=500,
-                    detail=f"Agent error: {event.error_message}"
-                )
-
-            # Collect text from final response
-            if hasattr(event, 'is_final_response') and event.is_final_response():
-                if event.content and event.content.parts:
-                    for part in event.content.parts:
-                        if hasattr(part, 'text') and part.text:
-                            response_text += part.text
-                break
-            # Fallback: collect text from any non-tool events
-            elif event.content and event.content.parts:
-                for part in event.content.parts:
-                    if hasattr(part, 'text') and part.text:
-                        response_text += part.text
+        for attempt in range(MAX_RETRIES):
+            try:
+                response_text, agent_used = await execute_agent()
+                break  # Success, exit retry loop
+            except Exception as e:
+                if is_rate_limit_error(e) and attempt < MAX_RETRIES - 1:
+                    delay = min(BASE_DELAY * (2 ** attempt) + random.uniform(0, 1), MAX_DELAY)
+                    print(f"Rate limit hit, retrying in {delay:.1f}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                    await asyncio.sleep(delay)
+                else:
+                    raise  # Re-raise if not rate limit or out of retries
 
         if not response_text:
             response_text = "I apologize, but I couldn't generate a response. Please try again."
@@ -380,8 +435,17 @@ async def chat(request: ChatRequest):
     except asyncio.TimeoutError:
         raise HTTPException(status_code=504, detail="AI response timed out. Please try again.")
     except Exception as e:
-        print(f"Chat error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        error_str = str(e)
+        print(f"Chat error: {error_str}")
+
+        # Check for rate limit errors and provide helpful message
+        if is_rate_limit_error(e):
+            raise HTTPException(
+                status_code=429,
+                detail="The AI service is temporarily overloaded. Please wait a moment and try again."
+            )
+
+        raise HTTPException(status_code=500, detail=error_str)
 
 
 @app.post("/upload/cv")
