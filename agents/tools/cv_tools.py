@@ -1,6 +1,6 @@
 """CV/Resume tools for parsing, analyzing, and generating CVs."""
 
-from google.adk import FunctionTool
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel
 from typing import Optional
 import json

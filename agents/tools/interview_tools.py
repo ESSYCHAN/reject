@@ -1,6 +1,6 @@
 """Interview preparation and practice tools."""
 
-from google.adk import FunctionTool
+from google.adk.tools import FunctionTool
 from typing import Optional
 
 

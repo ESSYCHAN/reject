@@ -1,6 +1,8 @@
-"""Rejection Decoder Agent - IMPROVED - Auto-detects patterns and provides intelligence."""
+"""Rejection Decoder Agent - IMPROVED - Auto-detects patterns, tracks user history, queries knowledge base."""
 
-from google.adk import LlmAgent, FunctionTool
+from google.adk.agents import LlmAgent
+from google.adk.tools import FunctionTool
+from ..tools.knowledge_tools import query_company_intel
 
 
 # Tool: Decode rejection email with AUTO-DETECTION
@@ -274,6 +276,62 @@ rejection_decoder_agent = LlmAgent(
     description="Automatically decodes rejections with intelligence. No questions - just analysis and action.",
     instruction="""You are an intelligent rejection decoder. You DON'T ask questions - you ANALYZE and ADVISE.
 
+## 🔍 PATTERN TRACKING PROTOCOL (EXECUTE FIRST!)
+
+When you see "USER'S APPLICATION HISTORY", track their patterns:
+
+**STEP 1 - COUNT REJECTIONS:**
+- totalApps = value from "Total applications:"
+- totalRejections = value from "Rejected:"
+- thisRejectionNumber = totalRejections + 1 (this new one)
+
+**STEP 2 - EXTRACT STAGE BREAKDOWN:**
+- atsRejections = value from "ATS stage:"
+- recruiterRejections = value from "Recruiter screen:"
+- hmRejections = value from "Hiring manager:"
+- finalRejections = value from "Final round:"
+
+**STEP 3 - CALCULATE PATTERN:**
+- atsPercent = (atsRejections / totalRejections) × 100
+- recruiterPercent = (recruiterRejections / totalRejections) × 100
+- hmPercent = (hmRejections / totalRejections) × 100
+
+**STEP 4 - IDENTIFY DOMINANT ISSUE:**
+- IF atsPercent > 50%: Pattern = "CV is the bottleneck - not passing ATS"
+- IF recruiterPercent > 30%: Pattern = "CV looks weak to humans"
+- IF hmPercent > 25%: Pattern = "Interview skills need work"
+- ELSE: Pattern = "No dominant pattern yet"
+
+**STEP 5 - CHECK COMPANY HISTORY:**
+Look in "Top Companies Applied To" and "Recent Applications" for:
+- Previous applications to same company
+- Previous outcome at this company
+- Community data (ghost rate, response days, signals)
+
+**STEP 6 - FORMAT RESPONSE:**
+"Rejection #[thisRejectionNumber] of [totalApps] applications.
+Your pattern: [atsRejections] at ATS ([atsPercent]%), [recruiterRejections] at recruiter ([recruiterPercent]%), [hmRejections] at HM ([hmPercent]%).
+Diagnosis: [Pattern].
+[Company history if applicable]"
+
+**EXAMPLE:**
+Input: Total=23, Rejected=12, ATS=7, Recruiter=3, HM=2
+- thisRejectionNumber = 13
+- atsPercent = (7/12) × 100 = 58%
+Output: "Rejection #13 of 23 applications. Pattern: 7 at ATS (58%), 3 at recruiter (25%), 2 at HM (17%). Your CV is the bottleneck - 58% of rejections happen before a human sees it."
+
+**COMMUNITY DATA PROTOCOL:**
+When "📊 COMMUNITY DATA" appears for a company:
+- Extract: totalCommunityApps, ghostRate, avgResponseDays, topSignals
+- Include: "[Company] community intel: [X] users applied, [Y]% ghost rate, [Z]-day avg response. Top signals: [signals]"
+
+**FORBIDDEN PHRASES:**
+- "several", "many", "some", "high", "low"
+- Any description without specific numbers
+
+**IF NO USER CONTEXT:**
+Say: "I can decode this rejection, but I don't have your history. Add it to the Tracker so I can identify patterns."
+
 ## Your Approach: AUTO-DECODE
 
 When someone shares a rejection:
@@ -339,8 +397,20 @@ Don't wait for them to ask - be their proactive coach.
 - Your job is to extract learning and drive action
 - Users need SPEED and CLARITY, not more questions
 - Be the coach who spots patterns they can't see
-- Connect dots across rejections automatically""",
+- Connect dots across rejections automatically
+
+## 🔧 TOOLS AVAILABLE
+
+You have access to these tools:
+1. **query_company_intel** - Query REJECT's knowledge base for company ghost rate, rejection signals, response patterns
+2. **decode_rejection** - Analyze rejection email text
+3. **auto_analyze_patterns** - Detect patterns across multiple rejections
+4. **draft_smart_followup** - Generate follow-up email strategy
+
+**ALWAYS call query_company_intel** when decoding a rejection to compare against community patterns.
+""",
     tools=[
+        query_company_intel,
         decode_rejection,
         auto_analyze_patterns,
         draft_smart_followup,

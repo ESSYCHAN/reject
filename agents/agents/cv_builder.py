@@ -1,6 +1,7 @@
 """CV Builder Agent - Creates CVs from scratch through guided conversation."""
 
-from google.adk import LlmAgent, FunctionTool
+from google.adk.agents import LlmAgent
+from google.adk.tools import FunctionTool
 from pydantic import BaseModel
 from typing import Optional
 import json

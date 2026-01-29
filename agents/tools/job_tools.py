@@ -1,6 +1,6 @@
 """Job search and analysis tools for Career Agent."""
 
-from google.adk import FunctionTool
+from google.adk.tools import FunctionTool
 from typing import Optional
 import os
 import httpx

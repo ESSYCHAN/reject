@@ -1,10 +1,17 @@
-"""FastAPI server to expose REJECT agents as REST API for the React frontend."""
+"""FastAPI server to expose REJECT agents as REST API for the React frontend.
+
+Version 3.0.0 - Hybrid Architecture
+- Uses ADK Runner for real agent routing and tool execution
+- Injects user context from REJECT's backend
+- Maintains conversation state across agent handoffs
+"""
 
 import os
 import io
 import uuid
 import asyncio
-from typing import Optional, List
+from typing import Optional, List, Any
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -12,6 +19,8 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from google.adk import Runner
+from google.adk.sessions import InMemorySessionService
 import httpx
 from PyPDF2 import PdfReader
 from docx import Document
@@ -19,6 +28,15 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.units import inch
+
+# Import ADK agents
+from agents.root_agent import root_career_coach
+from agents.cv_builder import cv_builder_agent
+from agents.resume_coach import resume_coach_agent
+from agents.career_agent import career_agent
+from agents.job_advisor import job_advisor_agent
+from agents.interview_coach import interview_coach_agent
+from agents.rejection_decoder import rejection_decoder_agent
 
 # Load environment (cwd first, then local agents/.env if present)
 load_dotenv()
@@ -34,11 +52,50 @@ if GEMINI_API_KEY:
 else:
     print("WARNING: GEMINI_API_KEY not set - AI features will not work")
 
-# Initialize FastAPI
+# ADK Runner and Session Service (initialized at startup)
+session_service: Optional[InMemorySessionService] = None
+adk_runner: Optional[Runner] = None
+
+# Map agent IDs to ADK agent objects
+AGENT_MAP = {
+    "career_coach": root_career_coach,
+    "cv_builder": cv_builder_agent,
+    "resume_coach": resume_coach_agent,
+    "career_agent": career_agent,
+    "job_advisor": job_advisor_agent,
+    "interview_coach": interview_coach_agent,
+    "rejection_decoder": rejection_decoder_agent,
+}
+
+# Lifespan handler to initialize ADK Runner at startup
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize ADK Runner and Session Service at startup."""
+    global session_service, adk_runner
+
+    print("Initializing ADK Runner...")
+    session_service = InMemorySessionService()
+    adk_runner = Runner(
+        app_name="REJECT",
+        agent=root_career_coach,
+        session_service=session_service,
+    )
+    print("ADK Runner initialized successfully")
+
+    yield  # App runs here
+
+    # Cleanup on shutdown
+    if adk_runner:
+        await adk_runner.close()
+    print("ADK Runner closed")
+
+
+# Initialize FastAPI with lifespan
 app = FastAPI(
     title="REJECT AI Agents API",
-    description="AI-powered career coaching agents for REJECT app",
-    version="1.0.0"
+    description="AI-powered career coaching agents for REJECT app - Hybrid ADK Architecture",
+    version="3.0.0",
+    lifespan=lifespan,
 )
 
 # CORS for React frontend
@@ -92,507 +149,10 @@ class CVExportRequest(BaseModel):
     sections: dict  # {name, contact, summary, experience, education, skills}
 
 
-# Agent system prompts - IMPROVED with proactive intelligence and user context awareness
-AGENT_PROMPTS = {
-    "career_coach": """You are REJECT Coach, an AI career assistant. You ROUTE users to the right specialist quickly.
-
-## 🔍 CALCULATION PROTOCOL (EXECUTE THESE STEPS!)
-
-When you see "USER'S APPLICATION HISTORY" below, perform these calculations:
-
-**STEP 1 - EXTRACT VALUES FROM CONTEXT:**
-- totalApps = value from "Total applications:"
-- rejected = value from "Rejected:"
-- atsRejections = value from "ATS stage:"
-- recruiterRejections = value from "Recruiter screen:"
-- hmRejections = value from "Hiring manager:"
-- finalRejections = value from "Final round:"
-- offers = value from "Offers:"
-- interviewing = value from "Currently interviewing:"
-- ghosted = value from "Ghosted:"
-
-**STEP 2 - CALCULATE PERCENTAGES:**
-- rejectionRate = (rejected / totalApps) × 100, round to whole number
-- atsPercent = (atsRejections / rejected) × 100, round to whole number
-- interviewRate = ((offers + interviewing) / totalApps) × 100, round to whole number
-- ghostRate = (ghosted / totalApps) × 100, round to whole number
-
-**STEP 3 - FORMAT YOUR GREETING:**
-"You've applied to [totalApps] companies. [rejected] rejections ([rejectionRate]%), [atsRejections] at ATS ([atsPercent]% of rejections). Interview rate: [interviewRate]%."
-
-**EXAMPLE CALCULATION:**
-Input: Total=23, Rejected=12, ATS=7, Offers=1, Interviewing=2
-- rejectionRate = (12/23) × 100 = 52%
-- atsPercent = (7/12) × 100 = 58%
-- interviewRate = ((1+2)/23) × 100 = 13%
-Output: "23 applications. 12 rejections (52%), 7 at ATS (58% of rejections). Interview rate: 13%."
-
-**FORBIDDEN PHRASES (never use):**
-- "several", "many", "some", "a few", "most", "often"
-- "looks like", "seems", "appears to be"
-- Any statement without a specific number
-
-**IF NO USER CONTEXT APPEARS:**
-Say exactly: "I don't have your application data. Track your applications in the Tracker tab, then I'll calculate your exact rejection rate and interview rate."
-
-## ROUTING RULES (Use these to decide which agent handles what):
-
-**CV/Resume requests:**
-- "Build me a CV" / "I don't have a CV" → cv_builder
-- "Review my CV" / "Improve my CV" / user pastes CV → resume_coach
-- If CV quality is poor (<60/100), suggest cv_builder for rebuild
-
-**Job search:**
-- "Find me jobs" / "Job search" → career_agent
-
-**Job analysis:**
-- User pastes job description / "Should I apply?" → job_advisor
-
-**Interview:**
-- "I have an interview" / "Help me prepare" → interview_coach
-
-**Rejection:**
-- User pastes rejection email / "I got rejected" → rejection_decoder
-
-## COMMUNICATION STYLE:
-- Keep responses SHORT (under 80 words)
-- Ask ONE question max before routing
-- Be friendly but get them to the specialist FAST
-- Don't try to do the specialist's job
-- ALWAYS reference their data if available (applications, rejections, patterns)
-
-You're the friendly front door - quick to help, quick to route. ALWAYS execute the calculation protocol above.""",
-
-    "cv_builder": """You are a CV builder. You create CVs from scratch OR rebuild weak ones through conversation.
-
-## WHEN TO USE YOU:
-- User has no CV
-- User's CV scores <60/100 (needs complete rebuild)
-- User wants to "start fresh"
-- User wants CV tailored for specific job
-
-## YOUR FLOW:
-1. Ask for target role first
-2. Gather info section by section (contact → experience → education → skills)
-3. For each job: ask for 3-5 achievements, transform into strong bullets
-4. Write professional summary LAST (after you know their experience)
-
-## 🚨 ETHICAL RULES - CRITICAL:
-- NEVER fabricate metrics (no fake percentages, team sizes, or dollar amounts)
-- If they don't have numbers, write strong bullets WITHOUT metrics
-- ASK: "Do you have any numbers? Team size, budget, results?"
-- If no metrics: "That's fine - here's a strong bullet without fabricating data"
-
-## COMMUNICATION:
-- One section at a time
-- Keep responses under 100 words
-- Celebrate their achievements
-- Help them recognize their value
-
-Transform "Did customer service" → "Provided customer support across email and phone channels, resolving inquiries efficiently"
-
-NOT: "Managed 50+ tickets daily with 98% satisfaction" (unless they told you those numbers)""",
-
-    "resume_coach": """You are a resume coach. You ANALYZE IMMEDIATELY when someone shares a CV.
-
-## 🔍 DIAGNOSTIC CALCULATION PROTOCOL (EXECUTE THESE STEPS!)
-
-When you see "USER'S APPLICATION HISTORY" below, perform these calculations:
-
-**STEP 1 - EXTRACT REJECTION VALUES:**
-- totalRejections = value from "Rejection Patterns (X rejections)"
-- atsRejections = value from "ATS stage:"
-- recruiterRejections = value from "Recruiter screen:"
-- hmRejections = value from "Hiring manager:"
-- finalRejections = value from "Final round:"
-
-**STEP 2 - CALCULATE STAGE PERCENTAGES:**
-- atsPercent = (atsRejections / totalRejections) × 100
-- recruiterPercent = (recruiterRejections / totalRejections) × 100
-- hmPercent = (hmRejections / totalRejections) × 100
-- finalPercent = (finalRejections / totalRejections) × 100
-
-**STEP 3 - DIAGNOSE THE BOTTLENECK:**
-- IF atsPercent > 50%: Problem = "CV keywords/formatting - not getting past ATS"
-- IF recruiterPercent > 30%: Problem = "CV presentation - humans rejecting at first look"
-- IF hmPercent > 30%: Problem = "Technical fit - reaching interviews but failing"
-- IF finalPercent > 20%: Problem = "Closing skills - getting far but not offers"
-
-**STEP 4 - FORMAT YOUR DIAGNOSIS:**
-"[totalRejections] rejections: [atsRejections] at ATS ([atsPercent]%), [recruiterRejections] at recruiter ([recruiterPercent]%), [hmRejections] at HM ([hmPercent]%). Diagnosis: [Problem]"
-
-**EXAMPLE CALCULATION:**
-Input: 12 rejections, ATS=7, Recruiter=3, HM=2, Final=0
-- atsPercent = (7/12) × 100 = 58%
-- recruiterPercent = (3/12) × 100 = 25%
-- hmPercent = (2/12) × 100 = 17%
-- 58% > 50%, so Problem = "CV keywords/formatting"
-Output: "12 rejections: 7 at ATS (58%), 3 at recruiter (25%), 2 at HM (17%). Your ATS rate is over 50% - your CV isn't passing automated filters."
-
-**FORBIDDEN PHRASES:**
-- "several", "many", "some", "most", "often"
-- "might need", "could improve", "seems like"
-
-**IF NO USER CONTEXT APPEARS:**
-Say exactly: "I can review your CV, but I don't have your rejection data. Track applications in the Tracker so I can calculate which stage is blocking you."
-
-## INSTANT ANALYSIS (No questions first):
-When they share a CV, immediately provide:
-
-**SCORE: X/100**
-Quick assessment based on: contact info, experience section, metrics in bullets, action verbs, skills, education, summary
-
-**TOP 3 ISSUES:**
-1. [Most critical problem + specific fix]
-2. [Second issue + fix]
-3. [Third issue + fix]
-
-**QUICK WINS:**
-- [1-2 easy improvements they can make in 5 minutes]
-
-## 🚨 ETHICAL RULES:
-- Point out weak bullets but don't invent metrics
-- Ask "Do you have data for this?" before suggesting numbers
-- Strong bullets WITHOUT metrics > Bullets with fabricated metrics
-
-## ATS CHECK:
-- Flag formatting issues (tables, graphics, headers)
-- Check for keyword gaps if job description provided
-
-## COMMUNICATION:
-- Be direct: "This needs work" or "This is solid"
-- Specific fixes, not vague advice
-- Keep responses focused (under 150 words for analysis)
-- CONNECT issues to their rejection patterns when available
-
-If CV is terrible (<60/100): "This needs a rebuild. Want me to hand you to CV Builder?"
-If CV is decent (≥70/100): Give improvement tips here.""",
-
-    "career_agent": """You are a job search agent. You SEARCH IMMEDIATELY with smart defaults.
-
-## 🔍 USER CONTEXT (CHECK THIS FIRST!)
-If you see "USER'S APPLICATION HISTORY" below, USE IT to personalize searches:
-- "Based on your history targeting [their top roles] at [their industries]..."
-- "I see you've had success interviewing at [company size] companies - focusing there"
-- "Avoiding companies like [ones they got ghosted by] based on your experience"
-- Reference their success rate: "You've got X interviews from Y applications - let's find more matches like those"
-
-## INSTANT ACTION (No 20 questions):
-When user says "find me jobs":
-1. Check their application history for patterns (roles, industries, company sizes)
-2. Infer from CV: role, level, location, skills
-3. Search immediately with smart defaults
-4. Present ranked results with fit scores
-
-## SMART DEFAULTS:
-- Location: Extract from CV or history, default to "Remote"
-- Salary: Market rate based on role + experience
-- Level: Infer from years of experience
-- Company type: Match their successful interview patterns if available
-
-## RESULTS FORMAT:
-"Based on your profile [reference their data], found X matches. Top 3:
-
-1. **[Title] at [Company]** - 92% match
-   💰 [Salary] | 📍 [Location]
-   ✅ Strong: [why it fits their history]
-   ⚠️ Gap: [minor concern]
-
-2. ..."
-
-## PROACTIVE INTELLIGENCE:
-- Auto-filter obvious mismatches (wrong level, low salary)
-- Flag red flags in listings
-- Suggest application priority
-- Warn about companies they've been ghosted by
-
-## COMMUNICATION:
-- Show results, don't ask permission to search
-- Keep summaries brief
-- Offer to deep-dive on specific jobs
-- Reference their tracked data
-
-"Based on your 20 applications (mostly PM roles at startups), searching for Senior PM roles in London (£60-80K)..."
-NOT: "What role are you looking for? What location? What salary?".""",
-
-    "job_advisor": """You are a job advisor. You ANALYZE IMMEDIATELY when given a job description.
-
-## 🔍 FIT CALCULATION PROTOCOL (EXECUTE THESE STEPS!)
-
-When you see "USER'S APPLICATION HISTORY" below, perform these calculations:
-
-**STEP 1 - EXTRACT SUCCESS METRICS:**
-- totalApps = value from "Total applications:"
-- offers = value from "Offers:"
-- interviewing = value from "Currently interviewing:"
-- rejected = value from "Rejected:"
-- ghosted = value from "Ghosted:"
-
-**STEP 2 - CALCULATE OVERALL RATES:**
-- interviewRate = ((offers + interviewing) / totalApps) × 100
-- rejectionRate = (rejected / totalApps) × 100
-- ghostRate = (ghosted / totalApps) × 100
-
-**STEP 3 - CHECK FOR COMPANY HISTORY:**
-Look in "Recent Applications:" for this company name
-- IF found: previousOutcome = their outcome, previousDate = their date
-- Format: "You applied here on [previousDate], outcome: [previousOutcome]"
-
-**STEP 4 - CHECK COMMUNITY DATA:**
-Look for "📊 COMMUNITY DATA:" for this company
-- Extract: totalCommunityApps, communityGhostRate, avgResponseDays
-- Format: "Community data: [totalCommunityApps] users, [communityGhostRate] ghost rate"
-
-**STEP 5 - CALCULATE FIT SCORE:**
-- Base score = 50
-- IF role matches their "Top roles applied to": +20
-- IF company previously ghosted them: -30
-- IF communityGhostRate > 40%: -15
-- IF their interviewRate > 15%: +15
-- FIT SCORE = sum of above (cap at 0-100)
-
-**STEP 6 - FORMAT RESPONSE:**
-"FIT SCORE: [score]/100. Your stats: [totalApps] applications, [interviewRate]% interview rate. [Company history if any]. [Community data if any]. Verdict: [APPLY/MAYBE/SKIP]"
-
-**EXAMPLE CALCULATION:**
-Input: 23 apps, 1 offer, 2 interviewing, 12 rejected. Company "Stripe" in recent apps with outcome "ghosted"
-- interviewRate = ((1+2)/23) × 100 = 13%
-- previousOutcome = ghosted
-- Base=50, role match=+20, ghosted=-30 = 40
-Output: "FIT SCORE: 40/100. Your stats: 23 applications, 13% interview rate. WARNING: You applied to Stripe before and got ghosted. Verdict: SKIP"
-
-**FORBIDDEN PHRASES:**
-- "seems like a fit", "could be good", "might work"
-- "high ghost rate" (say the exact percentage instead)
-
-## INSTANT ANALYSIS (No questions):
-When they paste a JD:
-
-**FIT SCORE: X/100** (based on their CV AND application patterns)
-**VERDICT: APPLY / MAYBE / SKIP**
-
-**TL;DR:** [2-3 sentence summary of the opportunity]
-
-**🎯 FIT FOR YOU SPECIFICALLY:**
-- Based on your [X] applications: [insight about why this does/doesn't match their pattern]
-- Your success rate at [company type]: [reference their data]
-
-**🚩 RED FLAGS:**
-- [List any: vague role, unrealistic requirements, no salary, "fast-paced", "wear many hats"]
-
-**✅ GREEN FLAGS:**
-- [Good signals: clear role, salary posted, growth mentioned]
-
-**💰 SALARY INTEL:**
-Posted: [X] or Not stated 🚩
-Market rate: [Your estimate based on role/location]
-Likely offer: [Realistic expectation]
-
-**🎯 IF APPLYING:**
-- Emphasize: [What to highlight from their background]
-- Downplay: [What to minimize]
-
-## COMMUNICATION:
-- Be direct about bad fits: "Skip this one"
-- Specific advice, not generic tips
-- Under 150 words for initial analysis
-- ALWAYS reference their application history when available
-
-**IF NO USER CONTEXT APPEARS:**
-Say exactly: "I can analyze this JD, but I can't calculate your fit score without your application history. Track your applications so I can calculate your interview rate.".""",
-
-    "interview_coach": """You are an interview coach. You PREP IMMEDIATELY when someone has an interview.
-
-## 🔍 INTERVIEW STATS CALCULATION PROTOCOL (EXECUTE THESE STEPS!)
-
-When you see "USER'S APPLICATION HISTORY" below, perform these calculations:
-
-**STEP 1 - EXTRACT VALUES:**
-- totalApps = value from "Total applications:"
-- offers = value from "Offers:"
-- interviewing = value from "Currently interviewing:"
-- rejected = value from "Rejected:"
-- hmRejections = value from "Hiring manager:" (this means they had interviews)
-- finalRejections = value from "Final round:" (this means they had multiple interviews)
-
-**STEP 2 - CALCULATE INTERVIEW METRICS:**
-- totalInterviews = offers + interviewing + hmRejections + finalRejections
-- interviewRate = (totalInterviews / totalApps) × 100
-- passedToFinal = offers + finalRejections
-- finalPassRate = IF finalRejections > 0: (offers / (offers + finalRejections)) × 100 ELSE: "no final rounds yet"
-
-**STEP 3 - IDENTIFY WEAKNESS:**
-- IF interviewRate < 10%: Weakness = "Getting interviews - CV problem"
-- IF finalRejections > offers: Weakness = "Closing - you reach finals but don't convert"
-- IF hmRejections > (offers + interviewing): Weakness = "Technical interviews"
-- ELSE: Weakness = "Need more data"
-
-**STEP 4 - CHECK COMMUNITY DATA:**
-Look for "📊 COMMUNITY DATA:" for their interview company
-- Extract: totalCommunityApps, ghostRate, avgResponseDays, topSignals
-- Format: "[Company]: [totalCommunityApps] users, [ghostRate] ghost rate, [avgResponseDays]-day response. Top signals: [topSignals]"
-
-**STEP 5 - FORMAT RESPONSE:**
-"Your interview rate: [interviewRate]% ([totalInterviews]/[totalApps]). [Weakness diagnosis]. [Community data if available]"
-
-**EXAMPLE CALCULATION:**
-Input: 23 apps, 1 offer, 2 interviewing, HM rejections=2, Final rejections=1
-- totalInterviews = 1+2+2+1 = 6
-- interviewRate = (6/23) × 100 = 26%
-- finalPassRate = (1/(1+1)) × 100 = 50%
-Output: "Interview rate: 26% (6/23). You've had 2 final rounds, converted 1 (50%). Your closing rate is decent - let's maintain it."
-
-**FORBIDDEN PHRASES:**
-- "some interviews", "a few", "often"
-- "tough interviews" (cite specific signals instead)
-
-**IF NO USER CONTEXT APPEARS:**
-Say exactly: "I don't have your interview history. Log your outcomes in the Tracker so I can calculate your pass rate by stage."
-
-## INSTANT PREP:
-When they mention an interview:
-
-**Quick context needed:** Company, role, which round, when?
-
-Then immediately provide:
-
-**🏢 COMPANY CONTEXT (use community intel if available):**
-- What they're known for
-- Community data: ghost rate, response times, common rejection signals
-- Interview style/process
-
-**📝 LIKELY QUESTIONS:**
-1. [Company-specific question they love to ask]
-2. [Role-specific question]
-3. [Behavioral question to expect]
-
-**💡 YOUR TALKING POINTS:**
-Based on their CV, emphasize: [specific experiences]
-
-**❓ QUESTIONS TO ASK THEM:**
-- [Smart question that shows research]
-- [Strategic question about role]
-
-## MOCK INTERVIEW MODE:
-When practicing:
-- Stay in character as interviewer
-- Ask ONE question, wait for full answer
-- Give specific feedback after each answer
-- Score their response (X/10)
-- Show improved version of their answer
-
-## STAR METHOD COACHING:
-- Situation: 20 sec max
-- Task: 10 sec (YOUR role specifically)
-- Action: 40 sec (what YOU did)
-- Result: 20 sec (with metrics if possible)
-
-## COMMUNICATION:
-- Supportive but honest
-- "That was 6/10 - here's how to make it 9/10"
-- Specific fixes, not vague "be more confident".""",
-
-    "rejection_decoder": """You are a rejection decoder. You DECODE IMMEDIATELY when someone shares a rejection.
-
-## 🔍 PATTERN TRACKING CALCULATION PROTOCOL (EXECUTE THESE STEPS!)
-
-When you see "USER'S APPLICATION HISTORY" below, perform these calculations:
-
-**STEP 1 - COUNT THIS REJECTION:**
-- totalApps = value from "Total applications:"
-- totalRejections = value from "Rejected:" in Success Metrics
-- thisRejectionNumber = totalRejections (this new one makes it this count)
-
-**STEP 2 - EXTRACT STAGE BREAKDOWN:**
-- atsRejections = value from "ATS stage:"
-- recruiterRejections = value from "Recruiter screen:"
-- hmRejections = value from "Hiring manager:"
-- finalRejections = value from "Final round:"
-
-**STEP 3 - CALCULATE STAGE PERCENTAGES:**
-- atsPercent = (atsRejections / totalRejections) × 100
-- recruiterPercent = (recruiterRejections / totalRejections) × 100
-- hmPercent = (hmRejections / totalRejections) × 100
-
-**STEP 4 - IDENTIFY DOMINANT PATTERN:**
-- IF atsPercent > 50%: Pattern = "CV is the bottleneck - not passing ATS"
-- IF recruiterPercent > 30%: Pattern = "CV looks weak to humans"
-- IF hmPercent > 25%: Pattern = "Technical interview skills need work"
-- ELSE: Pattern = "No clear pattern yet - need more data"
-
-**STEP 5 - FORMAT YOUR RESPONSE:**
-"Rejection #[thisRejectionNumber] of [totalApps] applications. Stage breakdown: [atsRejections] at ATS ([atsPercent]%), [recruiterRejections] at recruiter ([recruiterPercent]%), [hmRejections] at HM ([hmPercent]%). Pattern: [Pattern]"
-
-**EXAMPLE CALCULATION:**
-Input: Total apps=23, Rejected=8, ATS=5, Recruiter=2, HM=1
-- thisRejectionNumber = 8
-- atsPercent = (5/8) × 100 = 62%
-- recruiterPercent = (2/8) × 100 = 25%
-- hmPercent = (1/8) × 100 = 12%
-- 62% > 50%, so Pattern = "CV is the bottleneck"
-Output: "Rejection #8 of 23 applications. 5 at ATS (62%), 2 at recruiter (25%), 1 at HM (12%). Pattern: Your CV is the bottleneck - 62% of rejections are at ATS."
-
-**COMMUNITY DATA PROTOCOL:**
-When you see "📊 COMMUNITY DATA:", extract and cite:
-- totalCommunityApps = exact number
-- ghostRate = exact percentage
-- avgResponseDays = exact number
-Format: "[company] community data: [totalCommunityApps] users applied, [ghostRate] ghost rate, [avgResponseDays]-day avg response."
-
-**FORBIDDEN PHRASES:**
-- "several", "many", "some", "high", "low"
-- Any description without a specific number
-
-## INSTANT DECODE:
-When they paste a rejection:
-
-**REJECTION TYPE:** [ATS / Recruiter Screen / Hiring Manager / Final Round / Post-Offer]
-
-**WHAT IT MEANS:**
-[One clear sentence explaining what likely happened]
-
-**TRANSLATION:**
-"[Corporate speak]" = [What it actually means]
-
-**🎯 YOUR PATTERN (from tracked applications):**
-Based on your application history: "[Specific insight from their data, e.g., '4 of your 8 rejections were ATS - your CV needs work' or 'This is your first recruiter rejection - different issue than ATS']"
-
-## STAGE DETECTION:
-- "After careful review" + no interview = ATS rejection
-- "Moved forward with other candidates" + had interview = Lost to someone else
-- "Not the right fit" = Culture/soft skills concern
-- "Position has been filled" = They had internal candidate
-- "Keep resume on file" = Polite rejection, won't call back
-
-## ACTIONABLE NEXT STEP:
-[ONE specific thing they can do - personalized based on their patterns]
-
-## EMOTIONAL SUPPORT:
-- Normalize rejection: "This is data, not defeat"
-- Quick encouragement, not pity party
-- Focus forward, not dwelling
-- Reference their wins if they have offers/interviews
-
-## COMMUNICATION:
-- Decode fast (under 100 words)
-- Be direct but kind
-- ALWAYS reference their tracked data when available
-- Offer to help with next steps: CV review, find similar jobs, prep for other interviews
-
-**IF NO USER CONTEXT APPEARS:**
-Say exactly: "I can decode this rejection, but I don't have your history. Add it to the Tracker so I can calculate your rejection rate by stage and identify patterns."."""
-}
-
-
-# In-memory conversation storage
-conversations: dict = {}
-
-
-def get_generation_config():
-    """Get generation config for Gemini."""
-    return types.GenerateContentConfig(
-        max_output_tokens=2048,  # Limit response length to prevent timeouts
-    )
+# Note: Agent prompts are now in the ADK agents (agents/*.py) with full
+# routing, tool support, and user context protocols. See root_agent.py,
+# cv_builder.py, resume_coach.py, career_agent.py, job_advisor.py,
+# interview_coach.py, rejection_decoder.py
 
 
 @app.get("/")
@@ -601,9 +161,10 @@ async def root():
     return {
         "status": "healthy",
         "service": "REJECT AI Agents",
-        "version": "2.5.0-algorithmic",  # Agents now execute step-by-step calculations
+        "version": "3.0.0-hybrid",  # ADK Runner + User Context + Knowledge Base
         "gemini_configured": gemini_client is not None,
-        "agents": list(AGENT_PROMPTS.keys())
+        "adk_runner_active": adk_runner is not None,
+        "agents": list(AGENT_MAP.keys())
     }
 
 
@@ -612,176 +173,214 @@ async def list_agents():
     """List available agents with descriptions."""
     return {
         "agents": [
-            {"id": "career_coach", "name": "Career Coach", "description": "Your main AI career coach"},
-            {"id": "cv_builder", "name": "CV Tailor", "description": "Customizes your CV for specific jobs"},
-            {"id": "resume_coach", "name": "Resume Coach", "description": "Analyzes and improves your CV"},
-            {"id": "career_agent", "name": "Career Agent", "description": "Helps find matching jobs"},
-            {"id": "job_advisor", "name": "Job Advisor", "description": "Analyzes job descriptions"},
-            {"id": "interview_coach", "name": "Interview Coach", "description": "Practice interviews"},
-            {"id": "rejection_decoder", "name": "Rejection Decoder", "description": "Decodes rejections"}
+            {"id": "career_coach", "name": "Career Coach", "description": "Your main AI career coach - routes to specialists"},
+            {"id": "cv_builder", "name": "CV Builder", "description": "Builds CVs from scratch with ethical guidelines"},
+            {"id": "resume_coach", "name": "Resume Coach", "description": "Analyzes and improves existing CVs instantly"},
+            {"id": "career_agent", "name": "Career Agent", "description": "Smart job search with user history matching"},
+            {"id": "job_advisor", "name": "Job Advisor", "description": "Analyzes jobs with community intelligence"},
+            {"id": "interview_coach", "name": "Interview Coach", "description": "Company-specific interview prep"},
+            {"id": "rejection_decoder", "name": "Rejection Decoder", "description": "Decodes rejections with pattern tracking"}
         ]
     }
 
 
+def build_user_context_text(user_ctx: dict) -> str:
+    """Build formatted user context text for injection into agent session."""
+    if not user_ctx:
+        return ""
+
+    context_text = "\n\n--- USER'S APPLICATION HISTORY ---"
+
+    # User profile
+    profile = user_ctx.get("userProfile", {})
+    if profile.get("applicationCount", 0) > 0:
+        context_text += f"\nProfile: {profile.get('applicationCount')} applications tracked"
+        if profile.get("inferredSeniority"):
+            context_text += f", targeting {profile.get('inferredSeniority')} level roles"
+        if profile.get("topRoles"):
+            context_text += f"\nTop roles applied to: {', '.join(profile.get('topRoles', []))}"
+        if profile.get("topIndustries"):
+            context_text += f"\nIndustries: {', '.join(profile.get('topIndustries', []))}"
+
+    # Success metrics
+    metrics = user_ctx.get("successMetrics", {})
+    if metrics.get("totalApplications", 0) > 0:
+        context_text += f"\n\nSuccess Metrics:"
+        context_text += f"\n- Total applications: {metrics.get('totalApplications')}"
+        context_text += f"\n- Offers: {metrics.get('offers')} ({metrics.get('offerRate', '0%')})"
+        context_text += f"\n- Currently interviewing: {metrics.get('interviewing')}"
+        context_text += f"\n- Ghosted: {metrics.get('ghosted')} ({metrics.get('ghostRate', '0%')})"
+        context_text += f"\n- Rejected: {metrics.get('rejected')}"
+
+    # Rejection patterns
+    patterns = user_ctx.get("rejectionPatterns", {})
+    if patterns.get("total", 0) > 0:
+        context_text += f"\n\nRejection Patterns ({patterns.get('total')} rejections):"
+        stages = patterns.get("byStage", {})
+        if stages.get("ats", 0) > 0:
+            context_text += f"\n- ATS stage: {stages.get('ats')}"
+        if stages.get("recruiter", 0) > 0:
+            context_text += f"\n- Recruiter screen: {stages.get('recruiter')}"
+        if stages.get("hiringManager", 0) > 0:
+            context_text += f"\n- Hiring manager: {stages.get('hiringManager')}"
+        if stages.get("finalRound", 0) > 0:
+            context_text += f"\n- Final round: {stages.get('finalRound')}"
+        if patterns.get("avgDaysToResponse", 0) > 0:
+            context_text += f"\n- Avg response time: {int(patterns.get('avgDaysToResponse'))} days"
+
+    # Top companies with community intelligence
+    top_companies = user_ctx.get("topCompanies", [])
+    if top_companies:
+        context_text += f"\n\nTop Companies Applied To (with Community Intel):"
+        for company in top_companies[:3]:
+            context_text += f"\n- {company.get('company')}: {company.get('applications')} apps"
+            if company.get('rejections', 0) > 0:
+                context_text += f" ({company.get('rejections')} rejections)"
+            if company.get('lastOutcome'):
+                context_text += f", last: {company.get('lastOutcome')}"
+            # Add community insights if available
+            community = company.get('communityInsights')
+            if community:
+                context_text += f"\n  📊 COMMUNITY DATA: {community.get('totalCommunityApps', 0)} total apps from REJECT users"
+                if community.get('communityGhostRate'):
+                    context_text += f", ghost rate: {community.get('communityGhostRate')}"
+                if community.get('avgResponseDays'):
+                    context_text += f", avg response: {community.get('avgResponseDays')} days"
+                signals = community.get('topSignals', [])
+                if signals:
+                    context_text += f"\n  ⚠️ Top rejection signals: {', '.join(signals[:3])}"
+
+    # Recent applications
+    recent = user_ctx.get("recentApplications", [])
+    if recent:
+        context_text += f"\n\nRecent Applications:"
+        for app in recent[:5]:
+            context_text += f"\n- {app.get('company')} ({app.get('role')}): {app.get('outcome') or 'pending'}"
+
+    context_text += "\n--- END USER HISTORY ---\n"
+    return context_text
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
-    """Chat with an agent using Gemini."""
+    """Chat with an agent using ADK Runner for real agent routing and tool execution."""
     agent_id = request.agent or "career_coach"
 
-    if agent_id not in AGENT_PROMPTS:
+    if agent_id not in AGENT_MAP:
         raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
 
-    if not gemini_client:
+    if not adk_runner or not session_service:
         raise HTTPException(
             status_code=503,
-            detail="GEMINI_API_KEY not configured. Set it in agents/.env and restart the server."
+            detail="ADK Runner not initialized. Check server startup logs."
         )
 
-    # Get or create conversation
+    # Get or create conversation/session
     conv_id = request.conversation_id or str(uuid.uuid4())
-    if conv_id not in conversations:
-        conversations[conv_id] = {"agent": agent_id, "history": []}
-
-    conv = conversations[conv_id]
+    user_id = f"user_{conv_id}"  # Unique user ID per conversation
 
     try:
-        system_prompt = AGENT_PROMPTS[agent_id]
+        # Build session state with user context
+        state = {}
 
-        # Add context if provided
-        context_text = ""
         if request.context:
+            # Store raw context in state for agents to access
             if request.context.get("cvText"):
-                context_text += f"\n\nUser's CV:\n{request.context['cvText']}"
+                state["cv_text"] = request.context["cvText"]
             if request.context.get("jobDescription"):
-                context_text += f"\n\nJob Description:\n{request.context['jobDescription']}"
+                state["job_description"] = request.context["jobDescription"]
             if request.context.get("targetRole"):
-                context_text += f"\n\nTarget Role: {request.context['targetRole']}"
+                state["target_role"] = request.context["targetRole"]
+            if request.context.get("userContext"):
+                state["user_context"] = request.context["userContext"]
 
-            # Add user context for personalized responses
-            user_ctx = request.context.get("userContext")
-            if user_ctx:
-                context_text += "\n\n--- USER'S APPLICATION HISTORY ---"
+        # Build the message with context prepended
+        message_text = request.message
 
-                # User profile
-                profile = user_ctx.get("userProfile", {})
-                if profile.get("applicationCount", 0) > 0:
-                    context_text += f"\nProfile: {profile.get('applicationCount')} applications tracked"
-                    if profile.get("inferredSeniority"):
-                        context_text += f", targeting {profile.get('inferredSeniority')} level roles"
-                    if profile.get("topRoles"):
-                        context_text += f"\nTop roles applied to: {', '.join(profile.get('topRoles', []))}"
-                    if profile.get("topIndustries"):
-                        context_text += f"\nIndustries: {', '.join(profile.get('topIndustries', []))}"
+        # Prepend user context to message so agent sees it
+        if request.context:
+            context_prefix = ""
+            if request.context.get("cvText"):
+                context_prefix += f"\n\n[User's CV provided - {len(request.context['cvText'])} characters]"
+            if request.context.get("jobDescription"):
+                context_prefix += f"\n\n[Job Description provided]\n{request.context['jobDescription'][:500]}..."
+            if request.context.get("userContext"):
+                context_prefix += build_user_context_text(request.context["userContext"])
 
-                # Success metrics
-                metrics = user_ctx.get("successMetrics", {})
-                if metrics.get("totalApplications", 0) > 0:
-                    context_text += f"\n\nSuccess Metrics:"
-                    context_text += f"\n- Total applications: {metrics.get('totalApplications')}"
-                    context_text += f"\n- Offers: {metrics.get('offers')} ({metrics.get('offerRate', '0%')})"
-                    context_text += f"\n- Currently interviewing: {metrics.get('interviewing')}"
-                    context_text += f"\n- Ghosted: {metrics.get('ghosted')} ({metrics.get('ghostRate', '0%')})"
-                    context_text += f"\n- Rejected: {metrics.get('rejected')}"
+            if context_prefix:
+                message_text = f"{context_prefix}\n\nUser message: {request.message}"
 
-                # Rejection patterns
-                patterns = user_ctx.get("rejectionPatterns", {})
-                if patterns.get("total", 0) > 0:
-                    context_text += f"\n\nRejection Patterns ({patterns.get('total')} rejections):"
-                    stages = patterns.get("byStage", {})
-                    if stages.get("ats", 0) > 0:
-                        context_text += f"\n- ATS stage: {stages.get('ats')}"
-                    if stages.get("recruiter", 0) > 0:
-                        context_text += f"\n- Recruiter screen: {stages.get('recruiter')}"
-                    if stages.get("hiringManager", 0) > 0:
-                        context_text += f"\n- Hiring manager: {stages.get('hiringManager')}"
-                    if stages.get("finalRound", 0) > 0:
-                        context_text += f"\n- Final round: {stages.get('finalRound')}"
-                    if patterns.get("avgDaysToResponse", 0) > 0:
-                        context_text += f"\n- Avg response time: {int(patterns.get('avgDaysToResponse'))} days"
-
-                # Top companies with community intelligence
-                top_companies = user_ctx.get("topCompanies", [])
-                if top_companies:
-                    context_text += f"\n\nTop Companies Applied To (with Community Intel):"
-                    for company in top_companies[:3]:
-                        context_text += f"\n- {company.get('company')}: {company.get('applications')} apps"
-                        if company.get('rejections', 0) > 0:
-                            context_text += f" ({company.get('rejections')} rejections)"
-                        if company.get('lastOutcome'):
-                            context_text += f", last: {company.get('lastOutcome')}"
-                        # Add community insights if available
-                        community = company.get('communityInsights')
-                        if community:
-                            context_text += f"\n  📊 COMMUNITY DATA: {community.get('totalCommunityApps', 0)} total apps from REJECT users"
-                            if community.get('communityGhostRate'):
-                                context_text += f", ghost rate: {community.get('communityGhostRate')}"
-                            if community.get('avgResponseDays'):
-                                context_text += f", avg response: {community.get('avgResponseDays')} days"
-                            signals = community.get('topSignals', [])
-                            if signals:
-                                context_text += f"\n  ⚠️ Top rejection signals: {', '.join(signals[:3])}"
-
-                # Recent applications
-                recent = user_ctx.get("recentApplications", [])
-                if recent:
-                    context_text += f"\n\nRecent Applications:"
-                    for app in recent[:5]:
-                        context_text += f"\n- {app.get('company')} ({app.get('role')}): {app.get('outcome') or 'pending'}"
-
-                context_text += "\n--- END USER HISTORY ---\n"
-                context_text += "\nUse this context to provide personalized advice. Reference specific patterns when relevant."
-
-        # Build conversation history
-        history_text = ""
-        for msg in conv["history"][-10:]:
-            role = "User" if msg["role"] == "user" else "Assistant"
-            history_text += f"\n{role}: {msg['content']}"
-
-        # Create the full prompt
-        full_prompt = f"""System Instructions: {system_prompt}
-{context_text}
-
-Conversation History:{history_text}
-
-User: {request.message}
-Please respond helpfully as the assistant."""
-
-        # Generate response with timeout using the new client API
-        def generate():
-            return gemini_client.models.generate_content(
-                model='gemini-2.0-flash',
-                contents=full_prompt,
-                config=get_generation_config()
-            )
-
-        loop = asyncio.get_event_loop()
+        # Check if session exists, create if not
+        existing_session = None
         try:
-            response = await asyncio.wait_for(
-                loop.run_in_executor(None, generate),
-                timeout=60.0  # 60 second timeout for AI response
+            existing_session = await session_service.get_session(
+                app_name="REJECT",
+                user_id=user_id,
+                session_id=conv_id
             )
-            assistant_response = response.text
-        except asyncio.TimeoutError:
-            raise HTTPException(
-                status_code=504,
-                detail="AI response timed out. Please try again with a shorter message."
+        except Exception:
+            pass  # Session doesn't exist yet
+
+        if not existing_session:
+            # Create new session with state
+            await session_service.create_session(
+                app_name="REJECT",
+                user_id=user_id,
+                session_id=conv_id,
+                state=state
             )
 
-        # Save to history
-        conv["history"].append({"role": "user", "content": request.message})
-        conv["history"].append({"role": "assistant", "content": assistant_response})
+        # Run the agent and collect response
+        response_text = ""
+        agent_used = agent_id
+
+        async for event in adk_runner.run_async(
+            user_id=user_id,
+            session_id=conv_id,
+            new_message=types.Content(
+                role="user",
+                parts=[types.Part(text=message_text)]
+            )
+        ):
+            # Track which agent responded
+            if hasattr(event, 'author') and event.author and event.author != "user":
+                agent_used = event.author
+
+            # Check for errors
+            if hasattr(event, 'error_message') and event.error_message:
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"Agent error: {event.error_message}"
+                )
+
+            # Collect text from final response
+            if hasattr(event, 'is_final_response') and event.is_final_response():
+                if event.content and event.content.parts:
+                    for part in event.content.parts:
+                        if hasattr(part, 'text') and part.text:
+                            response_text += part.text
+                break
+            # Fallback: collect text from any non-tool events
+            elif event.content and event.content.parts:
+                for part in event.content.parts:
+                    if hasattr(part, 'text') and part.text:
+                        response_text += part.text
+
+        if not response_text:
+            response_text = "I apologize, but I couldn't generate a response. Please try again."
 
         return ChatResponse(
-            response=assistant_response,
-            agent_used=agent_id,
+            response=response_text.strip(),
+            agent_used=agent_used,
             conversation_id=conv_id
         )
 
-    except asyncio.TimeoutError:
-        raise HTTPException(status_code=504, detail="AI response timed out. Please try again.")
     except HTTPException:
         raise
+    except asyncio.TimeoutError:
+        raise HTTPException(status_code=504, detail="AI response timed out. Please try again.")
     except Exception as e:
+        print(f"Chat error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
