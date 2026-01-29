@@ -100,6 +100,7 @@ export function AgentChat({ initialAgent = 'career_coach', initialContext }: Age
         cvText: uploadedCV || initialContext?.cvText,
         userContext: userContext || undefined
       };
+      console.log('[AgentChat] Context being sent:', userContext ? `${userContext.successMetrics.totalApplications} apps tracked` : 'NO CONTEXT (user has no tracked applications)');
 
       const response = await agentService.chat({
         message: userMessage.content,
