@@ -18,6 +18,46 @@ const STORAGE_KEY = 'reject_pro_applications';
 const DELETED_IDS_KEY = 'reject_deleted_ids';
 const API_URL = import.meta.env.VITE_API_URL || '';
 
+// Auto-ghost threshold: 30 days without response
+const AUTO_GHOST_DAYS = 30;
+
+/**
+ * Auto-ghost applications that have been in 'applied' status for too long
+ * Returns updated applications array and list of apps that were ghosted
+ */
+function autoGhostStaleApplications(applications: ApplicationRecord[]): {
+  updated: ApplicationRecord[];
+  ghostedCount: number;
+} {
+  const now = new Date();
+  let ghostedCount = 0;
+
+  const updated = applications.map(app => {
+    // Only auto-ghost apps in 'applied' status
+    if (app.outcome !== 'applied') return app;
+
+    // Calculate days since application
+    const appliedDate = new Date(app.dateApplied);
+    const daysSinceApplied = Math.floor(
+      (now.getTime() - appliedDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // If older than threshold, mark as ghosted
+    if (daysSinceApplied >= AUTO_GHOST_DAYS) {
+      ghostedCount++;
+      return {
+        ...app,
+        outcome: 'ghosted' as const,
+        daysToResponse: daysSinceApplied
+      };
+    }
+
+    return app;
+  });
+
+  return { updated, ghostedCount };
+}
+
 // Load deleted IDs from localStorage (persists across page refresh until server confirms)
 function loadDeletedIds(): Set<string> {
   try {
@@ -210,13 +250,21 @@ export function useApplicationsSync() {
 
         // Merge and update
         const merged = mergeApplications(localApps, serverApps);
-        setApplications(merged);
-        saveLocalApplications(merged);
+
+        // Auto-ghost stale applications (applied > 30 days ago)
+        const { updated: withAutoGhost, ghostedCount } = autoGhostStaleApplications(merged);
+        if (ghostedCount > 0) {
+          console.log(`useApplicationsSync: auto-ghosted ${ghostedCount} applications (no response for ${AUTO_GHOST_DAYS}+ days)`);
+        }
+
+        setApplications(withAutoGhost);
+        saveLocalApplications(withAutoGhost);
 
         // Push merged back to server (to ensure server has local-only items)
         // Only push apps that aren't in the deleted list
-        if (localApps.length > 0) {
-          const appsToSync = merged.filter(app => !deletedIds.current.has(app.id));
+        // Use withAutoGhost to sync the ghosted status to server
+        if (localApps.length > 0 || ghostedCount > 0) {
+          const appsToSync = withAutoGhost.filter(app => !deletedIds.current.has(app.id));
           await pushToServer(appsToSync);
         }
 
@@ -231,7 +279,7 @@ export function useApplicationsSync() {
         }
         saveDeletedIds(deletedIds.current);
 
-        console.log(`Sync complete: ${merged.length} total applications`);
+        console.log(`Sync complete: ${withAutoGhost.length} total applications`);
       } catch (error) {
         console.error('Sync error:', error);
         setLastSyncError('Failed to sync applications');
