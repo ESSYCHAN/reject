@@ -894,6 +894,118 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
       {/* Patterns Tab - PRO ONLY */}
       {activeTab === 'patterns' && (isPro || isProLoading) && (
         <div className="patterns-section">
+          {/* R-W Predictive Analytics Section */}
+          <div className="rw-analytics-section">
+            <h3>What's Actually Predicting Your Success</h3>
+            <p className="section-hint">
+              Machine learning analysis of what factors actually drive your results (not just correlations).
+            </p>
+
+            {proInsights.rwAnalytics.totalTrials > 0 ? (
+              <>
+                <div className="rw-summary">
+                  <p>{proInsights.rwAnalytics.summary}</p>
+                  {!proInsights.rwAnalytics.isReliable && (
+                    <p className="rw-warning">
+                      Need {30 - proInsights.rwAnalytics.totalTrials} more completed applications for reliable predictions.
+                    </p>
+                  )}
+                </div>
+
+                {/* Top Predictors */}
+                {proInsights.rwAnalytics.topPredictors.length > 0 && (
+                  <div className="rw-predictors">
+                    <h4>What's Working For You</h4>
+                    <div className="predictor-list">
+                      {proInsights.rwAnalytics.topPredictors.map((pred, i) => (
+                        <div key={i} className="predictor-item positive">
+                          <div className="predictor-bar-container">
+                            <div
+                              className="predictor-bar positive"
+                              style={{ width: `${Math.round(pred.weight * 100)}%` }}
+                            />
+                          </div>
+                          <span className="predictor-name">
+                            {pred.cue.split(':')[1]?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || pred.cue}
+                          </span>
+                          <span className="predictor-weight">+{Math.round(pred.weight * 100)}%</span>
+                          <span className={`predictor-confidence conf-${pred.confidence}`}>
+                            {pred.confidence === 'high' ? '●●●' : pred.confidence === 'medium' ? '●●○' : pred.confidence === 'low' ? '●○○' : '○○○'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Bottom Predictors */}
+                {proInsights.rwAnalytics.bottomPredictors.length > 0 && (
+                  <div className="rw-predictors">
+                    <h4>What's Hurting You</h4>
+                    <div className="predictor-list">
+                      {proInsights.rwAnalytics.bottomPredictors.map((pred, i) => (
+                        <div key={i} className="predictor-item negative">
+                          <div className="predictor-bar-container">
+                            <div
+                              className="predictor-bar negative"
+                              style={{ width: `${Math.round(pred.weight * 100)}%` }}
+                            />
+                          </div>
+                          <span className="predictor-name">
+                            {pred.cue.split(':')[1]?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || pred.cue}
+                          </span>
+                          <span className="predictor-weight">{Math.round(pred.weight * 100)}%</span>
+                          <span className={`predictor-confidence conf-${pred.confidence}`}>
+                            {pred.confidence === 'high' ? '●●●' : pred.confidence === 'medium' ? '●●○' : pred.confidence === 'low' ? '●○○' : '○○○'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Counterfactual Recommendations */}
+                {proInsights.rwAnalytics.counterfactuals.length > 0 && (
+                  <div className="rw-counterfactuals">
+                    <h4>If You Changed One Thing...</h4>
+                    <div className="counterfactual-list">
+                      {proInsights.rwAnalytics.counterfactuals.slice(0, 3).map((cf, i) => (
+                        <div key={i} className="counterfactual-item">
+                          <span className="cf-description">{cf.description}</span>
+                          <span className="cf-impact">+{cf.probabilityIncrease}% interview chance</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* All Cue Weights */}
+                {proInsights.rwAnalytics.insights.length > 0 && (
+                  <details className="rw-all-weights">
+                    <summary>View all factors ({proInsights.rwAnalytics.insights.length})</summary>
+                    <div className="all-weights-grid">
+                      {proInsights.rwAnalytics.insights.map((insight, i) => (
+                        <div key={i} className={`weight-item ${insight.interpretation}`}>
+                          <span className="weight-cue">
+                            {insight.cue.split(':')[1]?.replace(/_/g, ' ') || insight.cue}
+                          </span>
+                          <span className="weight-value">{Math.round(insight.weight * 100)}%</span>
+                          <span className="weight-trials">({insight.trials} trials)</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </>
+            ) : (
+              <div className="no-data-message">
+                <p>Complete some applications (get responses) to see what predicts your success.</p>
+              </div>
+            )}
+          </div>
+
+          <hr className="section-divider" />
+
           <h3>Rejection Pattern Analysis</h3>
           <p className="section-hint">Aggregate insights from your decoded rejection emails.</p>
 

@@ -1,5 +1,6 @@
 // Pro Analytics - Progress Tracking, Company Intelligence, Rejection Pattern Aggregation
 import { ApplicationRecord, isAppliedStatus } from '../types/pro';
+import { analyzeWithRW, RWAnalytics } from './rwLearner';
 
 // ============ MONTHLY STATS HISTORY ============
 
@@ -383,6 +384,7 @@ export interface ProInsightsData {
   companies: CompanyIntelligence[];
   rejectionPatterns: RejectionPatternSummary;
   monthlyHistory: MonthlyStats[];
+  rwAnalytics: RWAnalytics;
 }
 
 export function generateProInsights(applications: ApplicationRecord[]): ProInsightsData {
@@ -390,6 +392,10 @@ export function generateProInsights(applications: ApplicationRecord[]): ProInsig
     progress: calculateProgress(applications),
     companies: analyzeCompanies(applications),
     rejectionPatterns: aggregateRejectionPatterns(applications),
-    monthlyHistory: calculateMonthlyStats(applications)
+    monthlyHistory: calculateMonthlyStats(applications),
+    rwAnalytics: analyzeWithRW(applications)
   };
 }
+
+// Re-export R-W types for convenience
+export type { RWAnalytics, CueInsight, Counterfactual } from './rwLearner';
