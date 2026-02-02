@@ -409,6 +409,9 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
+              <span className="form-hint">
+                {SOURCE_OPTIONS.find(opt => opt.value === formData.source)?.hint}
+              </span>
             </div>
           </div>
 

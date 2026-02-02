@@ -120,14 +120,14 @@ export const COMPANY_SIZE_OPTIONS: { value: CompanySize; label: string }[] = [
   { value: 'enterprise', label: 'Enterprise (5000+)' }
 ];
 
-export const SOURCE_OPTIONS: { value: ApplicationSource; label: string }[] = [
-  { value: 'linkedin', label: 'LinkedIn' },
-  { value: 'company_site', label: 'Company Website' },
-  { value: 'referral', label: 'Referral' },
-  { value: 'recruiter', label: 'Recruiter' },
-  { value: 'job_board', label: 'Job Board' },
-  { value: 'direct', label: 'Direct Application' },
-  { value: 'other', label: 'Other' }
+export const SOURCE_OPTIONS: { value: ApplicationSource; label: string; hint: string }[] = [
+  { value: 'linkedin', label: 'LinkedIn', hint: 'Used LinkedIn Easy Apply (stayed on LinkedIn)' },
+  { value: 'company_site', label: 'Company Website', hint: 'Applied on the company\'s careers portal (even if you found the job on LinkedIn)' },
+  { value: 'referral', label: 'Referral', hint: 'Someone at the company referred you' },
+  { value: 'recruiter', label: 'Recruiter', hint: 'A recruiter reached out to you' },
+  { value: 'job_board', label: 'Job Board', hint: 'Indeed, Glassdoor, or similar job boards' },
+  { value: 'direct', label: 'Direct Outreach', hint: 'Cold emailed or DM\'d someone directly (bypassed formal application)' },
+  { value: 'other', label: 'Other', hint: 'Any other application method' }
 ];
 
 // Pre-application (saved/wishlist) statuses
