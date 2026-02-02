@@ -3,6 +3,7 @@ import { useAuth, useClerk } from '@clerk/clerk-react';
 import { ApplicationRecord, SeniorityLevel, SENIORITY_OPTIONS } from '../types/pro';
 import { canUseFeature, incrementUsage, loadUsage } from '../utils/usage';
 import { generateProInsights, ProInsightsData } from '../utils/proAnalytics';
+import { formatCueForDisplay } from '../utils/rwLearner';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import { useUserSubscription } from '../hooks/useUserSubscription';
 import { Tooltip } from './Tooltip';
@@ -926,7 +927,7 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                             />
                           </div>
                           <span className="predictor-name">
-                            {pred.cue.split(':')[1]?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || pred.cue}
+                            {formatCueForDisplay(pred.cue)}
                           </span>
                           <span className="predictor-weight">+{Math.round(pred.weight * 100)}%</span>
                           <span className={`predictor-confidence conf-${pred.confidence}`}>
@@ -952,7 +953,7 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                             />
                           </div>
                           <span className="predictor-name">
-                            {pred.cue.split(':')[1]?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || pred.cue}
+                            {formatCueForDisplay(pred.cue)}
                           </span>
                           <span className="predictor-weight">{Math.round(pred.weight * 100)}%</span>
                           <span className={`predictor-confidence conf-${pred.confidence}`}>
@@ -987,7 +988,7 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                       {proInsights.rwAnalytics.insights.map((insight, i) => (
                         <div key={i} className={`weight-item ${insight.interpretation}`}>
                           <span className="weight-cue">
-                            {insight.cue.split(':')[1]?.replace(/_/g, ' ') || insight.cue}
+                            {formatCueForDisplay(insight.cue)}
                           </span>
                           <span className="weight-value">{Math.round(insight.weight * 100)}%</span>
                           <span className="weight-trials">({insight.trials} trials)</span>

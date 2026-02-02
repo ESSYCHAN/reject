@@ -252,13 +252,34 @@ function interpretWeight(weight: number): CueInsight['interpretation'] {
 }
 
 /**
- * Format cue name for display
+ * Format cue name for display with category label for disambiguation
  */
-function formatCueName(cue: string): string {
-  const { value } = parseCue(cue);
-  return value
+function formatCueName(cue: string, includeCategory: boolean = false): string {
+  const { category, value } = parseCue(cue);
+  const formattedValue = value
     .replace(/_/g, ' ')
     .replace(/\b\w/g, c => c.toUpperCase());
+
+  if (!includeCategory) {
+    return formattedValue;
+  }
+
+  // Add category label for disambiguation
+  const categoryLabels: Record<string, string> = {
+    'source': 'source',
+    'companySize': 'size',
+    'seniority': 'level',
+    'industry': 'industry'
+  };
+
+  return `${formattedValue} (${categoryLabels[category] || category})`;
+}
+
+/**
+ * Format cue for display - always includes category for clarity
+ */
+export function formatCueForDisplay(cue: string): string {
+  return formatCueName(cue, true);
 }
 
 /**
