@@ -1340,6 +1340,82 @@
   font-size: 0.8rem;
 }
 
+/* Actionable Takeaways */
+.actionable-takeaways {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+}
+
+.actionable-takeaways h4 {
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  color: var(--text);
+}
+
+.takeaways-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.takeaway-item {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--highlight);
+}
+
+.takeaway-item.critical {
+  background: rgba(239, 68, 68, 0.1);
+  border-left: 3px solid #ef4444;
+}
+
+.takeaway-item.positive {
+  background: rgba(34, 197, 94, 0.1);
+  border-left: 3px solid #22c55e;
+}
+
+.takeaway-item.opportunity {
+  background: rgba(59, 130, 246, 0.1);
+  border-left: 3px solid #3b82f6;
+}
+
+.takeaway-item.warning {
+  background: rgba(245, 158, 11, 0.1);
+  border-left: 3px solid #f59e0b;
+}
+
+.takeaway-item.info {
+  background: var(--highlight);
+  border-left: 3px solid var(--muted);
+}
+
+.takeaway-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.takeaway-content {
+  flex: 1;
+}
+
+.takeaway-content strong {
+  display: block;
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+  color: var(--text);
+}
+
+.takeaway-content p {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin: 0;
+  line-height: 1.4;
+}
+
 /* No Data Message */
 .no-data-message {
   background: var(--highlight);

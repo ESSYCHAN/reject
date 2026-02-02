@@ -1068,22 +1068,57 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                 </div>
               )}
 
-              {/* Top Phrases - renamed from "Signals" for clarity */}
-              {patternsData.topSignals.length > 0 && (
-                <div className="top-signals">
-                  <Tooltip content="These are the actual phrases companies used in your rejection emails. Seeing the same phrases repeatedly can reveal patterns in how you're being filtered.">
-                    <h4>What Companies Keep Saying</h4>
-                  </Tooltip>
-                  <p className="signals-hint">Phrases that appeared most often in your rejections:</p>
-                  <div className="signals-grid">
-                    {patternsData.topSignals.slice(0, 5).map((signal, i) => (
-                      <span key={i} className="signal-tag">
-                        "{signal.signal}" <span className="signal-count">({signal.count}x)</span>
-                      </span>
-                    ))}
-                  </div>
+              {/* Actionable Takeaways - synthesized from patterns + R-W */}
+              <div className="actionable-takeaways">
+                <h4>What This Means For You</h4>
+                <div className="takeaways-list">
+                  {patternsData.templateRejectionPercentage >= 50 && (
+                    <div className="takeaway-item critical">
+                      <span className="takeaway-icon">&#9888;</span>
+                      <div className="takeaway-content">
+                        <strong>Your bottleneck is ATS filtering</strong>
+                        <p>{patternsData.templateRejectionPercentage}% of rejections are automated. Focus on referrals, optimize keywords, or apply to smaller companies with simpler hiring processes.</p>
+                      </div>
+                    </div>
+                  )}
+                  {patternsData.humanReviewedPercentage >= 40 && (
+                    <div className="takeaway-item positive">
+                      <span className="takeaway-icon">&#10003;</span>
+                      <div className="takeaway-content">
+                        <strong>You're reaching human reviewers</strong>
+                        <p>{patternsData.humanReviewedPercentage}% of rejections show human review. Your resume gets through - focus on your pitch, cover letters, and interview prep.</p>
+                      </div>
+                    </div>
+                  )}
+                  {patternsData.categoryBreakdown.find(c => c.category === 'Door Open' && c.count >= 2) && (
+                    <div className="takeaway-item opportunity">
+                      <span className="takeaway-icon">&#128274;</span>
+                      <div className="takeaway-content">
+                        <strong>Follow-up opportunities exist</strong>
+                        <p>You have {patternsData.categoryBreakdown.find(c => c.category === 'Door Open')?.count} "door open" rejections. These companies invited future applications - set reminders to reapply.</p>
+                      </div>
+                    </div>
+                  )}
+                  {proInsights.rwAnalytics.bottomPredictors.length > 0 && proInsights.rwAnalytics.bottomPredictors[0].confidence !== 'insufficient' && (
+                    <div className="takeaway-item warning">
+                      <span className="takeaway-icon">&#128269;</span>
+                      <div className="takeaway-content">
+                        <strong>Pattern detected: {formatCueForDisplay(proInsights.rwAnalytics.bottomPredictors[0].cue)}</strong>
+                        <p>This factor correlates with your rejections. Consider adjusting your targeting strategy.</p>
+                      </div>
+                    </div>
+                  )}
+                  {patternsData.totalDecoded < 10 && (
+                    <div className="takeaway-item info">
+                      <span className="takeaway-icon">&#128200;</span>
+                      <div className="takeaway-content">
+                        <strong>Keep decoding for better insights</strong>
+                        <p>With {patternsData.totalDecoded} rejections decoded, patterns are emerging. Decode more to strengthen these insights.</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </>
           ) : (
             <div className="no-data-message">
