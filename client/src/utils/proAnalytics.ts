@@ -248,23 +248,57 @@ export function analyzeCompanies(applications: ApplicationRecord[]): CompanyInte
       }
     }
 
-    // Generate insight
+    // Generate insight with clear action
     let insight = '';
+    let action = '';
     const displayName = apps[0].company; // Use original casing
 
+    // Calculate totals for context
+    const totalRejections = outcomes.rejected_ats + outcomes.rejected_recruiter +
+                           outcomes.rejected_hm + outcomes.rejected_final;
+    const totalCompleted = totalRejections + outcomes.ghosted + outcomes.offer;
+    const atsPassRate = totalRejections > 0
+      ? Math.round(((totalRejections - outcomes.rejected_ats) / totalRejections) * 100)
+      : null;
+
     if (outcomes.offer > 0) {
-      insight = `You've received ${outcomes.offer} offer(s) from ${displayName}. Strong track record!`;
-    } else if (mostCommonStage === 'rejected_ats' && maxRejections >= 2) {
-      insight = `${displayName} has rejected you ${maxRejections} times at ATS stage. Consider getting a referral or trying different role types.`;
-    } else if (mostCommonStage === 'rejected_recruiter' && maxRejections >= 2) {
-      insight = `You're passing ${displayName}'s ATS but getting filtered at recruiter screen. Your resume fits but something in your background isn't matching.`;
-    } else if (mostCommonStage === 'rejected_hm' && maxRejections >= 2) {
-      insight = `You're reaching hiring managers at ${displayName} but not converting. Focus on interview prep for this company's style.`;
-    } else if (outcomes.ghosted >= 2) {
-      insight = `${displayName} has ghosted you ${outcomes.ghosted} times. They may have slow processes or poor candidate communication.`;
+      insight = `${outcomes.offer} offer from ${apps.length} applications.`;
+      action = 'Good fit - keep applying here.';
+    } else if (outcomes.rejected_ats >= 2 && outcomes.rejected_ats === totalRejections) {
+      // All rejections at ATS = complete ATS block
+      insight = `0% ATS pass rate (${outcomes.rejected_ats}/${outcomes.rejected_ats} blocked).`;
+      action = 'Stop applying directly. Get a referral or try different roles.';
+    } else if (outcomes.rejected_ats >= 2 && atsPassRate !== null && atsPassRate < 50) {
+      insight = `Only ${atsPassRate}% pass their ATS (${outcomes.rejected_ats} ATS rejections).`;
+      action = 'Their ATS filters you out. Need referral to bypass.';
+    } else if (outcomes.rejected_recruiter >= 2) {
+      insight = `Pass ATS but fail at recruiter (${outcomes.rejected_recruiter}x).`;
+      action = 'Resume keywords work but experience/skills mismatch. Try different role levels.';
+    } else if (outcomes.rejected_hm >= 2) {
+      insight = `Reach HM interviews but don\'t convert (${outcomes.rejected_hm}x).`;
+      action = 'You\'re close! Focus on interview prep for their style.';
+    } else if (outcomes.rejected_final >= 1) {
+      insight = `Made it to final rounds ${outcomes.rejected_final}x.`;
+      action = 'Strong fit - you\'re competitive. Keep trying.';
+    } else if (outcomes.ghosted >= 2 && outcomes.ghosted === totalCompleted) {
+      insight = `Ghosted ${outcomes.ghosted}/${outcomes.ghosted} times.`;
+      action = 'Slow/poor process. Don\'t wait - move on after applying.';
+    } else if (totalCompleted === 0) {
+      insight = `${apps.length} applications still pending.`;
+      action = 'Waiting for responses.';
     } else {
-      insight = `You've applied to ${displayName} ${apps.length} times with mixed results.`;
+      // Calculate what's happening
+      const stages = [];
+      if (outcomes.rejected_ats > 0) stages.push(`${outcomes.rejected_ats} ATS`);
+      if (outcomes.rejected_recruiter > 0) stages.push(`${outcomes.rejected_recruiter} recruiter`);
+      if (outcomes.rejected_hm > 0) stages.push(`${outcomes.rejected_hm} HM`);
+      if (outcomes.ghosted > 0) stages.push(`${outcomes.ghosted} ghosted`);
+      insight = stages.length > 0 ? stages.join(', ') + '.' : `${apps.length} applications.`;
+      action = 'Mixed results - no clear pattern yet.';
     }
+
+    // Combine insight and action
+    insight = insight + ' ' + action;
 
     intelligence.push({
       company: displayName,
