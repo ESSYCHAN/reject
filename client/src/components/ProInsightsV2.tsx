@@ -1077,7 +1077,12 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                       <span className="takeaway-icon">&#9888;</span>
                       <div className="takeaway-content">
                         <strong>Your bottleneck is ATS filtering</strong>
-                        <p>{patternsData.templateRejectionPercentage}% of rejections are automated. Focus on referrals, optimize keywords, or apply to smaller companies with simpler hiring processes.</p>
+                        <p>
+                          {patternsData.templateRejectionPercentage}% of rejections are automated.
+                          {proInsights.rwAnalytics.counterfactuals.length > 0
+                            ? ` Based on your data: ${proInsights.rwAnalytics.counterfactuals[0].description.toLowerCase()}.`
+                            : ' Focus on referrals to bypass automated screening.'}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -1099,12 +1104,12 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                       </div>
                     </div>
                   )}
-                  {proInsights.rwAnalytics.bottomPredictors.length > 0 && proInsights.rwAnalytics.bottomPredictors[0].confidence !== 'insufficient' && (
+                  {proInsights.rwAnalytics.counterfactuals.length > 1 && (
                     <div className="takeaway-item warning">
-                      <span className="takeaway-icon">&#128269;</span>
+                      <span className="takeaway-icon">&#128161;</span>
                       <div className="takeaway-content">
-                        <strong>Pattern detected: {formatCueForDisplay(proInsights.rwAnalytics.bottomPredictors[0].cue)}</strong>
-                        <p>This factor correlates with your rejections. Consider adjusting your targeting strategy.</p>
+                        <strong>Top change to make</strong>
+                        <p>{proInsights.rwAnalytics.counterfactuals[0].description} (+{Math.round(proInsights.rwAnalytics.counterfactuals[0].probabilityIncrease * 100)}% improvement based on your data).</p>
                       </div>
                     </div>
                   )}
