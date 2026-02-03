@@ -319,6 +319,41 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     };
   }, [showUpgrade]);
 
+  // Detect if text is gibberish/nonsense (not a real email)
+  const isGibberish = (text: string): boolean => {
+    const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    if (words.length < 3) return true; // Too few words
+
+    // Common English words that should appear in real emails
+    const commonWords = [
+      'the', 'and', 'for', 'you', 'your', 'our', 'we', 'have', 'has',
+      'with', 'this', 'that', 'not', 'are', 'was', 'but', 'will',
+      'thank', 'application', 'position', 'role', 'team', 'company',
+      'opportunity', 'unfortunately', 'regret', 'decision', 'candidate',
+      'experience', 'interview', 'review', 'consider', 'time', 'best',
+      'future', 'wish', 'interest', 'appreciate', 'forward', 'contact'
+    ];
+
+    // Count how many common words appear
+    const foundCommonWords = commonWords.filter(cw =>
+      words.some(w => w.includes(cw) || cw.includes(w))
+    );
+
+    // If less than 3 common words found in the text, likely gibberish
+    if (foundCommonWords.length < 3) return true;
+
+    // Check for excessive consonant clusters (sign of random typing)
+    const consonantClusterPattern = /[bcdfghjklmnpqrstvwxz]{5,}/gi;
+    const matches = text.match(consonantClusterPattern);
+    if (matches && matches.length > 2) return true;
+
+    // Check ratio of recognizable words
+    const recognizableRatio = foundCommonWords.length / Math.max(words.length, 1);
+    if (recognizableRatio < 0.1 && words.length > 10) return true;
+
+    return false;
+  };
+
   // Detect if text looks like a job description rather than a rejection email
   const looksLikeJobDescription = (text: string): boolean => {
     const lower = text.toLowerCase();
@@ -351,6 +386,12 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const handleDecode = async () => {
     if (emailText.trim().length < 10) {
       setError('Please enter at least 10 characters');
+      return;
+    }
+
+    // Detect gibberish/nonsense input
+    if (isGibberish(emailText)) {
+      setError('This doesn\'t look like a rejection email. Please paste the actual email text you received.');
       return;
     }
 
