@@ -3,7 +3,8 @@
 
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-const MAYA_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+// Charlotte - warm, friendly, conversational voice
+const MAYA_VOICE_ID = 'XB0fDUnXU5powFXDhCwa';
 
 
 export async function textToSpeech(text: string): Promise<ArrayBuffer> {
@@ -28,10 +29,12 @@ export async function textToSpeech(text: string): Promise<ArrayBuffer> {
       },
       body: JSON.stringify({
         text: cleanText,
-        model_id: 'eleven_turbo_v2_5',
+        model_id: 'eleven_multilingual_v2',  // More natural and expressive
         voice_settings: {
-          stability: 0.5,        // How consistent the voice is
-          similarity_boost: 0.75 // How close to original voice
+          stability: 0.65,          // More consistent delivery
+          similarity_boost: 0.8,    // Closer to natural voice
+          style: 0.4,               // Add expressiveness/emotion
+          use_speaker_boost: true   // Enhance clarity
         }
       }),
     }
