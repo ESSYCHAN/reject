@@ -18,6 +18,7 @@ import applicationsRouter from './routes/applications.js';
 import stripeWebhookRouter from './routes/stripe-webhook.js';
 import knowledgeRouter from './routes/knowledge.js';
 import agentsRouter from './routes/agents.js';
+import ttsRouter from './routes/tts.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,8 +33,17 @@ if (NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// In production, serve from same origin; in dev, allow Vite dev server
-const corsOrigin = NODE_ENV === 'production' ? false : CLIENT_URL;
+// In production, serve from same origin; in dev, allow any localhost port
+const corsOrigin = NODE_ENV === 'production'
+  ? false
+  : [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+      'http://localhost:5176',
+      'http://localhost:5177',
+      'http://localhost:3000',
+    ];
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -66,6 +76,10 @@ app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }), stripe
 
 app.use(express.json({ limit: '100kb' }));
 
+// Health check BEFORE auth (needed for Docker healthcheck)
+app.use('/api/health', healthRouter);
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
 // Other Stripe routes (after JSON parsing)
 app.use('/api/stripe', stripeWebhookRouter);
 
@@ -73,7 +87,6 @@ app.use('/api/stripe', stripeWebhookRouter);
 app.use(authMiddleware);
 
 // API Routes
-app.use('/api/health', healthRouter);
 app.use('/api/decode', decodeRouter);
 app.use('/api/subscribe', subscribeRouter);
 app.use('/api/pro', proRouter);
@@ -81,6 +94,7 @@ app.use('/api/user', userRouter);
 app.use('/api/applications', applicationsRouter);
 app.use('/api/knowledge', knowledgeRouter);
 app.use('/api/agents', agentsRouter);
+app.use('/api/tts', ttsRouter);
 
 // In production, serve the Vite build
 if (NODE_ENV === 'production') {

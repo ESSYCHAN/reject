@@ -1,0 +1,697 @@
+/**
+ * MayaLanding Styles - REJECT Theme
+ *
+ * Design philosophy:
+ * - Warm, not corporate (matches REJECT palette)
+ * - Calm, not overwhelming
+ * - Human, not mechanical
+ * - The conversation IS the interface
+ */
+
+.maya-landing {
+  min-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-body);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+/* Header - minimal, in-tab version */
+.maya-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--card);
+}
+
+.maya-logo {
+  display: flex;
+  flex-direction: column;
+}
+
+.maya-name {
+  font-family: var(--font-heading);
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+
+.maya-tagline {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.maya-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.voice-toggle {
+  background: var(--highlight);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.voice-toggle:hover {
+  background: var(--border);
+}
+
+.voice-toggle.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.sign-in-subtle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s;
+}
+
+.sign-in-subtle:hover {
+  background: var(--highlight);
+  color: var(--text);
+}
+
+/* Conversation area - the heart of the experience */
+.maya-conversation {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 700px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.messages-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Messages */
+.message {
+  display: flex;
+  gap: 1rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.user {
+  flex-direction: row-reverse;
+}
+
+.maya-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.message-content {
+  max-width: 80%;
+  padding: 1rem 1.25rem;
+  border-radius: 20px;
+  line-height: 1.6;
+}
+
+.message.maya .message-content {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-bottom-left-radius: 4px;
+  color: var(--text);
+}
+
+.message.user .message-content {
+  background: var(--accent);
+  color: var(--card);
+  border-bottom-right-radius: 4px;
+}
+
+.message-content p {
+  margin: 0;
+}
+
+.message-content p + p {
+  margin-top: 0.75rem;
+}
+
+/* Typing indicator */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 1rem 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  border-bottom-left-radius: 4px;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  background: var(--accent-light);
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: 0s; }
+.typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+.typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-6px); }
+}
+
+/* Speaking indicator - now clickable to interrupt */
+.speaking-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--highlight);
+  border: 1px solid var(--accent-light);
+  border-radius: 20px;
+  font-size: 0.85rem;
+  color: var(--text);
+  animation: pulse 1.5s ease-in-out infinite;
+  margin: 0 auto;
+  width: fit-content;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.speaking-indicator:hover {
+  background: #fde8e8;
+  border-color: #ef4444;
+}
+
+.speaking-icon {
+  animation: bounce 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+/* Quick actions - emotional entry points */
+.quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2rem;
+  animation: fadeIn 0.5s ease 0.3s both;
+}
+
+.quick-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 25px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.quick-action:hover {
+  background: var(--highlight);
+  border-color: var(--accent-light);
+  transform: translateY(-2px);
+}
+
+.quick-emoji {
+  font-size: 1.1rem;
+}
+
+/* Input area - always inviting */
+.maya-input-area {
+  padding: 1.5rem 2rem 2rem;
+  background: var(--card);
+  border-top: 1px solid var(--border);
+}
+
+.input-container {
+  max-width: 700px;
+  margin: 0 auto;
+  display: flex;
+  gap: 0.75rem;
+  background: var(--background);
+  border-radius: 25px;
+  padding: 0.5rem 0.5rem 0.5rem 1.25rem;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s;
+}
+
+.input-container:focus-within {
+  border-color: var(--accent);
+}
+
+/* Microphone button */
+.mic-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--highlight);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mic-button:hover:not(:disabled) {
+  background: var(--border);
+}
+
+.mic-button.listening {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: white;
+  animation: pulse-mic 1s ease-in-out infinite;
+}
+
+@keyframes pulse-mic {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.mic-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-container textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  font-family: var(--font-body);
+  padding: 0.5rem 0;
+  max-height: 150px;
+}
+
+.input-container textarea::placeholder {
+  color: var(--muted);
+}
+
+.send-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: var(--card);
+  font-size: 1.25rem;
+  cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
+  flex-shrink: 0;
+}
+
+.send-button:hover:not(:disabled) {
+  transform: scale(1.05);
+}
+
+.send-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.input-hint {
+  max-width: 700px;
+  margin: 0.75rem auto 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Tracker link - subtle, not the focus */
+.tracker-link {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.tracker-link:hover {
+  color: var(--accent);
+}
+
+/* Intro screen for non-signed-in users */
+.maya-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  min-height: 70vh;
+}
+
+.maya-intro-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 2rem;
+  margin-bottom: 1.5rem;
+}
+
+.maya-intro-title {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.maya-intro-subtitle {
+  font-size: 1.1rem;
+  color: var(--muted);
+  margin: 0.5rem 0 1rem;
+}
+
+/* Play intro button */
+.play-intro-btn {
+  background: var(--highlight);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.6rem 1.2rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  transition: all 0.2s;
+}
+
+.play-intro-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--accent);
+}
+
+.playing-intro-btn {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--card);
+  padding: 0.6rem 1.2rem;
+  border-radius: 20px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  margin-bottom: 1.5rem;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.maya-intro-avatar.speaking {
+  animation: pulse 1s ease-in-out infinite;
+  box-shadow: 0 0 20px var(--accent-light);
+}
+
+/* Quick action shortcuts on intro */
+.maya-intro-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 350px;
+  width: 100%;
+  margin-bottom: 1.5rem;
+}
+
+.shortcuts-label {
+  font-size: 0.9rem;
+  color: var(--muted);
+  margin-bottom: 0.25rem;
+}
+
+.intro-shortcut {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  color: var(--text);
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.intro-shortcut:hover {
+  background: var(--highlight);
+  border-color: var(--accent);
+  transform: translateX(4px);
+}
+
+.shortcut-emoji {
+  font-size: 1.25rem;
+}
+
+.shortcut-text {
+  flex: 1;
+}
+
+.maya-intro-features {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 400px;
+  margin-bottom: 2rem;
+}
+
+.maya-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  text-align: left;
+  padding: 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.feature-emoji {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.maya-feature strong {
+  display: block;
+  color: var(--text);
+  margin-bottom: 0.25rem;
+}
+
+.maya-feature p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.maya-intro-cta {
+  margin-bottom: 1.5rem;
+}
+
+.try-maya-btn {
+  background: var(--accent);
+  color: var(--card);
+  border: none;
+  padding: 1rem 2rem;
+  font-size: 1.1rem;
+  font-family: var(--font-body);
+  border-radius: 30px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.try-maya-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(179, 92, 68, 0.3);
+}
+
+.maya-intro-hint {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-top: 0.75rem;
+}
+
+.maya-intro-auth {
+  font-size: 0.9rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sign-in-link {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  font-family: var(--font-body);
+}
+
+.sign-in-link:hover {
+  color: var(--text);
+}
+
+/* Signup prompt overlay */
+.signup-prompt {
+  margin-top: 2rem;
+  animation: fadeIn 0.3s ease;
+}
+
+.signup-prompt-content {
+  background: var(--card);
+  border: 2px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  text-align: center;
+}
+
+.signup-prompt-content h3 {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  margin: 0 0 0.5rem;
+  color: var(--text);
+}
+
+.signup-prompt-content p {
+  color: var(--muted);
+  margin: 0 0 1.5rem;
+}
+
+.signup-prompt-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.signup-btn-primary {
+  background: var(--accent);
+  color: var(--card);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  transition: transform 0.2s;
+}
+
+.signup-btn-primary:hover {
+  transform: translateY(-2px);
+}
+
+.signup-btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  transition: all 0.2s;
+}
+
+.signup-btn-secondary:hover {
+  background: var(--highlight);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 600px) {
+  .maya-conversation {
+    padding: 1rem;
+  }
+
+  .maya-input-area {
+    padding: 1rem;
+  }
+
+  .quick-actions {
+    justify-content: center;
+  }
+
+  .quick-action {
+    font-size: 0.85rem;
+    padding: 0.6rem 1rem;
+  }
+
+  .message-content {
+    max-width: 90%;
+  }
+
+  .tracker-link {
+    position: static;
+    display: block;
+    text-align: center;
+    padding: 1rem;
+  }
+}

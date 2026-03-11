@@ -1,0 +1,7 @@
+# Namespace isolates REJECT resources
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: reject
+  labels:
+    app: reject

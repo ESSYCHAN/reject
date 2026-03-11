@@ -2,7 +2,7 @@
  * Agent Service - Connects React frontend to ADK agents
  */
 
-const AGENTS_API_URL = import.meta.env.VITE_AGENTS_API_URL || 'http://localhost:8080';
+const AGENTS_API_URL = import.meta.env.VITE_AGENTS_API_URL || '/agents';
 
 export interface ChatMessage {
   id: string;
@@ -20,10 +20,18 @@ export interface AgentInfo {
 }
 
 export const AGENTS: AgentInfo[] = [
+  // The ONE Super Agent - all capabilities in one (Phase 1.2)
+  {
+    id: 'reject_coach',
+    name: 'REJECT Coach',
+    description: 'Full AI career coach - does everything',
+    icon: '🚀'
+  },
+  // Legacy agents (still available for specific use cases)
   {
     id: 'career_coach',
-    name: 'Career Coach',
-    description: 'Your AI career coach - routes to specialists',
+    name: 'Career Coach (Legacy)',
+    description: 'Routes to specialist agents',
     icon: '🎯'
   },
   {
@@ -61,6 +69,12 @@ export const AGENTS: AgentInfo[] = [
     name: 'Rejection Decoder',
     description: 'Understand rejections',
     icon: '🔓'
+  },
+  {
+    id: 'maya',
+    name: 'Maya',
+    description: 'Your supportive voice coach & buddy',
+    icon: '💜'
   }
 ];
 
@@ -234,7 +248,7 @@ class AgentService {
         },
         body: JSON.stringify({
           message: request.message,
-          agent: request.agent || 'career_coach',
+          agent: request.agent || 'reject_coach',
           conversation_id: request.conversationId || this.conversationId,
           context: request.context,
         }),
