@@ -114,28 +114,39 @@ router.post(
             [userId, appCompany, appRole]
           );
 
+          // Map ATS stage to outcome
+          const stageToOutcome: Record<string, string> = {
+            'ats_filter': 'rejected_ats',
+            'recruiter_screen': 'rejected_recruiter',
+            'hiring_manager': 'rejected_hm',
+            'final_round': 'rejected_final',
+            'unknown': 'rejected_ats'
+          };
+          const stage = result.ats_assessment?.stage_reached || 'unknown';
+          const outcome = stageToOutcome[stage] || 'rejected_ats';
+
           const rejectionAnalysis = JSON.stringify({
             category: result.category,
             confidence: result.confidence,
             signals: result.signals,
-            atsStage: result.ats_assessment?.stage_reached,
+            stageReached: stage,  // UI expects stageReached, not atsStage
             whatItMeans: result.what_it_means
           });
 
           if (existing.rows.length > 0) {
             // Update existing application
             await query(
-              `UPDATE applications SET outcome = 'rejected', rejection_analysis = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-              [rejectionAnalysis, existing.rows[0].id]
+              `UPDATE applications SET outcome = $1, rejection_analysis = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3`,
+              [outcome, rejectionAnalysis, existing.rows[0].id]
             );
             console.log(`[decode] Updated existing application in tracker for ${userId}`);
           } else {
-            // Create new application
+            // Create new application with today's date
             const appId = uuidv4();
             await query(
-              `INSERT INTO applications (id, user_id, company, role, seniority_level, outcome, rejection_analysis, updated_at)
-               VALUES ($1, $2, $3, $4, $5, 'rejected', $6, CURRENT_TIMESTAMP)`,
-              [appId, userId, appCompany, appRole, seniorityLevel || null, rejectionAnalysis]
+              `INSERT INTO applications (id, user_id, company, role, seniority_level, outcome, rejection_analysis, date_applied, updated_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_DATE, CURRENT_TIMESTAMP)`,
+              [appId, userId, appCompany, appRole, seniorityLevel || null, outcome, rejectionAnalysis]
             );
             console.log(`[decode] Added new application to tracker for ${userId}`);
           }

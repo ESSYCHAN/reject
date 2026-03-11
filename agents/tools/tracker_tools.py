@@ -128,7 +128,7 @@ async def _add_rejection_impl(
                     "category": rejection_category,
                     "confidence": confidence,
                     "signals": signals or [],
-                    "stageReached": stage_reached,
+                    "stageReached": stage_reached or "ats_filter",  # Default to ATS if unknown
                     "whatItMeans": what_it_means,
                     "decodedAt": "now"
                 }
