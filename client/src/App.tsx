@@ -35,7 +35,6 @@ function App() {
   const {
     applications: proApplications,
     saveApplication,
-    updateApplications,
     isSyncing
   } = useApplicationsSync();
 
@@ -84,10 +83,6 @@ function App() {
       return () => clearTimeout(timer);
     }
   }, []); // Empty deps = run once on mount
-
-  const handleProApplicationsChange = (apps: ApplicationRecord[]) => {
-    updateApplications(apps);
-  };
 
   const handleAddToTracker = (data: DecodedData) => {
     // Create a new application record from decoded rejection
@@ -269,7 +264,7 @@ function App() {
             />
           )}
           {activeTab === 'pro-tracker' && (
-            <ProTracker onApplicationsChange={handleProApplicationsChange} />
+            <ProTracker />
           )}
           {activeTab === 'insights' && <ProInsightsV2 applications={proApplications} />}
           {activeTab === 'jd-check' && <JDAnalyzer onAddToTracker={handleAddFromJD} />}

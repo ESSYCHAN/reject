@@ -19,10 +19,6 @@ import { useAuth } from './AuthButtons';
 
 type FilterTab = 'all' | 'saved' | 'applied';
 
-interface ProTrackerProps {
-  onApplicationsChange?: (apps: ApplicationRecord[]) => void;
-}
-
 const ITEMS_PER_PAGE = 10;
 const GHOST_THRESHOLD_DAYS = 30; // Auto-mark as ghosted after 30 days
 
@@ -76,7 +72,7 @@ function formatDate(dateString: string | undefined | null): string {
   }
 }
 
-export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
+export function ProTracker() {
   // Use cloud-synced applications
   const {
     applications,
@@ -109,14 +105,12 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     dateApplied: new Date().toISOString().split('T')[0]
   });
 
-  // Notify parent when applications change
+  // Update usage tracking when applications change
   useEffect(() => {
-    onApplicationsChange?.(applications);
-    // Update usage tracking
     const usage = loadUsage();
     usage.applications = applications.length;
     saveUsage(usage);
-  }, [applications, onApplicationsChange]);
+  }, [applications]);
 
   // Listen for Pro status sync to clear upgrade prompt if user just became Pro
   useEffect(() => {

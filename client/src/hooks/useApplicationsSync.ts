@@ -21,6 +21,10 @@ const API_URL = import.meta.env.VITE_API_URL || '';
 // Auto-ghost threshold: 30 days without response
 const AUTO_GHOST_DAYS = 30;
 
+// Module-level sync state to prevent multiple hook instances from syncing
+let globalSyncInProgress = false;
+let globalHasSynced = false;
+
 /**
  * Auto-ghost applications that have been in 'applied' status for too long
  * Returns updated applications array and list of apps that were ghosted
@@ -207,17 +211,14 @@ export function useApplicationsSync() {
     return Array.from(merged.values());
   }, []);
 
-  // Track if we've synced to avoid duplicate syncs
-  const hasSynced = useRef(false);
-
   // Initial sync on mount when signed in
   // Only clear data when user explicitly signs OUT (not when they've never signed in)
   useEffect(() => {
     const everSignedIn = hasEverSignedIn();
-    console.log('useApplicationsSync: effect triggered, isSignedIn:', isSignedIn, 'everSignedIn:', everSignedIn, 'hasSynced:', hasSynced.current);
+    console.log('useApplicationsSync: effect triggered, isSignedIn:', isSignedIn, 'everSignedIn:', everSignedIn, 'globalHasSynced:', globalHasSynced, 'globalSyncInProgress:', globalSyncInProgress);
 
     if (!isSignedIn) {
-      hasSynced.current = false; // Reset when signed out
+      globalHasSynced = false; // Reset when signed out
 
       // Only clear data if user has previously signed in (meaning they signed out)
       // This preserves data for anonymous users who haven't signed up yet
@@ -233,8 +234,12 @@ export function useApplicationsSync() {
     // Mark that user has signed in (for future sign-out detection)
     markAsSignedIn();
 
-    if (hasSynced.current) return; // Already synced this session
-    hasSynced.current = true;
+    // Prevent duplicate syncs across multiple hook instances
+    if (globalHasSynced || globalSyncInProgress) {
+      console.log('useApplicationsSync: skipping sync (already synced or in progress)');
+      return;
+    }
+    globalSyncInProgress = true;
 
     const syncOnMount = async () => {
       setIsLoading(true);
@@ -260,31 +265,30 @@ export function useApplicationsSync() {
         setApplications(withAutoGhost);
         saveLocalApplications(withAutoGhost);
 
-        // Push merged back to server (to ensure server has local-only items)
-        // Only push apps that aren't in the deleted list
-        // Use withAutoGhost to sync the ghosted status to server
+        // Push merged back to server ONLY if we have local changes to push
+        // Don't push if we just fetched from server with no local apps
         if (localApps.length > 0 || ghostedCount > 0) {
           const appsToSync = withAutoGhost.filter(app => !deletedIds.current.has(app.id));
           await pushToServer(appsToSync);
         }
 
         // Clean up deletedIds for apps that are confirmed gone from server
-        // (they weren't in serverApps, so server confirmed delete)
         const serverIds = new Set(serverApps.map(a => a.id));
         for (const deletedId of deletedIds.current) {
           if (!serverIds.has(deletedId)) {
-            // Server confirmed it's gone, safe to remove from tracking
             deletedIds.current.delete(deletedId);
           }
         }
         saveDeletedIds(deletedIds.current);
 
         console.log(`Sync complete: ${withAutoGhost.length} total applications`);
+        globalHasSynced = true;
       } catch (error) {
         console.error('Sync error:', error);
         setLastSyncError('Failed to sync applications');
       } finally {
         setIsLoading(false);
+        globalSyncInProgress = false;
       }
     };
 
