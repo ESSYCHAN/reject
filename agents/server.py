@@ -262,9 +262,32 @@ def build_user_context_text(user_ctx: dict) -> str:
     if not user_ctx:
         return ""
 
-    context_text = "\n\n--- USER'S APPLICATION HISTORY ---"
+    context_text = ""
 
-    # User profile
+    # User identity - IMPORTANT: Maya should know who she's talking to
+    user_name = user_ctx.get("userName") or user_ctx.get("fullName")
+    if user_name:
+        context_text += f"\n\n--- ABOUT THIS USER ---"
+        context_text += f"\nName: {user_name}"
+        if user_ctx.get("currentTitle"):
+            context_text += f"\nCurrent Role: {user_ctx.get('currentTitle')}"
+        if user_ctx.get("yearsExperience"):
+            context_text += f"\nExperience: {user_ctx.get('yearsExperience')} years"
+        if user_ctx.get("skills"):
+            skills = user_ctx.get("skills", [])
+            if skills:
+                context_text += f"\nSkills: {', '.join(skills[:10])}"
+        if user_ctx.get("targetRoles"):
+            roles = user_ctx.get("targetRoles", [])
+            if roles:
+                context_text += f"\nLooking for: {', '.join(roles)}"
+        if user_ctx.get("hasCv"):
+            context_text += f"\n(User has uploaded their CV)"
+
+    # Application history (if available)
+    context_text += "\n\n--- USER'S APPLICATION HISTORY ---"
+
+    # User profile from application stats
     profile = user_ctx.get("userProfile", {})
     if profile.get("applicationCount", 0) > 0:
         context_text += f"\nProfile: {profile.get('applicationCount')} applications tracked"

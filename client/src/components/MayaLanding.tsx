@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useUser, SignInButton, SignUpButton } from '@clerk/clerk-react';
+import { useUser, useAuth, SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { speakWithMaya } from '../services/ttsService';
 import './MayaLanding.css';
 
@@ -18,8 +18,18 @@ interface Message {
   timestamp: Date;
 }
 
+interface UserProfile {
+  fullName?: string;
+  currentTitle?: string;
+  yearsExperience?: number;
+  skills?: string[];
+  cvText?: string;
+  targetRoles?: string[];
+}
+
 export default function MayaLanding() {
   const { user, isSignedIn } = useUser();
+  const { getToken } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -32,6 +42,7 @@ export default function MayaLanding() {
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [hasPlayedIntro, setHasPlayedIntro] = useState(false);
   const [isPlayingIntro, setIsPlayingIntro] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -109,22 +120,56 @@ export default function MayaLanding() {
 
   const firstName = user?.firstName || '';
 
+  // Fetch user profile when signed in
+  useEffect(() => {
+    async function loadProfile() {
+      if (!isSignedIn) return;
+      try {
+        const token = await getToken();
+        const response = await fetch('/api/user/profile', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUserProfile(data.profile || null);
+        }
+      } catch (err) {
+        console.log('[Maya] Could not load profile:', err);
+      }
+    }
+    loadProfile();
+  }, [isSignedIn, getToken]);
+
+  // Use localStorage for persistent conversation ID (survives refresh)
+  useEffect(() => {
+    // Migrate from sessionStorage if exists
+    const sessionConvId = sessionStorage.getItem('maya_conversation_id');
+    if (sessionConvId && !localStorage.getItem('maya_conversation_id')) {
+      localStorage.setItem('maya_conversation_id', sessionConvId);
+      sessionStorage.removeItem('maya_conversation_id');
+    }
+  }, []);
+
   // Maya's opening - warm, human, inviting
   useEffect(() => {
-    const greeting = getGreeting(firstName, isSignedIn);
+    const greeting = getGreeting(firstName, isSignedIn, userProfile);
     setTimeout(() => {
       setMessages([{ role: 'maya', content: greeting, timestamp: new Date() }]);
     }, 500);
-  }, [firstName, isSignedIn]);
+  }, [firstName, isSignedIn, userProfile]);
 
   // Auto-scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  function getGreeting(name: string, signedIn: boolean | undefined): string {
+  function getGreeting(name: string, signedIn: boolean | undefined, profile: UserProfile | null): string {
     if (signedIn && name) {
-      return `Hey ${name}. What's going on?`;
+      // Personalized greeting based on profile
+      if (profile?.currentTitle) {
+        return `Hey ${name}! Good to see you 💙\n\nI see you're a ${profile.currentTitle}. What's going on with the job search?`;
+      }
+      return `Hey ${name}! What's going on?`;
     }
     return `Hey. I'm Maya 💙\n\nI'm your AI career coach. I help people navigate the messy, emotional rollercoaster of job searching.\n\nGot a rejection? Paste it here. Feeling stuck? Let's talk. Need CV help? I've got you.\n\nTry me out - ask me anything.`;
   }
@@ -162,8 +207,23 @@ export default function MayaLanding() {
 
     try {
       // Call Maya's backend (FastAPI agents server)
-      const existingConvId = sessionStorage.getItem('maya_conversation_id');
+      // Use localStorage for persistence across refreshes
+      const existingConvId = localStorage.getItem('maya_conversation_id');
       console.log('[Maya] Sending message with conversation_id:', existingConvId || 'new');
+
+      // Build user context to send to Maya
+      const userContext: Record<string, unknown> = {};
+      if (isSignedIn) {
+        if (firstName) userContext.userName = firstName;
+        if (userProfile) {
+          if (userProfile.fullName) userContext.fullName = userProfile.fullName;
+          if (userProfile.currentTitle) userContext.currentTitle = userProfile.currentTitle;
+          if (userProfile.yearsExperience) userContext.yearsExperience = userProfile.yearsExperience;
+          if (userProfile.skills?.length) userContext.skills = userProfile.skills;
+          if (userProfile.targetRoles?.length) userContext.targetRoles = userProfile.targetRoles;
+          if (userProfile.cvText) userContext.hasCv = true; // Flag that CV exists, don't send full text each time
+        }
+      }
 
       const response = await fetch(`${AGENTS_API_URL}/chat`, {
         method: 'POST',
@@ -171,16 +231,17 @@ export default function MayaLanding() {
         body: JSON.stringify({
           message: messageText,
           agent: 'maya',
-          conversation_id: existingConvId || undefined
+          conversation_id: existingConvId || undefined,
+          context: Object.keys(userContext).length > 0 ? { userContext } : undefined
         })
       });
 
       const data = await response.json();
 
-      // Store conversation ID for session continuity
+      // Store conversation ID for persistence (localStorage survives refresh)
       if (data.conversation_id) {
         console.log('[Maya] Got conversation_id:', data.conversation_id);
-        sessionStorage.setItem('maya_conversation_id', data.conversation_id);
+        localStorage.setItem('maya_conversation_id', data.conversation_id);
       }
 
       const responseText = data.response || "I'm here. Tell me more.";
