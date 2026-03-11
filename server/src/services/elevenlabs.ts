@@ -3,8 +3,8 @@
 
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-// Charlotte - warm, friendly, conversational voice
-const MAYA_VOICE_ID = 'XB0fDUnXU5powFXDhCwa';
+// Natasha - professional, articulate, supportive (like an HR career coach)
+const MAYA_VOICE_ID = 'oWAxZDx7w5VEj9dCyTzz';
 
 
 export async function textToSpeech(text: string): Promise<ArrayBuffer> {
@@ -31,10 +31,10 @@ export async function textToSpeech(text: string): Promise<ArrayBuffer> {
         text: cleanText,
         model_id: 'eleven_multilingual_v2',  // More natural and expressive
         voice_settings: {
-          stability: 0.65,          // More consistent delivery
-          similarity_boost: 0.8,    // Closer to natural voice
-          style: 0.4,               // Add expressiveness/emotion
-          use_speaker_boost: true   // Enhance clarity
+          stability: 0.75,          // Professional, consistent delivery
+          similarity_boost: 0.75,   // Natural but not over-characterized
+          style: 0.2,               // Subtle warmth, not dramatic
+          use_speaker_boost: true   // Clear articulation
         }
       }),
     }
