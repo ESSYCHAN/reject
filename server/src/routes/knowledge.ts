@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { getKnowledgeBaseCompanyStats, getMarketRejectionPatterns, query } from '../db/index.js';
+import { searchSimilarRejections } from '../services/vectordb.js';
 
 const router = Router();
 
@@ -81,10 +82,10 @@ router.get('/company/:name', async (req: Request, res: Response) => {
 });
 
 /**
- * Search companies in knowledge base
+ * Search companies in knowledge base (keyword search - PostgreSQL)
  * Returns companies matching the query with enough data points
  */
-router.get('/search', async (req: Request, res: Response) => {
+router.get('/search/companies', async (req: Request, res: Response) => {
   const { q } = req.query;
 
   if (!q || typeof q !== 'string' || q.trim().length < 2) {
@@ -92,7 +93,6 @@ router.get('/search', async (req: Request, res: Response) => {
   }
 
   try {
-    // This is a simple search - could be improved with fuzzy matching
     const { query } = await import('../db/index.js');
     const result = await query(
       `SELECT company_normalized, COUNT(*) as count
@@ -114,6 +114,32 @@ router.get('/search', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error searching companies:', error);
     res.status(500).json({ error: 'Failed to search companies' });
+  }
+});
+
+/**
+ * Semantic search for rejection patterns (Pinecone - Knowledge Flywheel)
+ * Used by agents to find similar rejections by meaning, not just keywords
+ */
+router.get('/search', async (req: Request, res: Response) => {
+  const { q, limit } = req.query;
+
+  if (!q || typeof q !== 'string' || q.trim().length < 3) {
+    return res.status(400).json({ error: 'Search query required (min 3 characters)' });
+  }
+
+  try {
+    const topK = Math.min(parseInt(limit as string) || 5, 20);
+    const results = await searchSimilarRejections(q.trim(), topK);
+
+    res.json({
+      results,
+      total: results.length,
+      query: q.trim()
+    });
+  } catch (error) {
+    console.error('Error searching patterns:', error);
+    res.status(500).json({ error: 'Failed to search rejection patterns' });
   }
 });
 

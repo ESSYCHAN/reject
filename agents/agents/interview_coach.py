@@ -1,7 +1,7 @@
 """Interview Coach Agent - IMPROVED - Company-specific prep, user stats aware, intelligent practice with real-time feedback."""
 
 from google.adk.agents import LlmAgent
-from ..tools.interview_tools import generate_questions, evaluate_answer, mock_interview, company_prep
+from tools.interview_tools import generate_questions, evaluate_answer, mock_interview, company_prep
 
 
 # The Interview Coach Agent - IMPROVED

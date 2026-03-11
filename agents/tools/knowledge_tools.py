@@ -55,7 +55,7 @@ async def _query_company_intel_impl(company_name: str) -> dict:
 
 def _format_company_summary(company_name: str, data: dict) -> str:
     """Format company data into a readable summary for agents."""
-    parts = [f"📊 REJECT Community Data for {company_name}:"]
+    parts = [f"REJECT Community Data for {company_name}:"]
 
     # Total applications
     total_apps = data.get("totalApplications", 0)
@@ -66,7 +66,7 @@ def _format_company_summary(company_name: str, data: dict) -> str:
     ghost_rate = data.get("ghostRate")
     if ghost_rate is not None:
         rate_str = f"{ghost_rate:.0f}%" if isinstance(ghost_rate, (int, float)) else ghost_rate
-        warning = " ⚠️ HIGH" if (isinstance(ghost_rate, (int, float)) and ghost_rate > 40) else ""
+        warning = " HIGH" if (isinstance(ghost_rate, (int, float)) and ghost_rate > 40) else ""
         parts.append(f"- Ghost rate: {rate_str}{warning}")
 
     # Response time
@@ -124,36 +124,29 @@ def _query_company_intel_sync(company_name: str) -> dict:
 
 
 # The FunctionTool for querying company intelligence
-query_company_intel = FunctionTool(
-    name="query_company_intel",
-    description="""Query REJECT's community knowledge base for company-specific intelligence.
+@FunctionTool
+def query_company_intel(company_name: str) -> dict:
+    """Query REJECT's community knowledge base for company-specific intelligence.
 
-Returns aggregated data from all REJECT users who applied to this company:
-- Total applications tracked
-- Ghost rate (% who never heard back)
-- Average response time in days
-- Most common rejection types
-- ATS filter rate
-- Top rejection signals (e.g., "Overqualified", "Experience mismatch")
+    Returns aggregated data from all REJECT users who applied to this company:
+    - Total applications tracked
+    - Ghost rate (% who never heard back)
+    - Average response time in days
+    - Most common rejection types
+    - ATS filter rate
+    - Top rejection signals (e.g., "Overqualified", "Experience mismatch")
 
-USE THIS TOOL:
-- Before analyzing a job posting (to warn about high ghost rates)
-- When decoding a rejection (to see if it matches community patterns)
-- When user asks about a specific company
+    USE THIS TOOL:
+    - Before analyzing a job posting (to warn about high ghost rates)
+    - When decoding a rejection (to see if it matches community patterns)
+    - When user asks about a specific company
 
-IMPORTANT: This is community-aggregated data, not the user's personal history.""",
-    parameters={
-        "type": "object",
-        "properties": {
-            "company_name": {
-                "type": "string",
-                "description": "The company name to look up (e.g., 'Google', 'Stripe', 'Meta')"
-            }
-        },
-        "required": ["company_name"]
-    },
-    execute=lambda params: _query_company_intel_sync(params["company_name"])
-)
+    IMPORTANT: This is community-aggregated data, not the user's personal history.
+
+    Args:
+        company_name: The company name to look up (e.g., 'Google', 'Stripe', 'Meta')
+    """
+    return _query_company_intel_sync(company_name)
 
 
 async def _get_market_patterns_impl() -> dict:
@@ -196,26 +189,21 @@ def _get_market_patterns_sync() -> dict:
 
 
 # The FunctionTool for market-wide patterns
-get_market_patterns = FunctionTool(
-    name="get_market_patterns",
-    description="""Get market-wide rejection patterns across ALL companies in REJECT's database.
+@FunctionTool
+def get_market_patterns() -> dict:
+    """Get market-wide rejection patterns across ALL companies in REJECT's database.
 
-Returns:
-- Total rejections tracked
-- Overall rejection category distribution
-- ATS stage distribution across all companies
-- Top 20 rejection signals globally
-- Response time patterns
-- Top companies by rejection count
+    Returns:
+    - Total rejections tracked
+    - Overall rejection category distribution
+    - ATS stage distribution across all companies
+    - Top 20 rejection signals globally
+    - Response time patterns
+    - Top companies by rejection count
 
-USE THIS TOOL:
-- To give users context ("Your 60% ATS rejection rate is above the market average of 45%")
-- To benchmark their performance
-- To identify market-wide trends""",
-    parameters={
-        "type": "object",
-        "properties": {},
-        "required": []
-    },
-    execute=lambda params: _get_market_patterns_sync()
-)
+    USE THIS TOOL:
+    - To give users context ("Your 60% ATS rejection rate is above the market average of 45%")
+    - To benchmark their performance
+    - To identify market-wide trends
+    """
+    return _get_market_patterns_sync()

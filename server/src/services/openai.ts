@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { DecodeResponse, DecodeResponseSchema, InterviewStage } from '../types/index.js';
+import { redactPII } from './piiRedactor.js';
 
 let openai: OpenAI | null = null;
 
@@ -393,8 +394,14 @@ function getInterviewStageLabel(stage: InterviewStage): string {
 export async function decodeRejectionEmail(emailText: string, interviewStage?: InterviewStage): Promise<DecodeResponse> {
   const client = getOpenAIClient();
 
+  // PII redaction before AI processing - privacy/trust feature
+  const { redacted: processedText, totalRedactions } = redactPII(emailText);
+  if (totalRedactions > 0) {
+    console.log(`[openai] Redacted ${totalRedactions} PII items before AI processing`);
+  }
+
   // Pre-process: detect obvious signals before sending to AI
-  const lowerText = emailText.toLowerCase();
+  const lowerText = processedText.toLowerCase();
   const hasNoReply = lowerText.includes('no-reply') ||
                      lowerText.includes('noreply') ||
                      lowerText.includes('donotreply') ||
@@ -418,7 +425,7 @@ export async function decodeRejectionEmail(emailText: string, interviewStage?: I
         { role: 'system', content: SYSTEM_PROMPT },
         {
           role: 'user',
-          content: `Analyze this rejection email:\n\n${emailText}\n\n${hasNoReply ? 'NOTE: This email contains no-reply indicators. Factor this into your analysis.' : ''}${interviewContext}`
+          content: `Analyze this rejection email:\n\n${processedText}\n\n${hasNoReply ? 'NOTE: This email contains no-reply indicators. Factor this into your analysis.' : ''}${interviewContext}`
         }
       ],
       temperature: 0, // Zero temperature for fully deterministic, consistent results

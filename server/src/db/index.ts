@@ -121,6 +121,34 @@ export async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- User profiles (CV data, skills, preferences)
+      CREATE TABLE IF NOT EXISTS user_profiles (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT UNIQUE REFERENCES users(id),
+        
+        -- Basic info from CV
+        full_name TEXT,
+        current_title TEXT,
+        years_experience INTEGER,
+        
+        -- Skills (PostgreSQL array)
+        skills TEXT[],
+        
+        -- CV storage
+        cv_text TEXT,                    -- Extracted text from CV
+        cv_filename TEXT,                -- Original filename
+        cv_uploaded_at TIMESTAMP,
+        
+        -- Preferences
+        target_roles TEXT[],             -- What roles they want
+        target_companies TEXT[],         -- Dream companies
+        min_salary INTEGER,
+        
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+
       -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
       CREATE INDEX IF NOT EXISTS idx_usage_user_month ON usage(user_id, month_key);
@@ -131,6 +159,8 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_rejection_archive_company ON rejection_archive(company);
       CREATE INDEX IF NOT EXISTS idx_knowledge_base_company ON rejection_knowledge_base(company_normalized);
       CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON rejection_knowledge_base(rejection_category);
+      CREATE INDEX IF NOT EXISTS idx_user_profiles_user ON user_profiles(user_id);
+
     `);
     console.log('Database schema initialized');
   } finally {
@@ -773,5 +803,82 @@ export async function getCompanyStats(companyName: string): Promise<CommunityCom
   const stats = await getCommunityCompanyStats(1);
   return stats.find(s => s.company.toLowerCase().trim() === companyKey) || null;
 }
+
+// ============ USER PROFILES ============
+
+export interface UserProfile {
+  userId: string;
+  fullName?: string;
+  currentTitle?: string;
+  yearsExperience?: number;
+  skills?: string[];
+  cvText?: string;
+  cvFilename?: string;
+  targetRoles?: string[];
+  targetCompanies?: string[];
+  minSalary?: number;
+}
+
+/**
+ * Create or update user profile
+ */
+export async function upsertUserProfile(profile: UserProfile) {
+  await query(
+    `INSERT INTO user_profiles 
+     (user_id, full_name, current_title, years_experience, skills, cv_text, cv_filename, cv_uploaded_at, target_roles, target_companies, min_salary, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, ${profile.cvText ? 'CURRENT_TIMESTAMP' : 'NULL'}, $8, $9, $10, CURRENT_TIMESTAMP)
+     ON CONFLICT (user_id) DO UPDATE SET
+       full_name = COALESCE($2, user_profiles.full_name),
+       current_title = COALESCE($3, user_profiles.current_title),
+       years_experience = COALESCE($4, user_profiles.years_experience),
+       skills = COALESCE($5, user_profiles.skills),
+       cv_text = COALESCE($6, user_profiles.cv_text),
+       cv_filename = COALESCE($7, user_profiles.cv_filename),
+       cv_uploaded_at = ${profile.cvText ? 'CURRENT_TIMESTAMP' : 'user_profiles.cv_uploaded_at'},
+       target_roles = COALESCE($8, user_profiles.target_roles),
+       target_companies = COALESCE($9, user_profiles.target_companies),
+       min_salary = COALESCE($10, user_profiles.min_salary),
+       updated_at = CURRENT_TIMESTAMP`,
+    [
+      profile.userId,
+      profile.fullName || null,
+      profile.currentTitle || null,
+      profile.yearsExperience || null,
+      profile.skills || null,
+      profile.cvText || null,
+      profile.cvFilename || null,
+      profile.targetRoles || null,
+      profile.targetCompanies || null,
+      profile.minSalary || null
+    ]
+  );
+}
+
+/**
+ * Get user profile
+ */
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const result = await query(
+    'SELECT * FROM user_profiles WHERE user_id = $1',
+    [userId]
+  );
+  
+  if (result.rows.length === 0) return null;
+  
+  const row = result.rows[0];
+  return {
+    userId: row.user_id,
+    fullName: row.full_name,
+    currentTitle: row.current_title,
+    yearsExperience: row.years_experience,
+    skills: row.skills,
+    cvText: row.cv_text,
+    cvFilename: row.cv_filename,
+    targetRoles: row.target_roles,
+    targetCompanies: row.target_companies,
+    minSalary: row.min_salary
+  };
+}
+
 
 export default pool;

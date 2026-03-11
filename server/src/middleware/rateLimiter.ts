@@ -35,3 +35,25 @@ export const generalRateLimiter = rateLimit({
     return isApplicationsEndpoint && !!authHeader;
   }
 });
+
+// Bias audit rate limiter - more restrictive (sensitive feature)
+export const biasAuditRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5, // 5 per minute - conservative for sensitive feature
+  message: {
+    error: 'Too many bias audit requests. Please try again in a minute.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+// Pro burst rate limiter - higher limits for Pro users on batch operations
+export const proBatchRateLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5, // 5 batch requests per minute (each batch can have up to 20 items)
+  message: {
+    error: 'Too many batch requests. Please try again in a minute.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+});

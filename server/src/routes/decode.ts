@@ -5,6 +5,7 @@ import { decodeRejectionEmail } from '../services/openai.js';
 import { asyncHandler, createAppError } from '../middleware/errorHandler.js';
 import { decodeRateLimiter } from '../middleware/rateLimiter.js';
 import { saveToKnowledgeBase, saveToRejectionArchive } from '../db/index.js';
+import { storeDecodedRejection } from '../services/vectordb.js';
 
 const router = Router();
 
@@ -64,6 +65,17 @@ router.post(
           daysToResponse: undefined // Will be filled when linked to application
         });
         console.log(`[decode] Saved to knowledge base`);
+
+        // FLYWHEEL: Also store in Pinecone for semantic search
+        // This makes every decode improve the system's pattern recognition
+        await storeDecodedRejection({
+          company: company || result.extracted_company || 'unknown',
+          role: role || result.extracted_role,
+          category: result.category,
+          stage: result.ats_assessment?.stage_reached,
+          signals: result.signals || [],
+          confidence: result.confidence,
+        });
       } catch (kbError) {
         // Don't fail the request if knowledge base save fails
         console.error(`[decode] Failed to save to knowledge base:`, kbError);

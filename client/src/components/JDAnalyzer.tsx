@@ -14,7 +14,7 @@ interface RedFlag {
 
 interface HardRequirement {
   keyword: string;
-  category: 'certification' | 'tool' | 'technology' | 'degree' | 'clearance' | 'language';
+  category: 'certification' | 'tool' | 'technology' | 'degree' | 'clearance' | 'language' | 'skill' | 'experience' | 'methodology' | 'framework' | 'domain' | 'other';
   tip: string;
 }
 

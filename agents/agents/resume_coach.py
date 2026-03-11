@@ -1,7 +1,7 @@
 """Resume Coach Agent - IMPROVED - Instant analysis, unsolicited insights, user context aware."""
 
 from google.adk.agents import LlmAgent
-from ..tools.cv_tools import parse_cv, extract_skills, ats_score
+from tools.cv_tools import parse_cv, extract_skills, ats_score
 
 
 # The Resume Coach Agent - IMPROVED

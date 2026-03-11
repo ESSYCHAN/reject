@@ -3,7 +3,6 @@
 from google.adk.tools import FunctionTool
 from pydantic import BaseModel
 from typing import Optional
-import json
 
 
 class CVData(BaseModel):
@@ -21,29 +20,13 @@ class CVData(BaseModel):
 
 
 # Tool: Parse CV from text
-parse_cv = FunctionTool(
-    name="parse_cv",
-    description="Parse CV/resume text and extract structured information including contact details, experience, education, and skills.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "cv_text": {
-                "type": "string",
-                "description": "The raw text content of the CV/resume"
-            }
-        },
-        "required": ["cv_text"]
-    },
-    execute=lambda params: _parse_cv_impl(params["cv_text"])
-)
+@FunctionTool
+def parse_cv(cv_text: str) -> dict:
+    """Parse CV/resume text and extract structured information including contact details, experience, education, and skills.
 
-
-def _parse_cv_impl(cv_text: str) -> dict:
+    Args:
+        cv_text: The raw text content of the CV/resume
     """
-    Parse CV text into structured data.
-    In production, this would use NLP/ML for better extraction.
-    """
-    # Basic structure - the LLM agent will do the heavy lifting
     return {
         "status": "success",
         "message": "CV text received for parsing",
@@ -53,32 +36,14 @@ def _parse_cv_impl(cv_text: str) -> dict:
 
 
 # Tool: Extract skills from CV
-extract_skills = FunctionTool(
-    name="extract_skills",
-    description="Extract and categorize skills from CV text into technical skills, soft skills, and tools/technologies.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "cv_text": {
-                "type": "string",
-                "description": "The CV text to extract skills from"
-            },
-            "target_role": {
-                "type": "string",
-                "description": "Optional target job role to prioritize relevant skills"
-            }
-        },
-        "required": ["cv_text"]
-    },
-    execute=lambda params: _extract_skills_impl(
-        params["cv_text"],
-        params.get("target_role")
-    )
-)
+@FunctionTool
+def extract_skills(cv_text: str, target_role: str = "") -> dict:
+    """Extract and categorize skills from CV text into technical skills, soft skills, and tools/technologies.
 
-
-def _extract_skills_impl(cv_text: str, target_role: Optional[str] = None) -> dict:
-    """Extract skills from CV."""
+    Args:
+        cv_text: The CV text to extract skills from
+        target_role: Optional target job role to prioritize relevant skills
+    """
     return {
         "status": "success",
         "instruction": f"Extract skills from the CV text. Categorize into: technical_skills, soft_skills, tools. {'Prioritize skills relevant to: ' + target_role if target_role else ''}"
@@ -86,35 +51,13 @@ def _extract_skills_impl(cv_text: str, target_role: Optional[str] = None) -> dic
 
 
 # Tool: Generate CV PDF
-generate_cv_pdf = FunctionTool(
-    name="generate_cv_pdf",
-    description="Generate a formatted PDF CV from structured CV data.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "cv_data": {
-                "type": "object",
-                "description": "Structured CV data with name, experience, education, skills etc."
-            },
-            "template": {
-                "type": "string",
-                "enum": ["professional", "modern", "minimal", "tech"],
-                "description": "CV template style to use"
-            }
-        },
-        "required": ["cv_data"]
-    },
-    execute=lambda params: _generate_cv_pdf_impl(
-        params["cv_data"],
-        params.get("template", "professional")
-    )
-)
+@FunctionTool
+def generate_cv_pdf(cv_data: dict, template: str = "professional") -> dict:
+    """Generate a formatted PDF CV from structured CV data.
 
-
-def _generate_cv_pdf_impl(cv_data: dict, template: str = "professional") -> dict:
-    """
-    Generate PDF from CV data.
-    In production, this would create actual PDF using reportlab.
+    Args:
+        cv_data: Structured CV data with name, experience, education, skills etc.
+        template: CV template style - one of: professional, modern, minimal, tech
     """
     return {
         "status": "success",
@@ -125,32 +68,14 @@ def _generate_cv_pdf_impl(cv_data: dict, template: str = "professional") -> dict
 
 
 # Tool: Calculate ATS Score
-ats_score = FunctionTool(
-    name="calculate_ats_score",
-    description="Calculate ATS (Applicant Tracking System) compatibility score for a CV against a job description.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "cv_text": {
-                "type": "string",
-                "description": "The CV text content"
-            },
-            "job_description": {
-                "type": "string",
-                "description": "The job description to match against"
-            }
-        },
-        "required": ["cv_text", "job_description"]
-    },
-    execute=lambda params: _calculate_ats_score(
-        params["cv_text"],
-        params["job_description"]
-    )
-)
+@FunctionTool
+def ats_score(cv_text: str, job_description: str) -> dict:
+    """Calculate ATS (Applicant Tracking System) compatibility score for a CV against a job description.
 
-
-def _calculate_ats_score(cv_text: str, job_description: str) -> dict:
-    """Calculate ATS compatibility score."""
+    Args:
+        cv_text: The CV text content
+        job_description: The job description to match against
+    """
     return {
         "status": "success",
         "instruction": """Analyze the CV against the job description and calculate:

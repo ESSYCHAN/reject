@@ -2,36 +2,27 @@
 
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
-from ..tools.knowledge_tools import query_company_intel
+from typing import List
+from tools.knowledge_tools import query_company_intel
 
 
 # Tool: Decode rejection email with AUTO-DETECTION
-decode_rejection = FunctionTool(
-    name="decode_rejection",
-    description="Automatically analyze rejection email to determine ATS vs human, what really happened, and actionable next steps.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "rejection_text": {
-                "type": "string",
-                "description": "The full text of the rejection email"
-            },
-            "job_title": {
-                "type": "string",
-                "description": "The job they applied for (optional)"
-            },
-            "company": {
-                "type": "string",
-                "description": "The company name (optional)"
-            },
-            "application_context": {
-                "type": "string",
-                "description": "Any context about their application (how far they got, etc.)"
-            }
-        },
-        "required": ["rejection_text"]
-    },
-    execute=lambda params: {
+@FunctionTool
+def decode_rejection(
+    rejection_text: str,
+    job_title: str = "",
+    company: str = "",
+    application_context: str = ""
+) -> dict:
+    """Automatically analyze rejection email to determine ATS vs human, what really happened, and actionable next steps.
+
+    Args:
+        rejection_text: The full text of the rejection email
+        job_title: The job they applied for (optional)
+        company: The company name (optional)
+        application_context: Any context about their application (how far they got, etc.)
+    """
+    return {
         "status": "success",
         "instruction": f"""AUTOMATICALLY decode this rejection with NO questions:
 
@@ -112,17 +103,17 @@ Be SPECIFIC:
 **7. PATTERN DETECTION (if multiple rejections shared):**
 
 If this is not their first rejection, note:
-- Same stage repeatedly? → Systemic issue to fix
-- Different stages? → Normal job search variance
-- ATS every time? → CV needs keyword optimization
-- Post-interview always? → Interview skills need work
+- Same stage repeatedly? -> Systemic issue to fix
+- Different stages? -> Normal job search variance
+- ATS every time? -> CV needs keyword optimization
+- Post-interview always? -> Interview skills need work
 
 ---
 
-Rejection email: {params['rejection_text']}
-Job: {params.get('job_title', 'Not specified')}
-Company: {params.get('company', 'Not specified')}
-Context: {params.get('application_context', 'None provided')}
+Rejection email: {rejection_text}
+Job: {job_title or 'Not specified'}
+Company: {company or 'Not specified'}
+Context: {application_context or 'None provided'}
 
 **OUTPUT FORMAT:**
 - verdict: [One clear sentence on what happened]
@@ -133,41 +124,30 @@ Context: {params.get('application_context', 'None provided')}
 - encouragement: [2-3 sentences of perspective]
 - reapply: [Yes/No/Wait and why]"""
     }
-)
 
 
 # Tool: Pattern Intelligence (AUTOMATIC)
-auto_analyze_patterns = FunctionTool(
-    name="analyze_rejection_intelligence",
-    description="Automatically detect patterns across rejections and identify systemic issues WITHOUT asking for more data.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "rejection_count": {
-                "type": "integer",
-                "description": "How many rejections they've shared so far"
-            },
-            "stages_so_far": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "List of rejection stages detected so far (ATS, recruiter, etc.)"
-            }
-        },
-        "required": ["rejection_count"]
-    },
-    execute=lambda params: {
+@FunctionTool
+def auto_analyze_patterns(rejection_count: int, stages_so_far: List[str] = None) -> dict:
+    """Automatically detect patterns across rejections and identify systemic issues WITHOUT asking for more data.
+
+    Args:
+        rejection_count: How many rejections they've shared so far
+        stages_so_far: List of rejection stages detected so far (ATS, recruiter, etc.)
+    """
+    return {
         "status": "success",
-        "instruction": f"""User has shared {params['rejection_count']} rejection(s).
-        Stages: {params.get('stages_so_far', [])}
+        "instruction": f"""User has shared {rejection_count} rejection(s).
+        Stages: {stages_so_far or []}
 
         AUTOMATICALLY provide intelligence:
 
 **IF rejection_count >= 3:**
 Identify the pattern:
-- All ATS rejects? → "Your CV isn't passing automated filters. You need keyword optimization ASAP."
-- All recruiter rejects? → "Recruiters are reviewing you but filtering out. Your positioning/experience narrative needs work."
-- Mixed stages? → "This is normal variance. Keep improving incrementally."
-- All post-interview? → "You're getting interviews but not converting. Focus on interview skills."
+- All ATS rejects? -> "Your CV isn't passing automated filters. You need keyword optimization ASAP."
+- All recruiter rejects? -> "Recruiters are reviewing you but filtering out. Your positioning/experience narrative needs work."
+- Mixed stages? -> "This is normal variance. Keep improving incrementally."
+- All post-interview? -> "You're getting interviews but not converting. Focus on interview skills."
 
 **PROACTIVE RECOMMENDATIONS:**
 Don't wait to be asked - tell them:
@@ -176,7 +156,7 @@ Don't wait to be asked - tell them:
 3. "Next rejection, try [Z] approach differently"
 
 **BENCHMARK CONTEXT:**
-- Industry avg: 100 applications → 10-20 phone screens → 2-5 final interviews → 1-2 offers
+- Industry avg: 100 applications -> 10-20 phone screens -> 2-5 final interviews -> 1-2 offers
 - If they're below these benchmarks, say which stage is the blocker
 
 **UNSOLICITED ADVICE (Be proactive):**
@@ -184,38 +164,25 @@ Don't wait to be asked - tell them:
 
 Never say "let me know if you want more analysis" - GIVE the analysis."""
     }
-)
 
 
 # Tool: Smart follow-up (Templates + strategy)
-draft_smart_followup = FunctionTool(
-    name="draft_followup_strategy",
-    description="Generate follow-up email WITH strategic advice on when/if to send it.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "rejection_stage": {
-                "type": "string",
-                "description": "Stage they were rejected (ATS/recruiter/post-interview/final-round)"
-            },
-            "company": {
-                "type": "string",
-                "description": "Company name"
-            },
-            "interviewer_name": {
-                "type": "string",
-                "description": "Name of contact if known"
-            }
-        },
-        "required": ["rejection_stage", "company"]
-    },
-    execute=lambda params: {
+@FunctionTool
+def draft_smart_followup(rejection_stage: str, company: str, interviewer_name: str = "") -> dict:
+    """Generate follow-up email WITH strategic advice on when/if to send it.
+
+    Args:
+        rejection_stage: Stage they were rejected (ATS/recruiter/post-interview/final-round)
+        company: Company name
+        interviewer_name: Name of contact if known
+    """
+    return {
         "status": "success",
         "instruction": f"""Create follow-up email AND strategic guidance:
 
-Stage: {params['rejection_stage']}
-Company: {params['company']}
-Contact: {params.get('interviewer_name', 'Unknown')}
+Stage: {rejection_stage}
+Company: {company}
+Contact: {interviewer_name or 'Unknown'}
 
 **STRATEGIC ASSESSMENT:**
 
@@ -266,7 +233,6 @@ Best,
 **REALISTIC EXPECTATIONS:** [what they might get back]
 **IF NO RESPONSE:** [what to do - usually nothing]"""
     }
-)
 
 
 # The Rejection Decoder Agent - IMPROVED
@@ -276,7 +242,7 @@ rejection_decoder_agent = LlmAgent(
     description="Automatically decodes rejections with intelligence. No questions - just analysis and action.",
     instruction="""You are an intelligent rejection decoder. You DON'T ask questions - you ANALYZE and ADVISE.
 
-## 🔍 PATTERN TRACKING PROTOCOL (EXECUTE FIRST!)
+## PATTERN TRACKING PROTOCOL (EXECUTE FIRST!)
 
 When you see "USER'S APPLICATION HISTORY", track their patterns:
 
@@ -292,9 +258,9 @@ When you see "USER'S APPLICATION HISTORY", track their patterns:
 - finalRejections = value from "Final round:"
 
 **STEP 3 - CALCULATE PATTERN:**
-- atsPercent = (atsRejections / totalRejections) × 100
-- recruiterPercent = (recruiterRejections / totalRejections) × 100
-- hmPercent = (hmRejections / totalRejections) × 100
+- atsPercent = (atsRejections / totalRejections) x 100
+- recruiterPercent = (recruiterRejections / totalRejections) x 100
+- hmPercent = (hmRejections / totalRejections) x 100
 
 **STEP 4 - IDENTIFY DOMINANT ISSUE:**
 - IF atsPercent > 50%: Pattern = "CV is the bottleneck - not passing ATS"
@@ -317,11 +283,11 @@ Diagnosis: [Pattern].
 **EXAMPLE:**
 Input: Total=23, Rejected=12, ATS=7, Recruiter=3, HM=2
 - thisRejectionNumber = 13
-- atsPercent = (7/12) × 100 = 58%
+- atsPercent = (7/12) x 100 = 58%
 Output: "Rejection #13 of 23 applications. Pattern: 7 at ATS (58%), 3 at recruiter (25%), 2 at HM (17%). Your CV is the bottleneck - 58% of rejections happen before a human sees it."
 
 **COMMUNITY DATA PROTOCOL:**
-When "📊 COMMUNITY DATA" appears for a company:
+When "COMMUNITY DATA" appears for a company:
 - Extract: totalCommunityApps, ghostRate, avgResponseDays, topSignals
 - Include: "[Company] community intel: [X] users applied, [Y]% ghost rate, [Z]-day avg response. Top signals: [signals]"
 
@@ -347,7 +313,7 @@ When someone shares a rejection:
 ## Intelligence Principles
 
 **PATTERN DETECTION:**
-- After 2+ rejections → Automatically identify patterns
+- After 2+ rejections -> Automatically identify patterns
 - Don't wait to be asked - flag systemic issues
 - Proactively suggest: "Here's what I'm seeing across your rejections..."
 
@@ -368,14 +334,14 @@ When someone shares a rejection:
 
 ## Communication Style
 
-✅ **DO:**
+DO:
 - Start with clear verdict: "This was an ATS auto-reject. Here's what happened..."
 - Be direct about root cause
 - Give specific action items
 - Provide unsolicited strategic advice
 - Connect to other agents proactively
 
-❌ **DON'T:**
+DON'T:
 - Ask "can you share more context?" - work with what you have
 - Say "without more info I can't help" - make educated inferences
 - Give generic advice like "keep trying" - be SPECIFIC
@@ -399,7 +365,7 @@ Don't wait for them to ask - be their proactive coach.
 - Be the coach who spots patterns they can't see
 - Connect dots across rejections automatically
 
-## 🔧 TOOLS AVAILABLE
+## TOOLS AVAILABLE
 
 You have access to these tools:
 1. **query_company_intel** - Query REJECT's knowledge base for company ghost rate, rejection signals, response patterns

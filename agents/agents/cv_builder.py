@@ -3,7 +3,7 @@
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 import json
 
 
@@ -15,69 +15,48 @@ class CVSection(BaseModel):
 
 
 # Tool: Save CV Section
-save_section = FunctionTool(
-    name="save_cv_section",
-    description="Save a completed section of the CV being built.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "section_name": {
-                "type": "string",
-                "enum": ["contact", "summary", "experience", "education", "skills", "certifications", "languages", "projects"],
-                "description": "Which section to save"
-            },
-            "content": {
-                "type": "object",
-                "description": "The structured content for this section"
-            }
-        },
-        "required": ["section_name", "content"]
-    },
-    execute=lambda params: {
+@FunctionTool
+def save_section(section_name: str, content: dict) -> dict:
+    """Save a completed section of the CV being built.
+
+    Args:
+        section_name: Which section - one of: contact, summary, experience, education, skills, certifications, languages, projects
+        content: The structured content for this section
+    """
+    return {
         "status": "success",
-        "section": params["section_name"],
+        "section": section_name,
         "saved": True,
-        "message": f"Saved {params['section_name']} section"
+        "message": f"Saved {section_name} section"
     }
-)
 
 
 # Tool: Generate Achievement Bullet (ETHICAL)
-generate_bullet = FunctionTool(
-    name="generate_achievement_bullet",
-    description="Transform a job responsibility into a strong CV bullet. NEVER fabricate metrics - ask for data or write strong bullets without fake numbers.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "raw_description": {
-                "type": "string",
-                "description": "The user's description of what they did"
-            },
-            "job_title": {
-                "type": "string",
-                "description": "Their job title for context"
-            },
-            "target_role": {
-                "type": "string",
-                "description": "Role they're targeting (optional)"
-            },
-            "user_provided_metrics": {
-                "type": "object",
-                "description": "Any metrics the user has provided (team size, volume, outcomes)"
-            }
-        },
-        "required": ["raw_description"]
-    },
-    execute=lambda params: {
+@FunctionTool
+def generate_bullet(
+    raw_description: str,
+    job_title: str = "",
+    target_role: str = "",
+    user_provided_metrics: dict = None
+) -> dict:
+    """Transform a job responsibility into a strong CV bullet. NEVER fabricate metrics - ask for data or write strong bullets without fake numbers.
+
+    Args:
+        raw_description: The user's description of what they did
+        job_title: Their job title for context
+        target_role: Role they're targeting (optional)
+        user_provided_metrics: Any metrics the user has provided (team size, volume, outcomes)
+    """
+    return {
         "status": "success",
         "instruction": f"""Transform this into a powerful CV bullet point:
 
-        Raw: {params['raw_description']}
-        Job Title: {params.get('job_title', 'Not specified')}
-        Target Role: {params.get('target_role', 'Not specified')}
-        User-Provided Metrics: {params.get('user_provided_metrics', 'None provided')}
+        Raw: {raw_description}
+        Job Title: {job_title or 'Not specified'}
+        Target Role: {target_role or 'Not specified'}
+        User-Provided Metrics: {user_provided_metrics or 'None provided'}
 
-        🚨 ETHICAL GUIDELINES - CRITICAL:
+        ETHICAL GUIDELINES - CRITICAL:
         1. NEVER invent metrics the user didn't provide
         2. NEVER inflate titles or scope (if they "helped", don't say "led")
         3. If no metrics available, write strong bullet WITHOUT fake numbers
@@ -92,8 +71,8 @@ generate_bullet = FunctionTool(
         - Were you the lead or supporting?
         - What was YOUR contribution vs the team's?
 
-        ❌ WRONG: "Managed team projects" → "Led 15-person team to $2M savings" (FABRICATED)
-        ✅ RIGHT: "Managed team projects" → "Coordinated cross-functional team projects from planning through delivery"
+        WRONG: "Managed team projects" -> "Led 15-person team to $2M savings" (FABRICATED)
+        RIGHT: "Managed team projects" -> "Coordinated cross-functional team projects from planning through delivery"
 
         Provide:
         - bullet: The transformed bullet point (using ONLY data they provided)
@@ -101,93 +80,62 @@ generate_bullet = FunctionTool(
         - questions_for_user: What to ask if you need metrics
         - warning: Flag if the original seems inflated"""
     }
-)
 
 
 # Tool: Generate Professional Summary
-generate_summary = FunctionTool(
-    name="generate_professional_summary",
-    description="Generate a professional summary/objective for the CV based on experience and target role.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "experience_years": {
-                "type": "integer",
-                "description": "Years of experience"
-            },
-            "current_role": {
-                "type": "string",
-                "description": "Current or most recent job title"
-            },
-            "target_role": {
-                "type": "string",
-                "description": "Role they're targeting"
-            },
-            "key_skills": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Top skills to highlight"
-            },
-            "key_achievements": {
-                "type": "array",
-                "items": {"type": "string"},
-                "description": "Top achievements to mention"
-            }
-        },
-        "required": ["target_role"]
-    },
-    execute=lambda params: {
+@FunctionTool
+def generate_summary(
+    target_role: str,
+    experience_years: int = 0,
+    current_role: str = "",
+    key_skills: List[str] = None,
+    key_achievements: List[str] = None
+) -> dict:
+    """Generate a professional summary/objective for the CV based on experience and target role.
+
+    Args:
+        target_role: Role they're targeting
+        experience_years: Years of experience
+        current_role: Current or most recent job title
+        key_skills: Top skills to highlight
+        key_achievements: Top achievements to mention
+    """
+    return {
         "status": "success",
         "instruction": f"""Generate a professional summary for:
 
-        Target Role: {params['target_role']}
-        Experience: {params.get('experience_years', 'Not specified')} years
-        Current Role: {params.get('current_role', 'Not specified')}
-        Key Skills: {', '.join(params.get('key_skills', []))}
-        Achievements: {', '.join(params.get('key_achievements', []))}
+        Target Role: {target_role}
+        Experience: {experience_years or 'Not specified'} years
+        Current Role: {current_role or 'Not specified'}
+        Key Skills: {', '.join(key_skills or [])}
+        Achievements: {', '.join(key_achievements or [])}
 
         Provide:
         - summary: 3-4 sentence professional summary
         - objective_version: Alternative as career objective (for career changers)
         - headline_version: LinkedIn-style one-liner
 
-        Make it specific, not generic. Avoid clichés like "hard-working team player"."""
+        Make it specific, not generic. Avoid cliches like "hard-working team player"."""
     }
-)
 
 
 # Tool: Export CV
-export_cv = FunctionTool(
-    name="export_cv",
-    description="Export the completed CV to a specific format.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "cv_data": {
-                "type": "object",
-                "description": "Complete CV data structure"
-            },
-            "format": {
-                "type": "string",
-                "enum": ["pdf", "docx", "txt", "json"],
-                "description": "Export format"
-            },
-            "template": {
-                "type": "string",
-                "enum": ["professional", "modern", "minimal", "tech", "creative"],
-                "description": "Visual template to use"
-            }
-        },
-        "required": ["cv_data", "format"]
-    },
-    execute=lambda params: {
+@FunctionTool
+def export_cv(cv_data: dict, format: str, template: str = "professional") -> dict:
+    """Export the completed CV to a specific format.
+
+    Args:
+        cv_data: Complete CV data structure
+        format: Export format - one of: pdf, docx, txt, json
+        template: Visual template - one of: professional, modern, minimal, tech, creative
+    """
+    return {
         "status": "success",
-        "format": params["format"],
-        "template": params.get("template", "professional"),
-        "message": f"CV exported as {params['format'].upper()}",
+        "format": format,
+        "template": template,
+        "message": f"CV exported as {format.upper()}",
         "instruction": "In production, this generates actual file. Return confirmation and offer next steps."
     }
-)
 
 
 # The CV Builder Agent
@@ -244,7 +192,7 @@ cv_builder_agent = LlmAgent(
 
 Remember: Many people undersell themselves. Help them recognize and articulate their value.
 
-## 🚨 ETHICAL METRICS RULE - CRITICAL
+## ETHICAL METRICS RULE - CRITICAL
 
 **NEVER fabricate metrics or exaggerate roles. EVER.**
 
@@ -292,22 +240,22 @@ Before improving bullets, ASK:
 
 ### Red Flags - NEVER Cross These
 
-❌ Invent numbers: "Increased sales by 35%" (no data)
-❌ Inflate titles: "Senior" when they were "Junior"
-❌ Claim leadership: "Led team" when they "helped"
-❌ Add tech they don't know: "Python, SQL" when only Excel
-❌ Fabricate outcomes: "Saved $100K" (no evidence)
-❌ Misrepresent education: "Completed" when "Attended"
+- Invent numbers: "Increased sales by 35%" (no data)
+- Inflate titles: "Senior" when they were "Junior"
+- Claim leadership: "Led team" when they "helped"
+- Add tech they don't know: "Python, SQL" when only Excel
+- Fabricate outcomes: "Saved $100K" (no evidence)
+- Misrepresent education: "Completed" when "Attended"
 
 ### Honest vs Strong Language
 
 You CAN be strong without lying:
 
-❌ WEAK: "Did customer service"
-✅ STRONG: "Provided customer support across email and phone channels"
+WEAK: "Did customer service"
+STRONG: "Provided customer support across email and phone channels"
 
-❌ WEAK: "Helped with reports"
-✅ STRONG: "Compiled and distributed weekly sales reports to leadership"
+WEAK: "Helped with reports"
+STRONG: "Compiled and distributed weekly sales reports to leadership"
 
 ### If User Insists on Exaggeration
 

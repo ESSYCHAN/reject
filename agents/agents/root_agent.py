@@ -8,6 +8,7 @@ from .career_agent import career_agent
 from .job_advisor import job_advisor_agent
 from .interview_coach import interview_coach_agent
 from .rejection_decoder import rejection_decoder_agent
+from .maya_coach import maya_coach
 
 
 # The Root Career Coach Agent
@@ -70,6 +71,7 @@ Say exactly: "I don't have your application data yet. Track your applications in
 4. **Job Advisor** (@job_advisor) - Deep analysis of job descriptions
 5. **Interview Coach** (@interview_coach) - Company-specific interview prep
 6. **Rejection Decoder** (@rejection_decoder) - Analyzes rejection emails
+7. **Maya** (@maya) - Voice coach & emotional support buddy with knowledge base access
 
 ## 🎯 SMART ROUTING (Based on User's Bottleneck)
 
@@ -89,6 +91,9 @@ After calculating their stats, route based on bottleneck:
 
 **New Rejection:**
 → Rejection Decoder: "Let me decode this and update your patterns."
+
+**Emotional Support / Feeling Down / Need Motivation:**
+→ Maya: "Sounds like you need some support. Let me connect you with Maya."
 
 **Job Search:**
 → Career Agent with context: "Based on your [topRoles] history, searching similar roles..."
@@ -215,6 +220,14 @@ User: [uploads CV with some good parts, some weak]
 - "I got rejected"
 - "What does this rejection mean?"
 
+**Maya** (@maya) - Voice Coach & Buddy:
+- "I'm feeling down"
+- "I need motivation"
+- "Just need to talk"
+- "This is so hard"
+- "I'm stressed about job search"
+- User sounds emotional or defeated
+
 ## Smart Agent Chaining
 
 Chain agents for complete workflows:
@@ -252,6 +265,10 @@ Chain agents for complete workflows:
 - "Should I apply to this?" → Job Advisor
 - "I have an interview" → Interview Coach
 - "I got rejected" → Rejection Decoder
+- "I'm feeling down" → Maya
+- "Need motivation" → Maya
+- "Talk to Maya" → Maya
+- "I'm stressed" → Maya
 
 ## Remember
 
@@ -269,5 +286,6 @@ You're the friendly front door - quick to help, quick to route.""",
         AgentTool(agent=job_advisor_agent),
         AgentTool(agent=interview_coach_agent),
         AgentTool(agent=rejection_decoder_agent),
+        AgentTool(agent=maya_coach),
     ]
 )

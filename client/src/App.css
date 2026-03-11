@@ -78,6 +78,31 @@
   font-size: 0.9rem;
 }
 
+/* Maya Button - Warm, inviting */
+.nav-btn-maya {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-color: #667eea;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-btn-maya:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46a0 100%);
+  border-color: #5a67d8;
+  color: white;
+}
+
+.nav-btn-maya.active {
+  background: linear-gradient(135deg, #4c51bf 0%, #553c9a 100%);
+  border-color: #4c51bf;
+}
+
+.nav-btn-maya .maya-icon {
+  font-size: 0.9rem;
+}
+
 /* Main */
 .main {
   flex: 1;

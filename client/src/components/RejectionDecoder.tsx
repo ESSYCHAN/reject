@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { DecodeResponse, ATSAssessment, InterviewStage } from '../types';
 import { ApplicationRecord, SeniorityLevel } from '../types/pro';
+import { BiasAuditResponse } from '../types/bias';
 import { decodeEmail } from '../utils/api';
 import { canUseFeature, incrementUsage, loadUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import { SignupPrompt, useSignupPrompt } from './SignupPrompt';
+// import { BiasAnalysisCard } from './BiasAnalysisCard';
+import { useUserSubscription } from '../hooks/useUserSubscription';
 
 // Helper to get human-readable stage label
 function getStageLabel(stage: ATSAssessment['stage_reached']): string {
@@ -274,6 +277,7 @@ interface RejectionDecoderProps {
 
 export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applications = [] }: RejectionDecoderProps) {
   const { isSignedIn } = useAuth();
+  const { isPro: _isPro } = useUserSubscription();
   const [emailText, setEmailText] = useState('');
   const [interviewStage, setInterviewStage] = useState<InterviewStage>('none');
   const [result, setResult] = useState<DecodeResponse | null>(null);
@@ -294,6 +298,11 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     topSignals: { signal: string; count: number }[];
   } | null>(null);
   const [companyIntelLoading, setCompanyIntelLoading] = useState(false);
+
+  // Bias analysis state (Beta feature)
+  const [_showBiasAnalysis, setShowBiasAnalysis] = useState(false);
+  const [biasResult, setBiasResult] = useState<BiasAuditResponse | null>(null);
+  const [biasLoading, setBiasLoading] = useState(false);
 
   // Signup prompt state
   const { shouldShow: shouldShowSignup, dismiss: dismissSignup } = useSignupPrompt();
@@ -538,6 +547,45 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
     if (result && selectedAppId && onLinkToApplication) {
       const linkRes = onLinkToApplication(selectedAppId, result);
       setLinkResult(linkRes);
+    }
+  };
+
+  // Fetch bias analysis (Pro feature)
+  const fetchBiasAnalysis = async () => {
+    if (!emailText || biasLoading) return;
+
+    setBiasLoading(true);
+    try {
+      const response = await fetch('/api/pro/bias-audit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          emailText,
+          includeUKContext: true,
+          interviewStage
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Bias analysis failed:', error);
+        return;
+      }
+
+      const data = await response.json();
+      setBiasResult(data.data);
+    } catch (err) {
+      console.error('Failed to fetch bias analysis:', err);
+    } finally {
+      setBiasLoading(false);
+    }
+  };
+
+  // Handle bias toggle reserved for future use
+  void function _handleBiasToggle(enabled: boolean) {
+    setShowBiasAnalysis(enabled);
+    if (enabled && !biasResult && emailText) {
+      fetchBiasAnalysis();
     }
   };
 

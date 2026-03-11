@@ -261,4 +261,83 @@ router.post('/sync', requireAuth(), async (req: Request, res: Response) => {
   }
 });
 
+
+// ============ USER PROFILE ============
+
+// Get user profile
+router.get('/profile', requireAuth(), async (req: Request, res: Response) => {
+  const { userId } = getAuth(req);
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const profile = await db.getUserProfile(userId);
+    res.json({ profile: profile || {} });
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    res.status(500).json({ error: 'Failed to fetch profile' });
+  }
+});
+
+// Update user profile
+router.put('/profile', requireAuth(), async (req: Request, res: Response) => {
+  const { userId } = getAuth(req);
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { fullName, currentTitle, yearsExperience, skills, targetRoles, targetCompanies, minSalary } = req.body;
+    
+    await db.upsertUserProfile({
+      userId,
+      fullName,
+      currentTitle,
+      yearsExperience,
+      skills,
+      targetRoles,
+      targetCompanies,
+      minSalary
+    });
+
+    const profile = await db.getUserProfile(userId);
+    res.json({ success: true, profile });
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Upload CV (text extraction will be added later)
+router.post('/profile/cv', requireAuth(), async (req: Request, res: Response) => {
+  const { userId } = getAuth(req);
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const { cvText, cvFilename } = req.body;
+    
+    if (!cvText) {
+      return res.status(400).json({ error: 'CV text is required' });
+    }
+
+    await db.upsertUserProfile({
+      userId,
+      cvText,
+      cvFilename
+    });
+
+    res.json({ success: true, message: 'CV uploaded' });
+  } catch (error) {
+    console.error('Error uploading CV:', error);
+    res.status(500).json({ error: 'Failed to upload CV' });
+  }
+});
+
+
 export default router;

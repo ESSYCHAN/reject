@@ -4,75 +4,7 @@ from google.adk.tools import FunctionTool
 from typing import Optional
 import os
 import httpx
-
-
-# Tool: Search Jobs
-search_jobs = FunctionTool(
-    name="search_jobs",
-    description="Search for job listings globally using multiple job board APIs. Returns matching jobs with title, company, location, salary, and description.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "keywords": {
-                "type": "string",
-                "description": "Job title or keywords to search for (e.g., 'Product Manager', 'Software Engineer')"
-            },
-            "location": {
-                "type": "string",
-                "description": "Location to search in (e.g., 'London', 'New York', 'Remote')"
-            },
-            "salary_min": {
-                "type": "number",
-                "description": "Minimum salary (optional)"
-            },
-            "remote_only": {
-                "type": "boolean",
-                "description": "Only return remote jobs"
-            },
-            "page": {
-                "type": "integer",
-                "description": "Page number for pagination (default 1)"
-            }
-        },
-        "required": ["keywords", "location"]
-    },
-    execute=lambda params: _search_jobs_impl(
-        params["keywords"],
-        params["location"],
-        params.get("salary_min"),
-        params.get("remote_only", False),
-        params.get("page", 1)
-    )
-)
-
-
-async def _search_jobs_impl(
-    keywords: str,
-    location: str,
-    salary_min: Optional[float] = None,
-    remote_only: bool = False,
-    page: int = 1
-) -> dict:
-    """
-    Search jobs using JSearch API (RapidAPI).
-    Falls back to Adzuna if JSearch unavailable.
-    """
-    jsearch_key = os.getenv("JSEARCH_API_KEY")
-
-    if jsearch_key:
-        return await _search_jsearch(keywords, location, salary_min, remote_only, page, jsearch_key)
-
-    # Fallback to Adzuna
-    adzuna_id = os.getenv("ADZUNA_APP_ID")
-    adzuna_key = os.getenv("ADZUNA_API_KEY")
-
-    if adzuna_id and adzuna_key:
-        return await _search_adzuna(keywords, location, salary_min, page, adzuna_id, adzuna_key)
-
-    return {
-        "status": "error",
-        "message": "No job API keys configured. Set JSEARCH_API_KEY or ADZUNA_APP_ID + ADZUNA_API_KEY in .env"
-    }
+import asyncio
 
 
 async def _search_jsearch(
@@ -205,33 +137,97 @@ async def _search_adzuna(
         }
 
 
-# Tool: Analyze Job Description
-analyze_job_description = FunctionTool(
-    name="analyze_job_description",
-    description="Analyze a job description for red flags, requirements, salary insights, and company culture signals.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "job_description": {
-                "type": "string",
-                "description": "The full job description text"
-            },
-            "job_title": {
-                "type": "string",
-                "description": "The job title (optional, for context)"
-            }
-        },
-        "required": ["job_description"]
-    },
-    execute=lambda params: _analyze_jd_impl(
-        params["job_description"],
-        params.get("job_title")
+async def _search_jobs_impl(
+    keywords: str,
+    location: str,
+    salary_min: Optional[float] = None,
+    remote_only: bool = False,
+    page: int = 1
+) -> dict:
+    """
+    Search jobs using JSearch API (RapidAPI).
+    Falls back to Adzuna if JSearch unavailable.
+    """
+    jsearch_key = os.getenv("JSEARCH_API_KEY")
+
+    if jsearch_key:
+        return await _search_jsearch(keywords, location, salary_min, remote_only, page, jsearch_key)
+
+    # Fallback to Adzuna
+    adzuna_id = os.getenv("ADZUNA_APP_ID")
+    adzuna_key = os.getenv("ADZUNA_API_KEY")
+
+    if adzuna_id and adzuna_key:
+        return await _search_adzuna(keywords, location, salary_min, page, adzuna_id, adzuna_key)
+
+    return {
+        "status": "error",
+        "message": "No job API keys configured. Set JSEARCH_API_KEY or ADZUNA_APP_ID + ADZUNA_API_KEY in .env"
+    }
+
+
+def _search_jobs_sync(
+    keywords: str,
+    location: str,
+    salary_min: Optional[float] = None,
+    remote_only: bool = False,
+    page: int = 1
+) -> dict:
+    """Synchronous wrapper for job search."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(
+                    asyncio.run,
+                    _search_jobs_impl(keywords, location, salary_min, remote_only, page)
+                )
+                return future.result(timeout=30)
+        else:
+            return loop.run_until_complete(
+                _search_jobs_impl(keywords, location, salary_min, remote_only, page)
+            )
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+# Tool: Search Jobs
+@FunctionTool
+def search_jobs(
+    keywords: str,
+    location: str,
+    salary_min: float = 0,
+    remote_only: bool = False,
+    page: int = 1
+) -> dict:
+    """Search for job listings globally using multiple job board APIs. Returns matching jobs with title, company, location, salary, and description.
+
+    Args:
+        keywords: Job title or keywords to search for (e.g., 'Product Manager', 'Software Engineer')
+        location: Location to search in (e.g., 'London', 'New York', 'Remote')
+        salary_min: Minimum salary (optional)
+        remote_only: Only return remote jobs
+        page: Page number for pagination (default 1)
+    """
+    return _search_jobs_sync(
+        keywords,
+        location,
+        salary_min if salary_min > 0 else None,
+        remote_only,
+        page
     )
-)
 
 
-def _analyze_jd_impl(job_description: str, job_title: Optional[str] = None) -> dict:
-    """Analyze job description for insights."""
+# Tool: Analyze Job Description
+@FunctionTool
+def analyze_job_description(job_description: str, job_title: str = "") -> dict:
+    """Analyze a job description for red flags, requirements, salary insights, and company culture signals.
+
+    Args:
+        job_description: The full job description text
+        job_title: The job title (optional, for context)
+    """
     return {
         "status": "success",
         "instruction": f"""Analyze this job description{' for ' + job_title if job_title else ''} and provide:
@@ -254,32 +250,14 @@ def _analyze_jd_impl(job_description: str, job_title: Optional[str] = None) -> d
 
 
 # Tool: Match CV to Job
-match_cv_to_job = FunctionTool(
-    name="match_cv_to_job",
-    description="Calculate how well a CV matches a specific job description and identify gaps.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "cv_text": {
-                "type": "string",
-                "description": "The CV/resume text"
-            },
-            "job_description": {
-                "type": "string",
-                "description": "The job description to match against"
-            }
-        },
-        "required": ["cv_text", "job_description"]
-    },
-    execute=lambda params: _match_cv_job_impl(
-        params["cv_text"],
-        params["job_description"]
-    )
-)
+@FunctionTool
+def match_cv_to_job(cv_text: str, job_description: str) -> dict:
+    """Calculate how well a CV matches a specific job description and identify gaps.
 
-
-def _match_cv_job_impl(cv_text: str, job_description: str) -> dict:
-    """Match CV against job description."""
+    Args:
+        cv_text: The CV/resume text
+        job_description: The job description to match against
+    """
     return {
         "status": "success",
         "instruction": """Compare the CV against the job description and provide:

@@ -31,6 +31,7 @@ from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.units import inch
 
 # Import ADK agents
+from agents.reject_coach import reject_coach  # The ONE Super Agent (Phase 1.2)
 from agents.root_agent import root_career_coach
 from agents.cv_builder import cv_builder_agent
 from agents.resume_coach import resume_coach_agent
@@ -38,6 +39,7 @@ from agents.career_agent import career_agent
 from agents.job_advisor import job_advisor_agent
 from agents.interview_coach import interview_coach_agent
 from agents.rejection_decoder import rejection_decoder_agent
+from agents.maya_coach import maya_coach
 
 # Load environment (cwd first, then local agents/.env if present)
 load_dotenv()
@@ -55,10 +57,15 @@ else:
 
 # ADK Runner and Session Service (initialized at startup)
 session_service: Optional[InMemorySessionService] = None
-adk_runner: Optional[Runner] = None
+adk_runners: dict = {}  # One runner per agent
 
 # Map agent IDs to ADK agent objects
+# "reject_coach" is the new unified agent (Phase 1.2) - use this as default
+# Legacy agents kept for backwards compatibility
 AGENT_MAP = {
+    # The ONE Super Agent - default
+    "reject_coach": reject_coach,
+    # Legacy agents (still work if explicitly requested)
     "career_coach": root_career_coach,
     "cv_builder": cv_builder_agent,
     "resume_coach": resume_coach_agent,
@@ -66,29 +73,47 @@ AGENT_MAP = {
     "job_advisor": job_advisor_agent,
     "interview_coach": interview_coach_agent,
     "rejection_decoder": rejection_decoder_agent,
+    "maya": maya_coach,
 }
 
 # Lifespan handler to initialize ADK Runner at startup
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Initialize ADK Runner and Session Service at startup."""
-    global session_service, adk_runner
+    """Initialize ADK Runners for each agent at startup."""
+    global session_service, adk_runners
 
-    print("Initializing ADK Runner...")
-    session_service = InMemorySessionService()
-    adk_runner = Runner(
-        app_name="REJECT",
-        agent=root_career_coach,
-        session_service=session_service,
-    )
-    print("ADK Runner initialized successfully")
+    # Only initialize ADK if Gemini API key is configured
+    if GEMINI_API_KEY:
+        try:
+            print("Initializing ADK Runners...")
+            session_service = InMemorySessionService()
+
+            # Create a runner for each agent (all use same app_name for shared sessions)
+            for agent_id, agent in AGENT_MAP.items():
+                adk_runners[agent_id] = Runner(
+                    app_name="REJECT",
+                    agent=agent,
+                    session_service=session_service,
+                )
+                print(f"  - {agent_id} runner ready")
+
+            print(f"ADK Runners initialized: {len(adk_runners)} agents")
+        except Exception as e:
+            print(f"WARNING: Failed to initialize ADK Runners: {e}")
+            print("AI chat features will not work, but server will remain healthy")
+    else:
+        print("WARNING: GEMINI_API_KEY not set - ADK Runners not initialized")
+        print("AI chat features will not work, but server will remain healthy")
 
     yield  # App runs here
 
     # Cleanup on shutdown
-    if adk_runner:
-        await adk_runner.close()
-    print("ADK Runner closed")
+    for agent_id, runner in adk_runners.items():
+        try:
+            await runner.close()
+            print(f"ADK Runner {agent_id} closed")
+        except Exception as e:
+            print(f"Error closing ADK Runner: {e}")
 
 
 # Initialize FastAPI with lifespan
@@ -120,7 +145,7 @@ app.add_middleware(
 # Request/Response Models
 class ChatRequest(BaseModel):
     message: str
-    agent: Optional[str] = "career_coach"
+    agent: Optional[str] = "reject_coach"  # Default to super agent
     conversation_id: Optional[str] = None
     context: Optional[dict] = None
 
@@ -199,11 +224,17 @@ async def root():
     return {
         "status": "healthy",
         "service": "REJECT AI Agents",
-        "version": "3.0.0-hybrid",  # ADK Runner + User Context + Knowledge Base
-        "gemini_configured": gemini_client is not None,
-        "adk_runner_active": adk_runner is not None,
+        "version": "3.0.1",
+        "gemini_configured": GEMINI_API_KEY is not None,
+        "adk_runners_active": len(adk_runners) > 0,
         "agents": list(AGENT_MAP.keys())
     }
+
+
+@app.get("/health")
+async def health():
+    """Simple health check for Railway/load balancers."""
+    return {"status": "ok"}
 
 
 @app.get("/agents")
@@ -211,13 +242,17 @@ async def list_agents():
     """List available agents with descriptions."""
     return {
         "agents": [
-            {"id": "career_coach", "name": "Career Coach", "description": "Your main AI career coach - routes to specialists"},
-            {"id": "cv_builder", "name": "CV Builder", "description": "Builds CVs from scratch with ethical guidelines"},
-            {"id": "resume_coach", "name": "Resume Coach", "description": "Analyzes and improves existing CVs instantly"},
-            {"id": "career_agent", "name": "Career Agent", "description": "Smart job search with user history matching"},
-            {"id": "job_advisor", "name": "Job Advisor", "description": "Analyzes jobs with community intelligence"},
+            # The ONE Super Agent (recommended)
+            {"id": "reject_coach", "name": "REJECT Coach", "description": "Your AI career coach with full capabilities - rejection analysis, job search, CV review, interview prep, and emotional support all in one", "recommended": True},
+            # Legacy agents (still available)
+            {"id": "career_coach", "name": "Career Coach (Legacy)", "description": "Routes to specialist agents - use reject_coach instead"},
+            {"id": "cv_builder", "name": "CV Builder", "description": "Builds CVs from scratch"},
+            {"id": "resume_coach", "name": "Resume Coach", "description": "Analyzes and improves existing CVs"},
+            {"id": "career_agent", "name": "Career Agent", "description": "Smart job search"},
+            {"id": "job_advisor", "name": "Job Advisor", "description": "Analyzes job postings"},
             {"id": "interview_coach", "name": "Interview Coach", "description": "Company-specific interview prep"},
-            {"id": "rejection_decoder", "name": "Rejection Decoder", "description": "Decodes rejections with pattern tracking"}
+            {"id": "rejection_decoder", "name": "Rejection Decoder", "description": "Decodes rejection emails"},
+            {"id": "maya", "name": "Maya", "description": "Your AI career coach - handles everything through conversation: rejections, CV, jobs, interviews, and emotional support", "recommended": True}
         ]
     }
 
@@ -307,11 +342,14 @@ async def chat(request: ChatRequest):
     if agent_id not in AGENT_MAP:
         raise HTTPException(status_code=400, detail=f"Unknown agent: {agent_id}")
 
-    if not adk_runner or not session_service:
+    if agent_id not in adk_runners or not session_service:
         raise HTTPException(
             status_code=503,
-            detail="ADK Runner not initialized. Check server startup logs."
+            detail=f"ADK Runner for {agent_id} not initialized. Check server startup logs."
         )
+
+    # Get the runner for this specific agent
+    runner = adk_runners[agent_id]
 
     # Get or create conversation/session
     conv_id = request.conversation_id or str(uuid.uuid4())
@@ -374,7 +412,7 @@ async def chat(request: ChatRequest):
             text = ""
             responding_agent = agent_id
 
-            async for event in adk_runner.run_async(
+            async for event in runner.run_async(
                 user_id=user_id,
                 session_id=conv_id,
                 new_message=types.Content(

@@ -8,8 +8,13 @@ import { assessRoleFitV2 } from '../services/roleFitV2.js';
 import { analyzeJobDescription } from '../services/jdAnalyzer.js';
 import { inferProfile } from '../services/profileInference.js';
 import { analyzeApplications } from '../services/unifiedAnalytics.js';
-import { decodeRateLimiter } from '../middleware/rateLimiter.js';
-import { getCommunityCompanyStats, getCompanyStats } from '../db/index.js';
+import { decodeRateLimiter, biasAuditRateLimiter, proBatchRateLimiter } from '../middleware/rateLimiter.js';
+import { getCommunityCompanyStats, getCompanyStats, getSubscription } from '../db/index.js';
+import { analyzeBias } from '../services/biasAudit.js';
+import { BiasAuditRequestSchema, BatchDecodeRequestSchema } from '../types/bias.js';
+import { decodeRejectionEmail } from '../services/openai.js';
+import { redactPII } from '../services/piiRedactor.js';
+import { getAuth } from '@clerk/express';
 
 const router = Router();
 
@@ -197,6 +202,137 @@ router.get(
       res.json({ data: stats });
     } catch (error) {
       console.error('[company-intel] Error:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/pro/bias-audit
+ * Analyze a rejection email for potential bias signals
+ * UK Equality Act 2010 context included by default
+ */
+router.post(
+  '/bias-audit',
+  biasAuditRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const validation = BiasAuditRequestSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const errorDetails = validation.error.errors
+          .map(e => `${e.path.join('.')}: ${e.message}`)
+          .join(', ');
+        res.status(400).json({
+          error: 'Validation error',
+          details: errorDetails
+        });
+        return;
+      }
+
+      const { emailText, includeUKContext, interviewStage } = validation.data;
+
+      console.log(`[bias-audit] Analyzing email (${emailText.length} chars, UK context: ${includeUKContext})`);
+
+      const result = await analyzeBias(emailText, { includeUKContext, interviewStage });
+
+      console.log(`[bias-audit] Complete - risk: ${result.overall_risk}, signals: ${result.signals.length}`);
+      res.json({ data: result });
+    } catch (error) {
+      console.error('[bias-audit] Error:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * POST /api/pro/batch-decode
+ * Batch decode multiple rejection emails (Pro feature)
+ * Max 20 rejections per batch
+ */
+router.post(
+  '/batch-decode',
+  proBatchRateLimiter,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Require authentication for batch operations
+      const auth = getAuth(req);
+      if (!auth?.userId) {
+        res.status(401).json({
+          error: 'Authentication required',
+          message: 'Please sign in to use batch decode'
+        });
+        return;
+      }
+
+      // Check Pro status
+      const subscription = await getSubscription(auth.userId);
+      const isPro = subscription?.status === 'pro' || subscription?.status === 'active';
+
+      if (!isPro) {
+        res.status(403).json({
+          error: 'Pro feature',
+          message: 'Batch decode is a Pro feature. Upgrade to analyze multiple rejections at once.',
+          upgrade: true
+        });
+        return;
+      }
+
+      const validation = BatchDecodeRequestSchema.safeParse(req.body);
+
+      if (!validation.success) {
+        const errorDetails = validation.error.errors
+          .map(e => `${e.path.join('.')}: ${e.message}`)
+          .join(', ');
+        res.status(400).json({
+          error: 'Validation error',
+          details: errorDetails
+        });
+        return;
+      }
+
+      const { rejections } = validation.data;
+
+      console.log(`[batch-decode] Processing ${rejections.length} rejections for user ${auth.userId.slice(0, 8)}...`);
+
+      // Process all rejections in parallel with PII redaction
+      const results = await Promise.all(
+        rejections.map(async (r, index) => {
+          try {
+            // PII redaction before AI processing
+            const { redacted, totalRedactions } = redactPII(r.emailText);
+            if (totalRedactions > 0) {
+              console.log(`[batch-decode] Item ${index + 1}: Redacted ${totalRedactions} PII items`);
+            }
+
+            const result = await decodeRejectionEmail(redacted, r.interviewStage);
+            return { success: true, data: result, index };
+          } catch (error) {
+            console.error(`[batch-decode] Item ${index + 1} failed:`, error);
+            return {
+              success: false,
+              error: error instanceof Error ? error.message : 'Analysis failed',
+              index
+            };
+          }
+        })
+      );
+
+      const successful = results.filter(r => r.success).length;
+      console.log(`[batch-decode] Complete - ${successful}/${rejections.length} successful`);
+
+      res.json({
+        data: {
+          results,
+          summary: {
+            total: rejections.length,
+            successful,
+            failed: rejections.length - successful
+          }
+        }
+      });
+    } catch (error) {
+      console.error('[batch-decode] Error:', error);
       next(error);
     }
   }

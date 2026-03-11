@@ -545,6 +545,36 @@
   color: #ec4899;
 }
 
+.req-category.cat-skill {
+  background: rgba(14, 165, 233, 0.15);
+  color: #0ea5e9;
+}
+
+.req-category.cat-experience {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+}
+
+.req-category.cat-methodology {
+  background: rgba(20, 184, 166, 0.15);
+  color: #14b8a6;
+}
+
+.req-category.cat-framework {
+  background: rgba(99, 102, 241, 0.15);
+  color: #6366f1;
+}
+
+.req-category.cat-domain {
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+}
+
+.req-category.cat-other {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+}
+
 .req-tip {
   font-size: 0.85rem;
   color: var(--text-secondary);

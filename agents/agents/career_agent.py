@@ -1,8 +1,8 @@
 """Career Agent - IMPROVED - Smart job search with auto-scoring, user history matching, intelligent filtering."""
 
 from google.adk.agents import LlmAgent
-from ..tools.job_tools import search_jobs, analyze_job_description, match_cv_to_job
-from ..tools.knowledge_tools import query_company_intel
+from tools.job_tools import search_jobs, analyze_job_description, match_cv_to_job
+from tools.knowledge_tools import query_company_intel
 
 
 # The Career Agent - IMPROVED

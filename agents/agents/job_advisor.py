@@ -1,8 +1,8 @@
 """Job Advisor Agent - IMPROVED - Deep job analysis with red flags, salary intelligence, community data, and strategy."""
 
 from google.adk.agents import LlmAgent
-from ..tools.job_tools import analyze_job_description, match_cv_to_job
-from ..tools.knowledge_tools import query_company_intel
+from tools.job_tools import analyze_job_description, match_cv_to_job
+from tools.knowledge_tools import query_company_intel
 
 
 # The Job Advisor Agent - IMPROVED

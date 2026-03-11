@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
+import { redactPII } from './piiRedactor.js';
 
 let openai: OpenAI | null = null;
 
@@ -109,7 +110,7 @@ export const JDAnalysisSchema = z.object({
   ats_keywords: z.object({
     hard_requirements: z.array(z.object({
       keyword: z.string(),
-      category: z.enum(['certification', 'tool', 'technology', 'degree', 'clearance', 'language']),
+      category: z.enum(['certification', 'tool', 'technology', 'degree', 'clearance', 'language', 'skill', 'experience', 'methodology', 'framework', 'domain', 'other']),
       tip: z.string()
     })),
     soft_requirements: z.array(z.string()),
@@ -170,7 +171,7 @@ const JD_ANALYZER_PROMPT = `You analyze job descriptions to help candidates unde
     "hard_requirements": [
       {
         "keyword": "AWS Certified Solutions Architect",
-        "category": "certification" | "tool" | "technology" | "degree" | "clearance" | "language",
+        "category": "certification" | "tool" | "technology" | "degree" | "clearance" | "language" | "skill" | "experience" | "methodology" | "framework" | "domain" | "other",
         "tip": "Include exact certification name if you have it"
       }
     ],
@@ -329,13 +330,19 @@ export async function analyzeJobDescription(jobDescription: string): Promise<JDA
   // Clean LinkedIn UI noise from pasted job descriptions
   const cleanedJD = cleanJobDescription(jobDescription);
 
+  // PII redaction before AI processing - privacy/trust feature
+  const { redacted: processedJD, totalRedactions } = redactPII(cleanedJD);
+  if (totalRedactions > 0) {
+    console.log(`[jd-analyzer] Redacted ${totalRedactions} PII items before AI processing`);
+  }
+
   const response = await client.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
       { role: 'system', content: JD_ANALYZER_PROMPT },
       {
         role: 'user',
-        content: `Analyze this job description:\n\n${cleanedJD.substring(0, 5000)}`
+        content: `Analyze this job description:\n\n${processedJD.substring(0, 5000)}`
       }
     ],
     temperature: 0.3,
