@@ -237,6 +237,7 @@ export default function MayaLanding() {
           message: messageText,
           agent: 'maya',
           conversation_id: existingConvId || undefined,
+          user_id: user?.id || undefined,  // Pass Clerk user ID for tracker access
           context: Object.keys(userContext).length > 0 ? { userContext } : undefined
         })
       });

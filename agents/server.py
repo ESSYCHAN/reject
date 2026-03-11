@@ -147,6 +147,7 @@ class ChatRequest(BaseModel):
     message: str
     agent: Optional[str] = "reject_coach"  # Default to super agent
     conversation_id: Optional[str] = None
+    user_id: Optional[str] = None  # Clerk user ID for tracker access
     context: Optional[dict] = None
 
 
@@ -376,7 +377,8 @@ async def chat(request: ChatRequest):
 
     # Get or create conversation/session
     conv_id = request.conversation_id or str(uuid.uuid4())
-    user_id = f"user_{conv_id}"  # Unique user ID per conversation
+    # Use Clerk user ID if provided (enables tracker access), else generate one
+    user_id = request.user_id or f"user_{conv_id}"
 
     try:
         # Build session state with user context
@@ -397,8 +399,13 @@ async def chat(request: ChatRequest):
         message_text = request.message
 
         # Prepend user context to message so agent sees it
+        context_prefix = ""
+
+        # CRITICAL: Include user_id so Maya can pass it to tracker tools
+        if request.user_id:
+            context_prefix += f"\n\n[SYSTEM: User is authenticated. user_id={request.user_id} - USE THIS in tracker tool calls]"
+
         if request.context:
-            context_prefix = ""
             if request.context.get("cvText"):
                 context_prefix += f"\n\n[User's CV provided - {len(request.context['cvText'])} characters]"
             if request.context.get("jobDescription"):
@@ -406,8 +413,8 @@ async def chat(request: ChatRequest):
             if request.context.get("userContext"):
                 context_prefix += build_user_context_text(request.context["userContext"])
 
-            if context_prefix:
-                message_text = f"{context_prefix}\n\nUser message: {request.message}"
+        if context_prefix:
+            message_text = f"{context_prefix}\n\nUser message: {request.message}"
 
         # Check if session exists, create if not
         existing_session = None
