@@ -125,24 +125,8 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
     }
   }, [isPro, showUpgrade]);
 
-  // Auto-ghost old applied applications that haven't received a response
-  useEffect(() => {
-    const appliedApps = applications.filter(app => app.outcome === 'applied');
-    const appsToGhost = appliedApps.filter(app => {
-      const days = daysSinceApplied(app.dateApplied);
-      return days !== null && days >= GHOST_THRESHOLD_DAYS;
-    });
-
-    // Mark each old applied app as ghosted
-    appsToGhost.forEach(app => {
-      const days = daysSinceApplied(app.dateApplied);
-      saveApplication({
-        ...app,
-        outcome: 'ghosted',
-        daysToResponse: days
-      });
-    });
-  }, [applications, saveApplication]);
+  // Note: Auto-ghosting is handled in useApplicationsSync hook during sync
+  // Don't duplicate here or it causes infinite re-render loops
 
   // Filter applications by tab
   const filteredByTab = useMemo(() => {
