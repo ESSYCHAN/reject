@@ -10,6 +10,8 @@ import { useUser, SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { speakWithMaya } from '../services/ttsService';
 import './MayaLanding.css';
 
+const AGENTS_API_URL = import.meta.env.VITE_AGENTS_API_URL || '/agents';
+
 interface Message {
   role: 'maya' | 'user';
   content: string;
@@ -163,7 +165,7 @@ export default function MayaLanding() {
       const existingConvId = sessionStorage.getItem('maya_conversation_id');
       console.log('[Maya] Sending message with conversation_id:', existingConvId || 'new');
 
-      const response = await fetch('/api/agents/chat', {
+      const response = await fetch(`${AGENTS_API_URL}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
