@@ -149,6 +149,39 @@ export async function initDatabase() {
       );
 
 
+      -- Interview experiences (the interview flywheel!)
+      CREATE TABLE IF NOT EXISTS interview_experiences (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(id),
+        company TEXT NOT NULL,
+        company_normalized TEXT NOT NULL,
+        role TEXT NOT NULL,
+        role_category TEXT,
+
+        -- Interview process info
+        total_rounds INTEGER,
+        interview_stages TEXT[],           -- e.g., ['phone_screen', 'technical', 'onsite', 'team_match']
+        interview_format TEXT,             -- 'remote', 'onsite', 'hybrid'
+        duration_weeks INTEGER,            -- How long the process took
+
+        -- Questions and prep
+        questions_asked JSONB,             -- Array of {question, category, difficulty}
+        prep_materials TEXT,               -- What helped them prepare
+        interviewer_titles TEXT[],         -- Who they met with (titles, not names)
+
+        -- Assessment
+        difficulty_rating INTEGER,         -- 1-5 scale
+        interviewer_friendliness INTEGER,  -- 1-5 scale
+        process_transparency INTEGER,      -- 1-5 scale (did they know where they stood?)
+
+        -- Outcome and advice
+        outcome TEXT,                      -- 'offer', 'rejected', 'withdrew', 'pending'
+        tips_for_others TEXT,              -- Advice for future candidates
+        would_interview_again BOOLEAN,     -- Would they try again?
+
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       -- Create indexes
       CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
       CREATE INDEX IF NOT EXISTS idx_usage_user_month ON usage(user_id, month_key);
@@ -160,6 +193,8 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_knowledge_base_company ON rejection_knowledge_base(company_normalized);
       CREATE INDEX IF NOT EXISTS idx_knowledge_base_category ON rejection_knowledge_base(rejection_category);
       CREATE INDEX IF NOT EXISTS idx_user_profiles_user ON user_profiles(user_id);
+      CREATE INDEX IF NOT EXISTS idx_interview_experiences_company ON interview_experiences(company_normalized);
+      CREATE INDEX IF NOT EXISTS idx_interview_experiences_role ON interview_experiences(role_category);
 
     `);
     console.log('Database schema initialized');
@@ -880,5 +915,183 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   };
 }
 
+
+// ============ INTERVIEW EXPERIENCES (Flywheel) ============
+
+export interface InterviewExperience {
+  userId?: string;
+  company: string;
+  role: string;
+  totalRounds?: number;
+  interviewStages?: string[];
+  interviewFormat?: 'remote' | 'onsite' | 'hybrid';
+  durationWeeks?: number;
+  questionsAsked?: { question: string; category?: string; difficulty?: number }[];
+  prepMaterials?: string;
+  interviewerTitles?: string[];
+  difficultyRating?: number;
+  interviewerFriendliness?: number;
+  processTransparency?: number;
+  outcome?: 'offer' | 'rejected' | 'withdrew' | 'pending';
+  tipsForOthers?: string;
+  wouldInterviewAgain?: boolean;
+}
+
+/**
+ * Save an interview experience to the flywheel
+ */
+export async function saveInterviewExperience(exp: InterviewExperience) {
+  const companyNormalized = normalizeCompanyName(exp.company);
+  const roleCategory = categorizeRole(exp.role);
+
+  await query(
+    `INSERT INTO interview_experiences
+     (user_id, company, company_normalized, role, role_category,
+      total_rounds, interview_stages, interview_format, duration_weeks,
+      questions_asked, prep_materials, interviewer_titles,
+      difficulty_rating, interviewer_friendliness, process_transparency,
+      outcome, tips_for_others, would_interview_again)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+    [
+      exp.userId || null,
+      exp.company,
+      companyNormalized,
+      exp.role,
+      roleCategory,
+      exp.totalRounds || null,
+      exp.interviewStages || null,
+      exp.interviewFormat || null,
+      exp.durationWeeks || null,
+      exp.questionsAsked ? JSON.stringify(exp.questionsAsked) : null,
+      exp.prepMaterials || null,
+      exp.interviewerTitles || null,
+      exp.difficultyRating || null,
+      exp.interviewerFriendliness || null,
+      exp.processTransparency || null,
+      exp.outcome || null,
+      exp.tipsForOthers || null,
+      exp.wouldInterviewAgain ?? null
+    ]
+  );
+}
+
+/**
+ * Get interview intel for a company (aggregated from all users)
+ */
+export async function getInterviewIntel(companyName: string, role?: string) {
+  const companyNormalized = normalizeCompanyName(companyName);
+
+  // Basic stats
+  const statsQuery = role
+    ? `SELECT
+         COUNT(*) as total_interviews,
+         AVG(total_rounds) as avg_rounds,
+         AVG(duration_weeks) as avg_duration_weeks,
+         AVG(difficulty_rating) as avg_difficulty,
+         AVG(interviewer_friendliness) as avg_friendliness,
+         AVG(process_transparency) as avg_transparency,
+         COUNT(*) FILTER (WHERE outcome = 'offer') as offers,
+         COUNT(*) FILTER (WHERE outcome = 'rejected') as rejections,
+         COUNT(*) FILTER (WHERE would_interview_again = true) as would_try_again
+       FROM interview_experiences
+       WHERE company_normalized = $1 AND role_category = $2`
+    : `SELECT
+         COUNT(*) as total_interviews,
+         AVG(total_rounds) as avg_rounds,
+         AVG(duration_weeks) as avg_duration_weeks,
+         AVG(difficulty_rating) as avg_difficulty,
+         AVG(interviewer_friendliness) as avg_friendliness,
+         AVG(process_transparency) as avg_transparency,
+         COUNT(*) FILTER (WHERE outcome = 'offer') as offers,
+         COUNT(*) FILTER (WHERE outcome = 'rejected') as rejections,
+         COUNT(*) FILTER (WHERE would_interview_again = true) as would_try_again
+       FROM interview_experiences
+       WHERE company_normalized = $1`;
+
+  const params = role ? [companyNormalized, categorizeRole(role)] : [companyNormalized];
+  const statsResult = await query(statsQuery, params);
+  const stats = statsResult.rows[0];
+
+  if (!stats || parseInt(stats.total_interviews) === 0) {
+    return null;
+  }
+
+  // Get common interview stages
+  const stagesResult = await query(
+    `SELECT UNNEST(interview_stages) as stage, COUNT(*) as count
+     FROM interview_experiences
+     WHERE company_normalized = $1
+     GROUP BY stage
+     ORDER BY count DESC`,
+    [companyNormalized]
+  );
+
+  // Get common questions
+  const questionsResult = await query(
+    `SELECT questions_asked
+     FROM interview_experiences
+     WHERE company_normalized = $1 AND questions_asked IS NOT NULL
+     LIMIT 20`,
+    [companyNormalized]
+  );
+
+  // Aggregate questions
+  const questionCounts: Record<string, number> = {};
+  for (const row of questionsResult.rows) {
+    const questions = row.questions_asked;
+    if (Array.isArray(questions)) {
+      for (const q of questions) {
+        const qText = typeof q === 'string' ? q : q.question;
+        if (qText) {
+          questionCounts[qText] = (questionCounts[qText] || 0) + 1;
+        }
+      }
+    }
+  }
+  const topQuestions = Object.entries(questionCounts)
+    .map(([question, count]) => ({ question, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  // Get tips from successful candidates
+  const tipsResult = await query(
+    `SELECT tips_for_others
+     FROM interview_experiences
+     WHERE company_normalized = $1 AND tips_for_others IS NOT NULL AND outcome = 'offer'
+     LIMIT 5`,
+    [companyNormalized]
+  );
+  const successTips = tipsResult.rows.map(r => r.tips_for_others).filter(Boolean);
+
+  // Get interviewer titles
+  const titlesResult = await query(
+    `SELECT UNNEST(interviewer_titles) as title, COUNT(*) as count
+     FROM interview_experiences
+     WHERE company_normalized = $1
+     GROUP BY title
+     ORDER BY count DESC
+     LIMIT 10`,
+    [companyNormalized]
+  );
+
+  const totalInterviews = parseInt(stats.total_interviews);
+  const offers = parseInt(stats.offers || '0');
+
+  return {
+    company: companyName,
+    totalInterviews,
+    avgRounds: stats.avg_rounds ? Math.round(parseFloat(stats.avg_rounds) * 10) / 10 : null,
+    avgDurationWeeks: stats.avg_duration_weeks ? Math.round(parseFloat(stats.avg_duration_weeks)) : null,
+    avgDifficulty: stats.avg_difficulty ? Math.round(parseFloat(stats.avg_difficulty) * 10) / 10 : null,
+    avgFriendliness: stats.avg_friendliness ? Math.round(parseFloat(stats.avg_friendliness) * 10) / 10 : null,
+    avgTransparency: stats.avg_transparency ? Math.round(parseFloat(stats.avg_transparency) * 10) / 10 : null,
+    offerRate: totalInterviews > 0 ? Math.round((offers / totalInterviews) * 100) : 0,
+    wouldTryAgainRate: totalInterviews > 0 ? Math.round((parseInt(stats.would_try_again || '0') / totalInterviews) * 100) : 0,
+    commonStages: stagesResult.rows.map(r => ({ stage: r.stage, count: parseInt(r.count) })),
+    topQuestions,
+    successTips,
+    commonInterviewerTitles: titlesResult.rows.map(r => r.title)
+  };
+}
 
 export default pool;

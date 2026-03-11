@@ -20,39 +20,13 @@
   border: 1px solid var(--border);
 }
 
-/* Header - minimal, in-tab version */
-.maya-header {
+/* Controls - minimal, no duplicate nav */
+.maya-controls {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--card);
-}
-
-.maya-logo {
-  display: flex;
-  flex-direction: column;
-}
-
-.maya-name {
-  font-family: var(--font-heading);
-  font-size: 1.1rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--text);
-}
-
-.maya-tagline {
-  font-size: 0.7rem;
-  color: var(--muted);
-  margin-top: 2px;
-}
-
-.maya-header-actions {
-  display: flex;
+  justify-content: flex-end;
   align-items: center;
   gap: 0.75rem;
+  padding: 0.75rem 1rem;
 }
 
 .voice-toggle {
@@ -379,21 +353,6 @@
   text-align: center;
 }
 
-/* Tracker link - subtle, not the focus */
-.tracker-link {
-  position: absolute;
-  bottom: 1rem;
-  right: 1rem;
-  font-size: 0.8rem;
-  color: var(--muted);
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.tracker-link:hover {
-  color: var(--accent);
-}
-
 /* Intro screen for non-signed-in users */
 .maya-intro {
   display: flex;
@@ -703,7 +662,30 @@
 .maya-welcome-subtitle {
   font-size: 1rem;
   color: var(--muted);
-  margin: 0 0 2rem;
+  margin: 0 0 1rem;
+}
+
+/* Inline voice toggle for welcome screen */
+.voice-toggle-inline {
+  background: var(--highlight);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: var(--muted);
+  transition: all 0.2s;
+  margin-bottom: 1.5rem;
+}
+
+.voice-toggle-inline:hover {
+  background: var(--border);
+}
+
+.voice-toggle-inline.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--card);
 }
 
 /* Quick action grid for signed-in users */
@@ -780,22 +762,6 @@
 }
 
 /* Header links for signed-in users */
-.profile-link,
-.tracker-link-header {
-  font-size: 0.85rem;
-  color: var(--muted);
-  text-decoration: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 20px;
-  transition: all 0.2s;
-}
-
-.profile-link:hover,
-.tracker-link-header:hover {
-  background: var(--highlight);
-  color: var(--text);
-}
-
 /* Mobile responsiveness */
 @media (max-width: 600px) {
   .maya-conversation {
@@ -817,13 +783,6 @@
 
   .message-content {
     max-width: 90%;
-  }
-
-  .tracker-link {
-    position: static;
-    display: block;
-    text-align: center;
-    padding: 1rem;
   }
 
   .maya-quick-grid {

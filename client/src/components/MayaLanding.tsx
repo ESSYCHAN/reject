@@ -320,37 +320,28 @@ export default function MayaLanding() {
     }
   }
 
-  // Signed-in user landing - personalized dashboard feel
+  // Signed-in user landing - clean, focused on Maya
   if (isSignedIn && messages.length <= 1 && showQuickActions) {
     return (
       <div className="maya-landing maya-landing-signed-in">
-        <header className="maya-header">
-          <div className="maya-logo">
-            <span className="maya-name">REJECT</span>
-          </div>
-          <div className="maya-header-actions">
-            <button
-              className={`voice-toggle ${voiceEnabled ? 'active' : ''}`}
-              onClick={() => setVoiceEnabled(!voiceEnabled)}
-              title={voiceEnabled ? 'Voice on' : 'Voice off'}
-            >
-              {voiceEnabled ? '🔊' : '🔇'}
-            </button>
-            <a href="/profile" className="profile-link">Profile</a>
-            <a href="/tracker" className="tracker-link-header">Tracker</a>
-          </div>
-        </header>
-
         <div className="maya-welcome">
           <div className="maya-welcome-avatar">M</div>
           <h1 className="maya-welcome-greeting">
-            {firstName ? `Hey ${firstName}!` : 'Welcome back!'} 💙
+            {firstName ? `Hey ${firstName}!` : 'Hey!'}
           </h1>
           <p className="maya-welcome-subtitle">
             {userProfile?.currentTitle
               ? `Ready to help with your ${userProfile.currentTitle} job search.`
               : "What can I help you with today?"}
           </p>
+
+          {/* Voice toggle */}
+          <button
+            className={`voice-toggle-inline ${voiceEnabled ? 'active' : ''}`}
+            onClick={() => setVoiceEnabled(!voiceEnabled)}
+          >
+            {voiceEnabled ? '🔊 Voice on' : '🔇 Voice off'}
+          </button>
 
           {/* Quick actions for signed-in users */}
           <div className="maya-quick-grid">
@@ -380,7 +371,7 @@ export default function MayaLanding() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Or tell Maya what's on your mind..."
+              placeholder="Or tell me what's on your mind..."
               rows={2}
             />
             <button
@@ -454,27 +445,21 @@ export default function MayaLanding() {
 
   return (
     <div className="maya-landing">
-      {/* Minimal header - Maya is the brand */}
-      <header className="maya-header">
-        <div className="maya-logo">
-          <span className="maya-name">REJECT</span>
-          <span className="maya-tagline">with Maya, your career coach</span>
-        </div>
-        <div className="maya-header-actions">
-          <button
-            className={`voice-toggle ${voiceEnabled ? 'active' : ''}`}
-            onClick={() => setVoiceEnabled(!voiceEnabled)}
-            title={voiceEnabled ? 'Voice on' : 'Voice off'}
-          >
-            {voiceEnabled ? '🔊' : '🔇'}
-          </button>
-          {!isSignedIn && (
-            <SignInButton mode="modal">
-              <button className="sign-in-subtle">Sign in</button>
-            </SignInButton>
-          )}
-        </div>
-      </header>
+      {/* Minimal controls - no duplicate nav */}
+      <div className="maya-controls">
+        <button
+          className={`voice-toggle ${voiceEnabled ? 'active' : ''}`}
+          onClick={() => setVoiceEnabled(!voiceEnabled)}
+          title={voiceEnabled ? 'Voice on' : 'Voice off'}
+        >
+          {voiceEnabled ? '🔊' : '🔇'}
+        </button>
+        {!isSignedIn && (
+          <SignInButton mode="modal">
+            <button className="sign-in-subtle">Sign in</button>
+          </SignInButton>
+        )}
+      </div>
 
       {/* The conversation - this IS the app */}
       <main className="maya-conversation">
@@ -597,12 +582,6 @@ export default function MayaLanding() {
         )}
       </footer>
 
-      {/* Subtle link to tracker - not the focus */}
-      {isSignedIn && (
-        <a href="/tracker" className="tracker-link">
-          View your journey →
-        </a>
-      )}
     </div>
   );
 }
