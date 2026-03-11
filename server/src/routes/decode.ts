@@ -119,7 +119,7 @@ router.post(
             confidence: result.confidence,
             signals: result.signals,
             atsStage: result.ats_assessment?.stage_reached,
-            translation: result.translation
+            whatItMeans: result.what_it_means
           });
 
           if (existing.rows.length > 0) {
