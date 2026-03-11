@@ -5,18 +5,18 @@ import { ProTracker } from './components/ProTracker';
 import { ProInsightsV2 } from './components/ProInsightsV2';
 import { JDAnalyzer } from './components/JDAnalyzer';
 import { FAQ } from './components/FAQ';
-import { SubscriptionManager } from './components/SubscriptionManager';
+import { AccountPage } from './components/AccountPage';
 import { EmailCapture } from './components/EmailCapture';
 import { AuthButtons, useAuth, syncUserToServer } from './components/AuthButtons';
 import { LandingHero, PromoStrip } from './components/LandingHero';
-import { AgentChat } from './components/AgentChat';
+import MayaLanding from './components/MayaLanding';
 import { DecodeResponse } from './types';
 import { ApplicationRecord } from './types/pro';
 import { setProStatus, syncProStatusFromServer, loadUsage } from './utils/usage';
 import { useApplicationsSync } from './hooks/useApplicationsSync';
 import './App.css';
 
-type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'ai-coach' | 'faq' | 'account';
+type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'maya' | 'faq' | 'account';
 
 // Check if user has used the app before
 function hasUsedAppBefore(): boolean {
@@ -27,7 +27,7 @@ function hasUsedAppBefore(): boolean {
 
 function App() {
   const { isSignedIn, email } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('decoder');
+  const [activeTab, setActiveTab] = useState<Tab>('maya');
   const [showProWelcome, setShowProWelcome] = useState(false);
   const [showLanding, setShowLanding] = useState(() => !hasUsedAppBefore());
 
@@ -203,7 +203,7 @@ function App() {
     <div className="app">
       <header className="header">
         <div className="header-content">
-          <h1 className="logo" onClick={() => { setActiveTab('decoder'); if (!isSignedIn) setShowLanding(true); }} style={{ cursor: 'pointer' }}>REJECT</h1>
+          <h1 className="logo" onClick={() => setActiveTab('maya')} style={{ cursor: 'pointer' }}>REJECT</h1>
           <nav className="nav">
             <button
               className={`nav-btn ${activeTab === 'jd-check' ? 'active' : ''}`}
@@ -230,10 +230,10 @@ function App() {
               Patterns
             </button>
             <button
-              className={`nav-btn nav-btn-ai ${activeTab === 'ai-coach' ? 'active' : ''}`}
-              onClick={() => setActiveTab('ai-coach')}
+              className={`nav-btn nav-btn-maya ${activeTab === 'maya' ? 'active' : ''}`}
+              onClick={() => setActiveTab('maya')}
             >
-              <span className="ai-icon">✨</span> AI Coach
+              <span className="maya-icon">💬</span> Maya
             </button>
           </nav>
           <AuthButtons onAccountClick={() => setActiveTab('account')} />
@@ -255,7 +255,7 @@ function App() {
                 onGetStarted={() => setShowLanding(false)}
                 onCheckFit={() => { setShowLanding(false); setActiveTab('jd-check'); }}
                 onTrackApp={() => { setShowLanding(false); setActiveTab('pro-tracker'); }}
-                onAICoach={() => { setShowLanding(false); setActiveTab('ai-coach'); }}
+                onAICoach={() => { setShowLanding(false); setActiveTab('maya'); }}
               />
               <PromoStrip />
             </>
@@ -273,14 +273,9 @@ function App() {
           )}
           {activeTab === 'insights' && <ProInsightsV2 applications={proApplications} />}
           {activeTab === 'jd-check' && <JDAnalyzer onAddToTracker={handleAddFromJD} />}
-          {activeTab === 'ai-coach' && <AgentChat applications={proApplications} />}
+          {activeTab === 'maya' && <MayaLanding />}
           {activeTab === 'faq' && <FAQ />}
-          {activeTab === 'account' && (
-            <div className="account-page">
-              <h2>Account Settings</h2>
-              <SubscriptionManager />
-            </div>
-          )}
+          {activeTab === 'account' && <AccountPage />}
         </div>
       </main>
 
