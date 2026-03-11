@@ -1,10 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { getAuth } from '@clerk/express';
+import { v4 as uuidv4 } from 'uuid';
 import { DecodeRequestSchema } from '../types/index.js';
 import { decodeRejectionEmail } from '../services/openai.js';
 import { asyncHandler, createAppError } from '../middleware/errorHandler.js';
 import { decodeRateLimiter } from '../middleware/rateLimiter.js';
-import { saveToKnowledgeBase, saveToRejectionArchive } from '../db/index.js';
+import { saveToKnowledgeBase, saveToRejectionArchive, query } from '../db/index.js';
 import { storeDecodedRejection } from '../services/vectordb.js';
 
 const router = Router();
@@ -100,6 +101,47 @@ router.post(
         } catch (archiveError) {
           // Don't fail the request if archive save fails
           console.error(`[decode] Failed to save to archive:`, archiveError);
+        }
+
+        // ALSO add to applications tracker so it shows up in their tracker
+        try {
+          const appCompany = company || result.extracted_company || 'Unknown Company';
+          const appRole = role || result.extracted_role || 'Unknown Role';
+
+          // Check if application already exists for this company+role
+          const existing = await query(
+            `SELECT id FROM applications WHERE user_id = $1 AND LOWER(company) = LOWER($2) AND LOWER(role) = LOWER($3)`,
+            [userId, appCompany, appRole]
+          );
+
+          const rejectionAnalysis = JSON.stringify({
+            category: result.category,
+            confidence: result.confidence,
+            signals: result.signals,
+            atsStage: result.ats_assessment?.stage_reached,
+            translation: result.translation
+          });
+
+          if (existing.rows.length > 0) {
+            // Update existing application
+            await query(
+              `UPDATE applications SET outcome = 'rejected', rejection_analysis = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+              [rejectionAnalysis, existing.rows[0].id]
+            );
+            console.log(`[decode] Updated existing application in tracker for ${userId}`);
+          } else {
+            // Create new application
+            const appId = uuidv4();
+            await query(
+              `INSERT INTO applications (id, user_id, company, role, seniority_level, outcome, rejection_analysis, updated_at)
+               VALUES ($1, $2, $3, $4, $5, 'rejected', $6, CURRENT_TIMESTAMP)`,
+              [appId, userId, appCompany, appRole, seniorityLevel || null, rejectionAnalysis]
+            );
+            console.log(`[decode] Added new application to tracker for ${userId}`);
+          }
+        } catch (trackerError) {
+          // Don't fail if tracker save fails
+          console.error(`[decode] Failed to save to tracker:`, trackerError);
         }
       }
 
