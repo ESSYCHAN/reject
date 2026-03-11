@@ -1302,6 +1302,29 @@
   letter-spacing: 1px;
 }
 
+/* Journey Section - Museum of Failures */
+.journey-section {
+  margin: var(--space-lg) 0;
+  text-align: center;
+}
+
+.btn-journey {
+  background: linear-gradient(90deg, #ff6b6b, #ffa500);
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-journey:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
 /* Applications List */
 .applications-list {
   display: flex;

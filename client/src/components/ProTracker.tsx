@@ -14,6 +14,8 @@ import { loadUsage, saveUsage } from '../utils/usage';
 import { UpgradePrompt, LimitWarning } from './UpgradePrompt';
 import { useApplicationsSync } from '../hooks/useApplicationsSync';
 import { useUserSubscription } from '../hooks/useUserSubscription';
+import { JourneyCard } from './JourneyCard';
+import { useAuth } from './AuthButtons';
 
 type FilterTab = 'all' | 'saved' | 'applied';
 
@@ -86,8 +88,10 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
 
   // Get Pro status from server
   const { isPro } = useUserSubscription();
+  const { email } = useAuth();
 
   const [showForm, setShowForm] = useState(false);
+  const [showJourneyCard, setShowJourneyCard] = useState(false);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortBy, setSortBy] = useState<'date' | 'company' | 'status'>('date');
@@ -471,6 +475,24 @@ export function ProTracker({ onApplicationsChange }: ProTrackerProps) {
           <span className="stat-label">Ghosted</span>
         </div>
       </div>
+
+      {/* Museum of Failures - Shareable Journey Card */}
+      {stats.appliedCount >= 3 && (
+        <div className="journey-section">
+          <button
+            className="btn btn-journey"
+            onClick={() => setShowJourneyCard(!showJourneyCard)}
+          >
+            {showJourneyCard ? 'Hide' : 'Share'} My Journey
+          </button>
+          {showJourneyCard && (
+            <JourneyCard
+              applications={applications}
+              userName={email?.split('@')[0]}
+            />
+          )}
+        </div>
+      )}
 
       <div className="applications-list">
         {isLoading ? (
