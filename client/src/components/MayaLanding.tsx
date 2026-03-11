@@ -320,6 +320,82 @@ export default function MayaLanding() {
     }
   }
 
+  // Signed-in user landing - personalized dashboard feel
+  if (isSignedIn && messages.length <= 1 && showQuickActions) {
+    return (
+      <div className="maya-landing maya-landing-signed-in">
+        <header className="maya-header">
+          <div className="maya-logo">
+            <span className="maya-name">REJECT</span>
+          </div>
+          <div className="maya-header-actions">
+            <button
+              className={`voice-toggle ${voiceEnabled ? 'active' : ''}`}
+              onClick={() => setVoiceEnabled(!voiceEnabled)}
+              title={voiceEnabled ? 'Voice on' : 'Voice off'}
+            >
+              {voiceEnabled ? '🔊' : '🔇'}
+            </button>
+            <a href="/profile" className="profile-link">Profile</a>
+            <a href="/tracker" className="tracker-link-header">Tracker</a>
+          </div>
+        </header>
+
+        <div className="maya-welcome">
+          <div className="maya-welcome-avatar">M</div>
+          <h1 className="maya-welcome-greeting">
+            {firstName ? `Hey ${firstName}!` : 'Welcome back!'} 💙
+          </h1>
+          <p className="maya-welcome-subtitle">
+            {userProfile?.currentTitle
+              ? `Ready to help with your ${userProfile.currentTitle} job search.`
+              : "What can I help you with today?"}
+          </p>
+
+          {/* Quick actions for signed-in users */}
+          <div className="maya-quick-grid">
+            {quickActions.map((action, i) => (
+              <button
+                key={i}
+                className="maya-quick-card"
+                onClick={() => { setShowQuickActions(false); setTimeout(() => handleSend(action.prompt), 100); }}
+              >
+                <span className="quick-card-emoji">{action.emoji}</span>
+                <span className="quick-card-label">{action.label}</span>
+              </button>
+            ))}
+            <button
+              className="maya-quick-card"
+              onClick={() => { setShowQuickActions(false); setTimeout(() => handleSend("Can you check on my applications?"), 100); }}
+            >
+              <span className="quick-card-emoji">📊</span>
+              <span className="quick-card-label">Check my progress</span>
+            </button>
+          </div>
+
+          {/* Or just chat */}
+          <div className="maya-chat-start">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Or tell Maya what's on your mind..."
+              rows={2}
+            />
+            <button
+              className="send-button"
+              onClick={() => { setShowQuickActions(false); handleSend(); }}
+              disabled={!input.trim()}
+            >
+              →
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Show intro/teaser for non-signed-in users who haven't started chatting
   if (!isSignedIn && messages.length <= 1 && showQuickActions) {
     return (

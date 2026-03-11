@@ -665,6 +665,137 @@
   background: var(--highlight);
 }
 
+/* Signed-in user welcome screen */
+.maya-landing-signed-in {
+  min-height: 70vh;
+}
+
+.maya-welcome {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.maya-welcome-avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.75rem;
+  margin-bottom: 1rem;
+}
+
+.maya-welcome-greeting {
+  font-family: var(--font-heading);
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0 0 0.5rem;
+}
+
+.maya-welcome-subtitle {
+  font-size: 1rem;
+  color: var(--muted);
+  margin: 0 0 2rem;
+}
+
+/* Quick action grid for signed-in users */
+.maya-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  max-width: 400px;
+  width: 100%;
+  margin-bottom: 2rem;
+}
+
+.maya-quick-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1.25rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-family: var(--font-body);
+  transition: all 0.2s;
+}
+
+.maya-quick-card:hover {
+  background: var(--highlight);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.quick-card-emoji {
+  font-size: 1.5rem;
+}
+
+.quick-card-label {
+  font-size: 0.9rem;
+  color: var(--text);
+  text-align: center;
+}
+
+/* Chat start area for signed-in users */
+.maya-chat-start {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 500px;
+  width: 100%;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem;
+}
+
+.maya-chat-start textarea {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  font-family: var(--font-body);
+  padding: 0.5rem;
+}
+
+.maya-chat-start textarea::placeholder {
+  color: var(--muted);
+}
+
+.maya-chat-start .send-button {
+  align-self: flex-end;
+}
+
+/* Header links for signed-in users */
+.profile-link,
+.tracker-link-header {
+  font-size: 0.85rem;
+  color: var(--muted);
+  text-decoration: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  transition: all 0.2s;
+}
+
+.profile-link:hover,
+.tracker-link-header:hover {
+  background: var(--highlight);
+  color: var(--text);
+}
+
 /* Mobile responsiveness */
 @media (max-width: 600px) {
   .maya-conversation {
@@ -693,5 +824,14 @@
     display: block;
     text-align: center;
     padding: 1rem;
+  }
+
+  .maya-quick-grid {
+    grid-template-columns: 1fr;
+    max-width: 300px;
+  }
+
+  .maya-welcome-greeting {
+    font-size: 1.5rem;
   }
 }
