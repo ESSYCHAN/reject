@@ -1,8 +1,30 @@
 import { Router, Request, Response } from 'express';
 import { requireAuth, getAuth, clerkClient } from '@clerk/express';
+import multer from 'multer';
 import * as db from '../db/index.js';
 
 const router = Router();
+
+// Configure multer for file uploads (memory storage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB max
+  },
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PDF, DOC, DOCX, and TXT are allowed.'));
+    }
+  }
+});
 
 function getMonthKey(): string {
   const now = new Date();
@@ -321,7 +343,7 @@ router.post('/profile/cv', requireAuth(), async (req: Request, res: Response) =>
 
   try {
     const { cvText, cvFilename } = req.body;
-    
+
     if (!cvText) {
       return res.status(400).json({ error: 'CV text is required' });
     }
@@ -336,6 +358,83 @@ router.post('/profile/cv', requireAuth(), async (req: Request, res: Response) =>
   } catch (error) {
     console.error('Error uploading CV:', error);
     res.status(500).json({ error: 'Failed to upload CV' });
+  }
+});
+
+// Upload CV file and extract text (PDF, DOC, DOCX, TXT)
+// This endpoint doesn't require auth - allows anonymous users to try Maya
+router.post('/upload-cv', upload.single('file'), async (req: Request, res: Response) => {
+  try {
+    const file = req.file;
+
+    if (!file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    let extractedText = '';
+
+    // Extract text based on file type
+    if (file.mimetype === 'application/pdf') {
+      // Dynamic import for pdf-parse
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const pdfParseModule = await import('pdf-parse') as any;
+      const pdfParse = pdfParseModule.default || pdfParseModule;
+      const pdfData = await pdfParse(file.buffer);
+      extractedText = pdfData.text;
+    } else if (
+      file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      file.mimetype === 'application/msword'
+    ) {
+      // Use mammoth for DOCX
+      const mammoth = await import('mammoth');
+      const result = await mammoth.extractRawText({ buffer: file.buffer });
+      extractedText = result.value;
+    } else if (file.mimetype === 'text/plain') {
+      // Plain text - just decode the buffer
+      extractedText = file.buffer.toString('utf-8');
+    } else {
+      return res.status(400).json({ error: 'Unsupported file type' });
+    }
+
+    // Clean up the extracted text
+    extractedText = extractedText
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    if (!extractedText || extractedText.length < 50) {
+      return res.status(400).json({
+        error: 'Could not extract enough text from the file. The file may be image-based or corrupted.'
+      });
+    }
+
+    // Optionally save to user profile if authenticated
+    const auth = getAuth(req);
+    if (auth?.userId) {
+      try {
+        await db.upsertUserProfile({
+          userId: auth.userId,
+          cvText: extractedText,
+          cvFilename: file.originalname
+        });
+      } catch (dbError) {
+        console.error('Failed to save CV to profile:', dbError);
+        // Don't fail the request - just log the error
+      }
+    }
+
+    console.log(`[upload-cv] Extracted ${extractedText.length} chars from ${file.originalname}`);
+
+    res.json({
+      success: true,
+      text: extractedText,
+      filename: file.originalname,
+      charCount: extractedText.length
+    });
+  } catch (error) {
+    console.error('Error processing CV upload:', error);
+    const message = error instanceof Error ? error.message : 'Failed to process file';
+    res.status(500).json({ error: message });
   }
 });
 

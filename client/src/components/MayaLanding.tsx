@@ -11,11 +11,13 @@ import { speakWithMaya } from '../services/ttsService';
 import './MayaLanding.css';
 
 const AGENTS_API_URL = import.meta.env.VITE_AGENTS_API_URL || '/agents';
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 interface Message {
   role: 'maya' | 'user';
   content: string;
   timestamp: Date;
+  attachment?: { name: string; type: string };
 }
 
 interface UserProfile {
@@ -46,6 +48,9 @@ export default function MayaLanding() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const FREE_MESSAGE_LIMIT = 3; // Let them try 3 messages before prompting signup
 
@@ -301,6 +306,148 @@ export default function MayaLanding() {
     }
   }
 
+  // Handle file upload (CV/resume)
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError('Please upload a PDF, DOC, DOCX, or TXT file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('File too large. Maximum size is 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+    setShowQuickActions(false);
+
+    // Add user message showing the upload
+    const fileType = file.name.split('.').pop()?.toUpperCase() || 'FILE';
+    const userMessage: Message = {
+      role: 'user',
+      content: `[Uploaded CV: ${file.name}]`,
+      timestamp: new Date(),
+      attachment: { name: file.name, type: fileType }
+    };
+    setMessages(prev => [...prev, userMessage]);
+
+    try {
+      // Upload file to server for text extraction
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const token = isSignedIn ? await getToken() : null;
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const uploadResponse = await fetch(`${API_URL}/api/user/upload-cv`, {
+        method: 'POST',
+        headers,
+        body: formData
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to process file');
+      }
+
+      const { text: extractedText } = await uploadResponse.json();
+
+      if (!extractedText || extractedText.trim().length < 50) {
+        throw new Error('Could not extract text from file. Try copying and pasting instead.');
+      }
+
+      // Track free messages for non-signed-in users
+      if (!isSignedIn) {
+        setFreeMessagesUsed(prev => prev + 1);
+      }
+
+      // Now send to Maya with the extracted CV text
+      setIsTyping(true);
+      const existingConvId = localStorage.getItem('maya_conversation_id');
+
+      const response = await fetch(`${AGENTS_API_URL}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Here's my CV/resume. Please review it and give me feedback:\n\n${extractedText}`,
+          agent: 'maya',
+          conversation_id: existingConvId || undefined,
+          context: {
+            userContext: {
+              userName: firstName || undefined,
+              uploadedCV: true,
+              cvFileName: file.name
+            }
+          }
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.conversation_id) {
+        localStorage.setItem('maya_conversation_id', data.conversation_id);
+      }
+
+      const responseText = data.response || "I've received your CV. Let me take a look...";
+
+      const mayaMessage: Message = {
+        role: 'maya',
+        content: responseText,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, mayaMessage]);
+
+      // Speak response if voice enabled
+      if (voiceEnabled && responseText) {
+        setIsSpeaking(true);
+        try {
+          const { audio, promise } = await speakWithMaya(responseText);
+          currentAudioRef.current = audio;
+          await promise;
+        } catch (err) {
+          console.error('Voice failed:', err);
+        } finally {
+          setIsSpeaking(false);
+          currentAudioRef.current = null;
+        }
+      }
+
+    } catch (error) {
+      console.error('File upload error:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Failed to process file';
+      setUploadError(errorMsg);
+
+      // Add Maya's error response
+      setMessages(prev => [...prev, {
+        role: 'maya',
+        content: `Hmm, I had trouble reading that file. ${errorMsg}\n\nYou can also just paste your CV text directly in the chat if that's easier!`,
+        timestamp: new Date()
+      }]);
+    } finally {
+      setIsUploading(false);
+      setIsTyping(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }
+
   // Play Maya's intro speech
   async function playIntro() {
     if (hasPlayedIntro || isPlayingIntro) return;
@@ -536,12 +683,38 @@ export default function MayaLanding() {
 
       {/* Input - always visible, always inviting */}
       <footer className="maya-input-area">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+          onChange={handleFileUpload}
+          style={{ display: 'none' }}
+        />
+
+        {uploadError && (
+          <div className="upload-error">
+            {uploadError}
+            <button onClick={() => setUploadError(null)}>×</button>
+          </div>
+        )}
+
         <div className="input-container">
+          {/* File upload button */}
+          <button
+            className={`attach-button ${isUploading ? 'uploading' : ''}`}
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isTyping || isUploading || showSignupPrompt}
+            title="Upload CV (PDF, DOC, DOCX)"
+          >
+            {isUploading ? '⏳' : '📎'}
+          </button>
+
           {/* Microphone button */}
           <button
             className={`mic-button ${isListening ? 'listening' : ''}`}
             onClick={isListening ? stopListening : startListening}
-            disabled={isTyping || showSignupPrompt}
+            disabled={isTyping || showSignupPrompt || isUploading}
             title={isListening ? 'Stop listening' : (isSpeaking ? 'Interrupt Maya' : 'Speak to Maya')}
           >
             {isListening ? '⏹️' : '🎤'}
@@ -555,17 +728,19 @@ export default function MayaLanding() {
             placeholder={
               showSignupPrompt
                 ? "Sign up to continue chatting..."
-                : isListening
-                  ? "Listening..."
-                  : "Tell Maya what's going on..."
+                : isUploading
+                  ? "Processing your CV..."
+                  : isListening
+                    ? "Listening..."
+                    : "Tell Maya what's going on..."
             }
             rows={1}
-            disabled={isTyping || isListening || showSignupPrompt}
+            disabled={isTyping || isListening || showSignupPrompt || isUploading}
           />
           <button
             className="send-button"
             onClick={() => handleSend()}
-            disabled={!input.trim() || isTyping || isListening || showSignupPrompt}
+            disabled={!input.trim() || isTyping || isListening || showSignupPrompt || isUploading}
           >
             →
           </button>
