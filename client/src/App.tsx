@@ -208,7 +208,11 @@ function App() {
             </button>
             <button
               className={`nav-btn ${activeTab === 'pro-tracker' ? 'active' : ''}`}
-              onClick={() => setActiveTab('pro-tracker')}
+              onClick={() => {
+                setActiveTab('pro-tracker');
+                // Dispatch event to refresh all hook instances (catches Maya-added entries)
+                window.dispatchEvent(new Event('applications-refresh'));
+              }}
             >
               Tracker {isSyncing && <span className="sync-indicator">...</span>}
             </button>

@@ -399,6 +399,18 @@ export function useApplicationsSync() {
     }
   }, [isSignedIn, fetchFromServer]);
 
+  // Listen for refresh events (allows cross-component refresh triggers)
+  useEffect(() => {
+    const handleRefreshEvent = () => {
+      refresh();
+    };
+
+    window.addEventListener('applications-refresh', handleRefreshEvent);
+    return () => {
+      window.removeEventListener('applications-refresh', handleRefreshEvent);
+    };
+  }, [refresh]);
+
   return {
     applications,
     isLoading,
