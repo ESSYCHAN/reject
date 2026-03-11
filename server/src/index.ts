@@ -56,6 +56,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
       workerSrc: ["'self'", "blob:"],
+      mediaSrc: ["'self'", "blob:"],
     }
   }
 }));
