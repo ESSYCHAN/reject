@@ -232,4 +232,127 @@ router.delete('/:id', requireAuth(), async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================================
+// MAYA AGENT ENDPOINTS (use X-User-Id header instead of JWT)
+// These allow Maya to manage tracker on behalf of users
+// ============================================================================
+
+// Get applications for Maya (uses X-User-Id header)
+router.get('/maya', async (req: Request, res: Response) => {
+  const userId = req.headers['x-user-id'] as string;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'X-User-Id header required' });
+  }
+
+  try {
+    const result = await db.query(
+      `SELECT id, company, role, outcome, date_applied
+       FROM applications
+       WHERE user_id = $1
+       ORDER BY COALESCE(date_applied, created_at) DESC
+       LIMIT 50`,
+      [userId]
+    );
+
+    const applications = result.rows.map(row => ({
+      id: row.id,
+      company: row.company,
+      role: row.role,
+      outcome: row.outcome,
+      dateApplied: row.date_applied
+        ? (row.date_applied instanceof Date
+            ? row.date_applied.toISOString().split('T')[0]
+            : String(row.date_applied).split('T')[0])
+        : null
+    }));
+
+    res.json({ applications, count: applications.length });
+  } catch (error) {
+    console.error('Error fetching applications for Maya:', error);
+    res.status(500).json({ error: 'Failed to fetch applications' });
+  }
+});
+
+// Add rejection from Maya (uses X-User-Id header)
+router.post('/maya', async (req: Request, res: Response) => {
+  const userId = req.headers['x-user-id'] as string;
+  const { company, role, outcome, rejectionAnalysis } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'X-User-Id header required' });
+  }
+
+  if (!company) {
+    return res.status(400).json({ error: 'company is required' });
+  }
+
+  try {
+    // Ensure user exists
+    await ensureUserExists(userId);
+
+    // Generate UUID for new application
+    const { v4: uuidv4 } = await import('uuid');
+    const appId = uuidv4();
+
+    await db.query(
+      `INSERT INTO applications (id, user_id, company, role, outcome, rejection_analysis, date_applied, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, CURRENT_DATE, CURRENT_TIMESTAMP)`,
+      [
+        appId,
+        userId,
+        company,
+        role || 'Unknown Role',
+        outcome || 'rejected_ats',
+        rejectionAnalysis ? JSON.stringify(rejectionAnalysis) : null
+      ]
+    );
+
+    console.log(`[Maya] Added rejection to tracker: ${company} for user ${userId.substring(0, 8)}...`);
+    res.json({ success: true, id: appId, company, role });
+  } catch (error) {
+    console.error('Error adding application from Maya:', error);
+    res.status(500).json({ error: 'Failed to add application' });
+  }
+});
+
+// Update/link rejection from Maya (uses X-User-Id header)
+router.patch('/maya/:id', async (req: Request, res: Response) => {
+  const userId = req.headers['x-user-id'] as string;
+  const { id } = req.params;
+  const { outcome, rejectionAnalysis } = req.body;
+
+  if (!userId) {
+    return res.status(401).json({ error: 'X-User-Id header required' });
+  }
+
+  try {
+    const result = await db.query(
+      `UPDATE applications
+       SET outcome = COALESCE($1, outcome),
+           rejection_analysis = COALESCE($2, rejection_analysis),
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3 AND user_id = $4
+       RETURNING id, company, role`,
+      [
+        outcome || null,
+        rejectionAnalysis ? JSON.stringify(rejectionAnalysis) : null,
+        id,
+        userId
+      ]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    const app = result.rows[0];
+    console.log(`[Maya] Linked rejection to existing app: ${app.company} - ${app.role}`);
+    res.json({ success: true, id, company: app.company, role: app.role });
+  } catch (error) {
+    console.error('Error updating application from Maya:', error);
+    res.status(500).json({ error: 'Failed to update application' });
+  }
+});
+
 export default router;

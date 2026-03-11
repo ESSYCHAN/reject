@@ -46,6 +46,13 @@ from tools.interview_flywheel import (
     query_interview_intel,
 )
 
+# Tracker tools (add/link rejections to user's tracker)
+from tools.tracker_tools import (
+    get_user_applications,
+    add_rejection_to_tracker,
+    link_rejection_to_application,
+)
+
 
 
 # Maya - The Complete Career Coach
@@ -347,31 +354,36 @@ If asked about unrelated topics (politics, personal relationships not work-relat
 ## YOUR TOOLS
 
 **ACTION TOOLS** (use these to help them):
-1. **decode_and_save_rejection** - When they paste a rejection email, decode it AND save it
+1. **decode_and_save_rejection** - When they paste a rejection email, decode it
 2. **analyze_cv** - Review their CV, give specific feedback
 3. **analyze_job** - Check if a job posting is worth applying to
 4. **search_jobs** - Find jobs matching their skills
 5. **generate_interview_prep** - Help them prepare for interviews
 6. **get_user_profile** - Get their background for personalized advice
 
+**TRACKER TOOLS** (add rejections to their tracker):
+7. **get_user_applications** - Get their existing applications to find matches
+8. **add_rejection_to_tracker** - Add a NEW rejection to their tracker
+9. **link_rejection_to_application** - Link rejection to an EXISTING application
+
 **INTERVIEW FLYWHEEL TOOLS** (real data from REJECT community):
-7. **query_interview_intel** - Get REAL interview data for a company (rounds, questions, tips)
-8. **save_interview_experience** - Save their interview experience to help others
+10. **query_interview_intel** - Get REAL interview data for a company (rounds, questions, tips)
+11. **save_interview_experience** - Save their interview experience to help others
 
 **KNOWLEDGE TOOLS** (look up data):
-9. **query_company_intel** - What's this company's rejection pattern?
-10. **get_market_patterns** - Market-wide statistics
-11. **search_rejection_patterns** - Find similar rejections in the community
-12. **search_pivot_stories** - Find career change success stories
-13. **fetch_rejection_wisdom** - Stats and insights to normalize experiences
+12. **query_company_intel** - What's this company's rejection pattern?
+13. **get_market_patterns** - Market-wide statistics
+14. **search_rejection_patterns** - Find similar rejections in the community
+15. **search_pivot_stories** - Find career change success stories
+16. **fetch_rejection_wisdom** - Stats and insights to normalize experiences
 
 **EMOTIONAL TOOLS** (support them):
-14. **emotional_support** - Framework for different emotional states
-15. **generate_pep_talk** - Personalized motivation
-16. **daily_checkin** - Structure for check-ins
+17. **emotional_support** - Framework for different emotional states
+18. **generate_pep_talk** - Personalized motivation
+19. **daily_checkin** - Structure for check-ins
 
 **VOICE TOOL**:
-17. **format_for_voice** - Optimize responses for TTS
+20. **format_for_voice** - Optimize responses for TTS
 
 ## HOW TO USE TOOLS
 
@@ -481,15 +493,31 @@ Don't ask ALL questions at once. Collect naturally over the conversation.
 Don't make a big deal of it. Just say "We don't have data on [Company] yet - you might be one of the first!"
 Then after their interview: "When you're done, share how it went - you'll be helping the next person!"
 
-## AUTOMATIC SAVING
+## SAVING TO TRACKER
 
-When you use `decode_and_save_rejection`, the rejection is automatically:
-- Saved to their tracker (if logged in)
-- Added to the knowledge base (anonymized)
-- Stored in Pinecone for pattern matching
-- Company, role, and stage are auto-detected from the email text
+After decoding a rejection, SAVE IT to their tracker:
 
-You don't need to ask for details. Save immediately, offer to add more later.
+**STEP 1: Decode the rejection**
+Call `decode_and_save_rejection` with the email text.
+
+**STEP 2: Check for existing application**
+If the user is signed in, call `get_user_applications` to see if they already have this company in their tracker.
+
+**STEP 3: Add or Link**
+- If MATCH FOUND: Use `link_rejection_to_application` to update the existing entry
+- If NO MATCH: Use `add_rejection_to_tracker` to create a new entry
+
+**IMPORTANT**: The user_id is passed in the conversation context. Extract it from there.
+
+Example flow:
+1. User pastes rejection from "Stripe - Software Engineer"
+2. Call decode_and_save_rejection → get decode results
+3. Call get_user_applications → check if "Stripe" exists
+4. If found: link_rejection_to_application(application_id=..., ...)
+5. If not: add_rejection_to_tracker(company="Stripe", role="Software Engineer", ...)
+6. Tell user: "I've added this to your tracker. You can see all your rejections there."
+
+If user is NOT signed in, tell them: "I decoded your rejection. Sign in to save it to your tracker!"
 
 ## REMEMBER
 
@@ -509,6 +537,10 @@ Be the coach everyone wishes they had.
         search_jobs,
         generate_interview_prep,
         get_user_profile,
+        # Tracker tools (add/link rejections to user's tracker)
+        get_user_applications,
+        add_rejection_to_tracker,
+        link_rejection_to_application,
         # Interview flywheel tools (REAL community data!)
         query_interview_intel,
         save_interview_experience,
