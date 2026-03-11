@@ -1,22 +1,27 @@
-# Google GenAI SDK (unified SDK for Gemini API)
-google-genai>=1.0.0
+# REJECT Agents - Python Dependencies
+# These are installed with: pip install -r requirements.txt
 
-# Google Agent Development Kit (for real agent routing and tools)
-google-adk>=1.0.0
+# Google ADK for AI agents
+google-adk>=0.1.0
 
-# API framework
+# FastAPI web framework
 fastapi>=0.109.0
 uvicorn>=0.27.0
-python-multipart>=0.0.6
 
-# Utilities
-python-dotenv>=1.0.0
-pydantic>=2.5.0
-
-# PDF/Document handling for CV
-pypdf2>=3.0.0
-python-docx>=1.1.0
-reportlab>=4.0.0
-
-# Job APIs
+# HTTP client (for calling REJECT backend)
 httpx>=0.26.0
+
+# Pinecone vector database
+pinecone>=3.0.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# PDF parsing (for CV uploads)
+PyPDF2>=3.0.0
+
+# Word document parsing
+python-docx>=1.0.0
+
+# PDF generation
+reportlab>=4.0.0

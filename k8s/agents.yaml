@@ -1,0 +1,67 @@
+# Agents Deployment + Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agents
+  namespace: reject
+  labels:
+    app: reject
+    component: agents
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: reject
+      component: agents
+  template:
+    metadata:
+      labels:
+        app: reject
+        component: agents
+    spec:
+      containers:
+        - name: agents
+          image: ghcr.io/OWNER/reject-agents:latest  # Replace OWNER
+          ports:
+            - containerPort: 8080
+          env:
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: reject-secrets
+                  key: GOOGLE_API_KEY
+            - name: BACKEND_URL
+              value: "http://server:8787"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "200m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agents
+  namespace: reject
+spec:
+  selector:
+    app: reject
+    component: agents
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP

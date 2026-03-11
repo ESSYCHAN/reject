@@ -1,0 +1,90 @@
+# ============================================
+# REJECT Docker Compose
+# ============================================
+# This file orchestrates ALL services together
+#
+# LEARNING POINTS:
+# - docker-compose up = start everything
+# - docker-compose down = stop everything
+# - docker-compose logs = see all logs
+# - Services can talk to each other by name (e.g., http://server:8787)
+
+services:
+  # ----- FRONTEND (React) -----
+  client:
+    build:
+      context: .
+      dockerfile: docker/client/Dockerfile
+      args:
+        # These are passed at BUILD time (baked into the JS)
+        VITE_CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY}
+        VITE_API_URL: ""
+    ports:
+      - "3000:80"  # Access frontend at http://localhost:3000
+    depends_on:
+      - server
+      - agents
+    restart: unless-stopped
+
+  # ----- BACKEND (Express) -----
+  server:
+    build:
+      context: .
+      dockerfile: docker/server/Dockerfile
+    ports:
+      - "8787:8787"
+    environment:
+      # These are passed at RUN time
+      - NODE_ENV=production
+      - PORT=8787
+      - DATABASE_URL=${DATABASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CLERK_SECRET_KEY=${CLERK_SECRET_KEY}
+      - CLERK_PUBLISHABLE_KEY=${CLERK_PUBLISHABLE_KEY}
+      - PINECONE_API_KEY=${PINECONE_API_KEY}
+      - PINECONE_INDEX=${PINECONE_INDEX}
+      - PINECONE_HOST=${PINECONE_HOST}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+    restart: unless-stopped
+    healthcheck:
+      # Docker will ping this endpoint to check if server is healthy
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ----- AI AGENTS (Python/FastAPI) -----
+  agents:
+    build:
+      context: .
+      dockerfile: docker/agents/Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - BACKEND_URL=http://server:8787  # Talk to server by service name!
+    depends_on:
+      - server
+    restart: unless-stopped
+
+# ============================================
+# HOW TO USE:
+# ============================================
+#
+# 1. Create a .env file with all your secrets:
+#    DATABASE_URL=...
+#    OPENAI_API_KEY=...
+#    etc.
+#
+# 2. Build and start:
+#    docker-compose up --build
+#
+# 3. View logs:
+#    docker-compose logs -f
+#
+# 4. Stop:
+#    docker-compose down
+#
+# 5. Rebuild one service:
+#    docker-compose build server
+#    docker-compose up -d server

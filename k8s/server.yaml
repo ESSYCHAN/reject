@@ -1,0 +1,94 @@
+# Server Deployment + Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: server
+  namespace: reject
+  labels:
+    app: reject
+    component: server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: reject
+      component: server
+  template:
+    metadata:
+      labels:
+        app: reject
+        component: server
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/OWNER/reject-server:latest  # Replace OWNER
+          ports:
+            - containerPort: 8787
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: PORT
+              value: "8787"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: reject-secrets
+                  key: DATABASE_URL
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: reject-secrets
+                  key: OPENAI_API_KEY
+            - name: CLERK_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: reject-secrets
+                  key: CLERK_SECRET_KEY
+            - name: PINECONE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: reject-secrets
+                  key: PINECONE_API_KEY
+            - name: PINECONE_INDEX
+              valueFrom:
+                secretKeyRef:
+                  name: reject-secrets
+                  key: PINECONE_INDEX
+            - name: ELEVENLABS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: reject-secrets
+                  key: ELEVENLABS_API_KEY
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8787
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8787
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: server
+  namespace: reject
+spec:
+  selector:
+    app: reject
+    component: server
+  ports:
+    - port: 8787
+      targetPort: 8787
+  type: ClusterIP

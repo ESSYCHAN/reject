@@ -1,0 +1,38 @@
+# Ingress - routes external traffic to services
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: reject-ingress
+  namespace: reject
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  tls:
+    - hosts:
+        - tryreject.co.uk
+        - api.tryreject.co.uk
+      secretName: reject-tls
+  rules:
+    # Main site - serves React app
+    - host: tryreject.co.uk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: client
+                port:
+                  number: 80
+    # API subdomain - routes to server
+    - host: api.tryreject.co.uk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: server
+                port:
+                  number: 8787
