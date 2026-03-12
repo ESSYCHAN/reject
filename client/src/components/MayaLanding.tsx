@@ -155,12 +155,55 @@ export default function MayaLanding() {
     }
   }, []);
 
-  // Maya's opening - warm, human, inviting
+  // Load conversation history on mount (for signed-in users)
   useEffect(() => {
-    const greeting = getGreeting(firstName, isSignedIn, userProfile);
-    setTimeout(() => {
+    async function loadConversationHistory() {
+      if (!isSignedIn || !user?.id) return;
+
+      try {
+        const token = await getToken();
+        const response = await fetch(`${API_URL}/api/conversations/${user.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const history = data.data || [];
+
+          if (history.length > 0) {
+            // Convert backend messages to our format
+            const loadedMessages: Message[] = history.map((msg: { role: string; content: string; createdAt: string }) => ({
+              role: msg.role === 'user' ? 'user' : 'maya',
+              content: msg.content,
+              timestamp: new Date(msg.createdAt)
+            }));
+
+            setMessages(loadedMessages);
+            setShowQuickActions(false); // Hide quick actions since we have history
+            console.log(`[Maya] Loaded ${loadedMessages.length} messages from history`);
+            return;
+          }
+        }
+      } catch (err) {
+        console.log('[Maya] Could not load conversation history:', err);
+      }
+
+      // No history found - show greeting
+      const greeting = getGreeting(firstName, isSignedIn, userProfile);
       setMessages([{ role: 'maya', content: greeting, timestamp: new Date() }]);
-    }, 500);
+    }
+
+    loadConversationHistory();
+  }, [isSignedIn, user?.id, getToken, firstName, userProfile]);
+
+  // Maya's opening for non-signed-in users
+  useEffect(() => {
+    if (!isSignedIn) {
+      const greeting = getGreeting(firstName, isSignedIn, userProfile);
+      setTimeout(() => {
+        setMessages([{ role: 'maya', content: greeting, timestamp: new Date() }]);
+      }, 500);
+    }
   }, [firstName, isSignedIn, userProfile]);
 
   // Auto-scroll to latest message
@@ -591,6 +634,33 @@ export default function MayaLanding() {
     );
   }
 
+  // Clear conversation history
+  async function handleClearConversation() {
+    if (!isSignedIn || !user?.id) return;
+
+    const confirmed = window.confirm('Start fresh? This will clear your conversation history with Maya.');
+    if (!confirmed) return;
+
+    try {
+      const token = await getToken();
+      const response = await fetch(`${API_URL}/api/conversations/${user.id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        // Clear local state
+        localStorage.removeItem('maya_conversation_id');
+        const greeting = getGreeting(firstName, isSignedIn, userProfile);
+        setMessages([{ role: 'maya', content: greeting, timestamp: new Date() }]);
+        setShowQuickActions(true);
+        console.log('[Maya] Conversation cleared');
+      }
+    } catch (err) {
+      console.error('[Maya] Failed to clear conversation:', err);
+    }
+  }
+
   return (
     <div className="maya-landing">
       {/* Minimal controls - no duplicate nav */}
@@ -602,6 +672,15 @@ export default function MayaLanding() {
         >
           {voiceEnabled ? '🔊' : '🔇'}
         </button>
+        {isSignedIn && messages.length > 2 && (
+          <button
+            className="clear-chat-btn"
+            onClick={handleClearConversation}
+            title="Start fresh"
+          >
+            🗑️
+          </button>
+        )}
         {!isSignedIn && (
           <SignInButton mode="modal">
             <button className="sign-in-subtle">Sign in</button>

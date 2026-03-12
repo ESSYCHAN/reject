@@ -215,6 +215,28 @@ export async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_interview_experiences_company ON interview_experiences(company_normalized);
       CREATE INDEX IF NOT EXISTS idx_interview_experiences_role ON interview_experiences(role_category);
 
+      -- Maya conversation persistence (chat history + memory)
+      CREATE TABLE IF NOT EXISTS conversations (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        role TEXT NOT NULL,                 -- 'user' or 'assistant'
+        content TEXT NOT NULL,
+        agent_id TEXT DEFAULT 'maya',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_conversations_session ON conversations(session_id);
+
+      -- Conversation summaries (Maya's memory of user context)
+      CREATE TABLE IF NOT EXISTS conversation_summaries (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT UNIQUE NOT NULL,
+        summary TEXT NOT NULL,              -- Natural language summary for Maya
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
     `);
     console.log('Database schema initialized');
   } finally {
@@ -1421,6 +1443,245 @@ export async function getCommunityBenchmarks(): Promise<CommunityBenchmarks | nu
       ? encouragementResult.rows.map(r => r.signal)
       : defaultEncouragement
   };
+}
+
+// ============ MAYA CONVERSATION PERSISTENCE ============
+
+export interface ConversationMessage {
+  id?: number;
+  userId: string;
+  sessionId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  agentId?: string;
+  createdAt?: Date;
+}
+
+/**
+ * Save a conversation message
+ */
+export async function saveMessage(
+  userId: string,
+  sessionId: string,
+  role: 'user' | 'assistant',
+  content: string,
+  agentId: string = 'maya'
+): Promise<number> {
+  const result = await query(
+    `INSERT INTO conversations (user_id, session_id, role, content, agent_id)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id`,
+    [userId, sessionId, role, content, agentId]
+  );
+  return result.rows[0].id;
+}
+
+/**
+ * Get recent messages for a user (across all sessions)
+ */
+export async function getRecentMessages(
+  userId: string,
+  limit: number = 50
+): Promise<ConversationMessage[]> {
+  const result = await query(
+    `SELECT id, user_id, session_id, role, content, agent_id, created_at
+     FROM conversations
+     WHERE user_id = $1
+     ORDER BY created_at DESC
+     LIMIT $2`,
+    [userId, limit]
+  );
+
+  // Return in chronological order (oldest first)
+  return result.rows.reverse().map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    sessionId: r.session_id,
+    role: r.role as 'user' | 'assistant',
+    content: r.content,
+    agentId: r.agent_id,
+    createdAt: r.created_at
+  }));
+}
+
+/**
+ * Get messages for a specific session
+ */
+export async function getSessionMessages(
+  sessionId: string,
+  limit: number = 100
+): Promise<ConversationMessage[]> {
+  const result = await query(
+    `SELECT id, user_id, session_id, role, content, agent_id, created_at
+     FROM conversations
+     WHERE session_id = $1
+     ORDER BY created_at ASC
+     LIMIT $2`,
+    [sessionId, limit]
+  );
+
+  return result.rows.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    sessionId: r.session_id,
+    role: r.role as 'user' | 'assistant',
+    content: r.content,
+    agentId: r.agent_id,
+    createdAt: r.created_at
+  }));
+}
+
+/**
+ * Save or update conversation summary (Maya's memory)
+ */
+export async function saveConversationSummary(
+  userId: string,
+  summary: string
+): Promise<void> {
+  await query(
+    `INSERT INTO conversation_summaries (user_id, summary, last_updated)
+     VALUES ($1, $2, CURRENT_TIMESTAMP)
+     ON CONFLICT (user_id) DO UPDATE SET
+       summary = $2,
+       last_updated = CURRENT_TIMESTAMP`,
+    [userId, summary]
+  );
+}
+
+/**
+ * Get conversation summary for a user
+ */
+export async function getConversationSummary(userId: string): Promise<string | null> {
+  const result = await query(
+    `SELECT summary FROM conversation_summaries WHERE user_id = $1`,
+    [userId]
+  );
+  return result.rows[0]?.summary || null;
+}
+
+/**
+ * Build Maya's memory context from recent conversations + summary
+ * This creates the "silent context" that Maya uses naturally
+ */
+export async function buildMayaMemory(userId: string): Promise<string | null> {
+  // Get existing summary
+  const summary = await getConversationSummary(userId);
+
+  // Get recent messages (last 20 for context window efficiency)
+  const recentMessages = await getRecentMessages(userId, 20);
+
+  if (!summary && recentMessages.length === 0) {
+    return null;
+  }
+
+  let memoryContext = `[SILENT CONTEXT — never reference this directly, never say "last time" or "I remember". Just use this to inform how you respond.]\n\n`;
+
+  if (summary) {
+    memoryContext += `${summary}\n\n`;
+  }
+
+  if (recentMessages.length > 0) {
+    // Add recent conversation snippets (last 5 exchanges)
+    const recentExchanges = recentMessages.slice(-10); // Last 10 messages = 5 exchanges
+    if (recentExchanges.length > 0) {
+      memoryContext += `Recent conversation:\n`;
+      for (const msg of recentExchanges) {
+        const role = msg.role === 'user' ? 'User' : 'Maya';
+        // Truncate long messages
+        const content = msg.content.length > 200
+          ? msg.content.substring(0, 200) + '...'
+          : msg.content;
+        memoryContext += `${role}: ${content}\n`;
+      }
+    }
+  }
+
+  return memoryContext;
+}
+
+/**
+ * Clear all conversation history for a user (fresh start)
+ */
+export async function clearConversationHistory(userId: string): Promise<void> {
+  await query('DELETE FROM conversations WHERE user_id = $1', [userId]);
+  await query('DELETE FROM conversation_summaries WHERE user_id = $1', [userId]);
+}
+
+/**
+ * Get conversation stats for a user (for deciding when to summarize)
+ */
+export async function getConversationStats(userId: string): Promise<{
+  messageCount: number;
+  oldestMessage: Date | null;
+  newestMessage: Date | null;
+}> {
+  const result = await query(
+    `SELECT
+       COUNT(*) as message_count,
+       MIN(created_at) as oldest,
+       MAX(created_at) as newest
+     FROM conversations
+     WHERE user_id = $1`,
+    [userId]
+  );
+
+  const row = result.rows[0];
+  return {
+    messageCount: parseInt(row?.message_count || '0'),
+    oldestMessage: row?.oldest || null,
+    newestMessage: row?.newest || null
+  };
+}
+
+/**
+ * Get messages older than N messages for summarization
+ * Returns older messages that should be summarized and then pruned
+ */
+export async function getMessagesForSummarization(
+  userId: string,
+  keepRecentCount: number = 20
+): Promise<ConversationMessage[]> {
+  // Get all messages except the most recent N
+  const result = await query(
+    `SELECT id, user_id, session_id, role, content, agent_id, created_at
+     FROM conversations
+     WHERE user_id = $1
+     ORDER BY created_at ASC
+     LIMIT (SELECT GREATEST(COUNT(*) - $2, 0) FROM conversations WHERE user_id = $1)`,
+    [userId, keepRecentCount]
+  );
+
+  return result.rows.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    sessionId: r.session_id,
+    role: r.role as 'user' | 'assistant',
+    content: r.content,
+    agentId: r.agent_id,
+    createdAt: r.created_at
+  }));
+}
+
+/**
+ * Delete old messages after summarization (keep only recent N)
+ */
+export async function pruneOldMessages(
+  userId: string,
+  keepRecentCount: number = 20
+): Promise<number> {
+  const result = await query(
+    `DELETE FROM conversations
+     WHERE user_id = $1 AND id NOT IN (
+       SELECT id FROM conversations
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT $2
+     )
+     RETURNING id`,
+    [userId, keepRecentCount]
+  );
+
+  return result.rowCount || 0;
 }
 
 export default pool;

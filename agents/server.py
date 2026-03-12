@@ -358,6 +358,119 @@ def build_user_context_text(user_ctx: dict) -> str:
     return context_text
 
 
+# Backend URL for conversation persistence
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8787")
+
+
+async def fetch_maya_memory(user_id: str) -> Optional[str]:
+    """Fetch Maya's memory context for a user from the backend."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(f"{BACKEND_URL}/api/conversations/memory/{user_id}")
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("data", {}).get("memory")
+    except Exception as e:
+        print(f"[Memory] Failed to fetch memory for {user_id}: {e}")
+    return None
+
+
+async def save_conversation_message(
+    user_id: str,
+    session_id: str,
+    role: str,
+    content: str,
+    agent_id: str = "maya"
+):
+    """Save a conversation message to the backend."""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(
+                f"{BACKEND_URL}/api/conversations/save",
+                json={
+                    "userId": user_id,
+                    "sessionId": session_id,
+                    "role": role,
+                    "content": content,
+                    "agentId": agent_id
+                }
+            )
+    except Exception as e:
+        print(f"[Memory] Failed to save message: {e}")
+
+
+async def check_and_summarize_if_needed(user_id: str):
+    """Check if conversation is getting long and trigger summarization."""
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # Check conversation stats
+            stats_response = await client.get(f"{BACKEND_URL}/api/conversations/stats/{user_id}")
+            if stats_response.status_code != 200:
+                return
+
+            stats = stats_response.json().get("data", {})
+            message_count = stats.get("messageCount", 0)
+
+            # Only summarize if we have 50+ messages
+            if message_count < 50:
+                return
+
+            print(f"[Memory] Conversation has {message_count} messages, triggering summarization...")
+
+            # Get messages to summarize
+            to_summarize_response = await client.get(f"{BACKEND_URL}/api/conversations/to-summarize/{user_id}")
+            if to_summarize_response.status_code != 200:
+                return
+
+            messages_data = to_summarize_response.json().get("data", {})
+            messages = messages_data.get("messages", [])
+
+            if len(messages) < 20:
+                return
+
+            # Build a summary using Gemini
+            if not gemini_client:
+                return
+
+            conversation_text = "\n".join([
+                f"{'User' if m['role'] == 'user' else 'Maya'}: {m['content'][:300]}"
+                for m in messages[-40:]  # Last 40 messages to summarize
+            ])
+
+            summary_prompt = f"""Summarize this conversation between a user and Maya (an AI career coach) into a brief memory context.
+Focus on:
+- User's name, role, experience level
+- Their job search situation (applications, rejections, interviews)
+- Emotional state and key struggles
+- Any specific companies or roles they mentioned
+- Important context Maya should remember
+
+Keep it under 200 words. Write in third person about the user.
+
+Conversation:
+{conversation_text}
+
+Summary:"""
+
+            response = gemini_client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=summary_prompt
+            )
+
+            summary = response.text.strip() if response.text else None
+
+            if summary:
+                # Save the summary and prune old messages
+                await client.post(
+                    f"{BACKEND_URL}/api/conversations/summarize/{user_id}",
+                    json={"summary": summary}
+                )
+                print(f"[Memory] Summarized conversation for user {user_id[:8]}...")
+
+    except Exception as e:
+        print(f"[Memory] Summarization check failed: {e}")
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Chat with an agent using ADK Runner for real agent routing and tool execution."""
@@ -400,6 +513,12 @@ async def chat(request: ChatRequest):
 
         # Prepend user context to message so agent sees it
         context_prefix = ""
+
+        # MEMORY INJECTION: Fetch Maya's memory for this user
+        if request.user_id and agent_id == "maya":
+            memory_context = await fetch_maya_memory(request.user_id)
+            if memory_context:
+                context_prefix += f"\n\n{memory_context}"
 
         # CRITICAL: Include user_id so Maya can pass it to tracker tools
         if request.user_id:
@@ -491,6 +610,28 @@ async def chat(request: ChatRequest):
 
         if not response_text:
             response_text = "I apologize, but I couldn't generate a response. Please try again."
+
+        # PERSISTENCE: Save both user message and Maya's response
+        if request.user_id and agent_id == "maya":
+            # Save user message (use original message, not the one with context prefix)
+            await save_conversation_message(
+                user_id=request.user_id,
+                session_id=conv_id,
+                role="user",
+                content=request.message,
+                agent_id=agent_id
+            )
+            # Save Maya's response
+            await save_conversation_message(
+                user_id=request.user_id,
+                session_id=conv_id,
+                role="assistant",
+                content=response_text.strip(),
+                agent_id=agent_id
+            )
+
+            # Check if we need to summarize (runs in background, non-blocking)
+            asyncio.create_task(check_and_summarize_if_needed(request.user_id))
 
         return ChatResponse(
             response=response_text.strip(),

@@ -20,6 +20,7 @@ import knowledgeRouter from './routes/knowledge.js';
 import agentsRouter from './routes/agents.js';
 import ttsRouter from './routes/tts.js';
 import interviewsRouter from './routes/interviews.js';
+import conversationsRouter from './routes/conversations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -98,6 +99,7 @@ app.use('/api/knowledge', knowledgeRouter);
 app.use('/api/agents', agentsRouter);
 app.use('/api/tts', ttsRouter);
 app.use('/api/interviews', interviewsRouter);
+app.use('/api/conversations', conversationsRouter);
 
 // In production, serve the Vite build
 if (NODE_ENV === 'production') {

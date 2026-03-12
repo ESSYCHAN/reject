@@ -68,6 +68,27 @@
   color: var(--text);
 }
 
+.clear-chat-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  opacity: 0.6;
+}
+
+.clear-chat-btn:hover {
+  background: var(--highlight);
+  opacity: 1;
+  border-color: var(--error);
+}
+
 /* Conversation area - the heart of the experience */
 .maya-conversation {
   flex: 1;
