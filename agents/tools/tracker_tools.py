@@ -47,8 +47,9 @@ async def _get_applications_impl(user_id: str) -> dict:
                     "status": "success",
                     "stats": {
                         "total": stats.get("total", 0),
-                        "rejected": stats.get("rejected", 0),
+                        "saved": stats.get("saved", 0),
                         "applied": stats.get("applied", 0),
+                        "rejected": stats.get("rejected", 0),
                         "interviewing": stats.get("interviewing", 0),
                         "offers": stats.get("offers", 0),
                         "ghosted": stats.get("ghosted", 0)

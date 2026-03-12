@@ -248,11 +248,13 @@ router.get('/maya', async (req: Request, res: Response) => {
 
   try {
     // Get stats first (counts all applications)
+    // Outcome values: saved, applied, pending, interviewing, offer, rejected_ats, rejected_recruiter, rejected_hm, rejected_final, ghosted
     const statsResult = await db.query(
       `SELECT
          COUNT(*) as total,
+         COUNT(*) FILTER (WHERE outcome = 'saved') as saved,
+         COUNT(*) FILTER (WHERE outcome IN ('applied', 'pending')) as applied,
          COUNT(*) FILTER (WHERE outcome LIKE 'rejected%') as rejected,
-         COUNT(*) FILTER (WHERE outcome = 'pending' OR outcome = 'applied') as applied,
          COUNT(*) FILTER (WHERE outcome = 'interviewing') as interviewing,
          COUNT(*) FILTER (WHERE outcome = 'offer') as offers,
          COUNT(*) FILTER (WHERE outcome = 'ghosted') as ghosted
@@ -288,8 +290,9 @@ router.get('/maya', async (req: Request, res: Response) => {
     res.json({
       stats: {
         total: parseInt(stats.total) || 0,
-        rejected: parseInt(stats.rejected) || 0,
+        saved: parseInt(stats.saved) || 0,
         applied: parseInt(stats.applied) || 0,
+        rejected: parseInt(stats.rejected) || 0,
         interviewing: parseInt(stats.interviewing) || 0,
         offers: parseInt(stats.offers) || 0,
         ghosted: parseInt(stats.ghosted) || 0
