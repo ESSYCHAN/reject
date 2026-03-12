@@ -387,11 +387,11 @@ router.post('/upload-cv', (req: Request, res: Response, next) => {
     // Extract text based on file type
     if (file.mimetype === 'application/pdf') {
       try {
-        // Try dynamic import first (works in most ESM environments)
-        const pdfParseModule = await import('pdf-parse');
-        const pdfParse = pdfParseModule.default || pdfParseModule;
-        const pdfData = await pdfParse(file.buffer);
-        extractedText = pdfData.text;
+        // pdf-parse v2 exports PDFParse class
+        const { PDFParse } = await import('pdf-parse');
+        const parser = new PDFParse({ data: file.buffer });
+        const textResult = await parser.getText();
+        extractedText = textResult.text;
         console.log(`[upload-cv] PDF parsed successfully, ${extractedText.length} chars`);
       } catch (pdfError) {
         console.error('PDF parse error:', pdfError);
