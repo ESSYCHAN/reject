@@ -363,13 +363,24 @@ router.post('/profile/cv', requireAuth(), async (req: Request, res: Response) =>
 
 // Upload CV file and extract text (PDF, DOC, DOCX, TXT)
 // This endpoint doesn't require auth - allows anonymous users to try Maya
-router.post('/upload-cv', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/upload-cv', (req: Request, res: Response, next) => {
+  // Handle multer errors explicitly
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      console.error('Multer error:', err);
+      return res.status(400).json({ error: err.message || 'File upload failed' });
+    }
+    next();
+  });
+}, async (req: Request, res: Response) => {
   try {
     const file = req.file;
 
     if (!file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ error: 'No file uploaded. Please select a file.' });
     }
+
+    console.log(`[upload-cv] Received file: ${file.originalname}, type: ${file.mimetype}, size: ${file.size}`);
 
     let extractedText = '';
 
