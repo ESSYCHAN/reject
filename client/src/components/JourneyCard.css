@@ -277,6 +277,23 @@
 
 /* Mobile - stack columns */
 @media (max-width: 540px) {
+  .journey-card-wrapper {
+    margin: 1rem auto;
+    padding: 0 0.5rem;
+  }
+
+  .journey-card {
+    border-radius: 12px;
+  }
+
+  .card-brand {
+    padding: 1rem 1.25rem 0.75rem;
+  }
+
+  .card-logo {
+    font-size: 1.1rem;
+  }
+
   .card-body {
     grid-template-columns: 1fr;
   }
@@ -284,13 +301,53 @@
   .card-left {
     border-right: none;
     border-bottom: 1px solid #e8e0d8;
+    padding: 1.25rem;
+  }
+
+  .card-right {
+    padding: 1.25rem;
+  }
+
+  .big-num {
+    font-size: 2.25rem;
+  }
+
+  .card-quote {
+    padding: 0.9rem 1.25rem;
+  }
+
+  .card-quote p {
+    font-size: 0.82rem;
   }
 
   .share-row {
     flex-wrap: wrap;
+    gap: 0.5rem;
   }
 
   .share-btn {
     flex: 1 1 45%;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.7rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 380px) {
+  .big-num {
+    font-size: 1.9rem;
+  }
+
+  .big-stats {
+    gap: 0.5rem;
+  }
+
+  .card-left,
+  .card-right {
+    padding: 1rem;
+  }
+
+  .share-btn {
+    flex: 1 1 100%;
   }
 }
