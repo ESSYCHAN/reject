@@ -238,6 +238,7 @@ router.delete('/:id', requireAuth(), async (req: Request, res: Response) => {
 // ============================================================================
 
 // Get applications for Maya (uses X-User-Id header)
+// Returns stats + recent applications (Maya doesn't need all 100+ app details)
 router.get('/maya', async (req: Request, res: Response) => {
   const userId = req.headers['x-user-id'] as string;
 
@@ -246,12 +247,29 @@ router.get('/maya', async (req: Request, res: Response) => {
   }
 
   try {
+    // Get stats first (counts all applications)
+    const statsResult = await db.query(
+      `SELECT
+         COUNT(*) as total,
+         COUNT(*) FILTER (WHERE outcome LIKE 'rejected%') as rejected,
+         COUNT(*) FILTER (WHERE outcome = 'pending' OR outcome = 'applied') as applied,
+         COUNT(*) FILTER (WHERE outcome = 'interviewing') as interviewing,
+         COUNT(*) FILTER (WHERE outcome = 'offer') as offers,
+         COUNT(*) FILTER (WHERE outcome = 'ghosted') as ghosted
+       FROM applications
+       WHERE user_id = $1`,
+      [userId]
+    );
+
+    const stats = statsResult.rows[0] || {};
+
+    // Get recent 30 applications (enough for Maya to reference specific companies)
     const result = await db.query(
       `SELECT id, company, role, outcome, date_applied
        FROM applications
        WHERE user_id = $1
        ORDER BY COALESCE(date_applied, created_at) DESC
-       LIMIT 50`,
+       LIMIT 30`,
       [userId]
     );
 
@@ -267,7 +285,18 @@ router.get('/maya', async (req: Request, res: Response) => {
         : null
     }));
 
-    res.json({ applications, count: applications.length });
+    res.json({
+      stats: {
+        total: parseInt(stats.total) || 0,
+        rejected: parseInt(stats.rejected) || 0,
+        applied: parseInt(stats.applied) || 0,
+        interviewing: parseInt(stats.interviewing) || 0,
+        offers: parseInt(stats.offers) || 0,
+        ghosted: parseInt(stats.ghosted) || 0
+      },
+      applications,  // Recent 30 for company lookup
+      count: parseInt(stats.total) || 0  // Total count for Maya
+    });
   } catch (error) {
     console.error('Error fetching applications for Maya:', error);
     res.status(500).json({ error: 'Failed to fetch applications' });

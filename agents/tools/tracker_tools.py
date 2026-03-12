@@ -29,10 +29,12 @@ async def _get_applications_impl(user_id: str) -> dict:
 
             if response.status_code == 200:
                 data = response.json()
+                stats = data.get("stats", {})
                 apps = data.get("applications", [])
-                # Simplify for Maya - just company, role, status
+
+                # Simplify recent apps for Maya (for company lookup)
                 simplified = []
-                for app in apps[:20]:  # Limit to 20 most recent
+                for app in apps[:20]:
                     simplified.append({
                         "id": app.get("id"),
                         "company": app.get("company"),
@@ -40,10 +42,19 @@ async def _get_applications_impl(user_id: str) -> dict:
                         "outcome": app.get("outcome"),
                         "dateApplied": app.get("dateApplied")
                     })
+
                 return {
                     "status": "success",
-                    "count": len(apps),
-                    "applications": simplified
+                    "stats": {
+                        "total": stats.get("total", 0),
+                        "rejected": stats.get("rejected", 0),
+                        "applied": stats.get("applied", 0),
+                        "interviewing": stats.get("interviewing", 0),
+                        "offers": stats.get("offers", 0),
+                        "ghosted": stats.get("ghosted", 0)
+                    },
+                    "recentApplications": simplified,  # For company lookup
+                    "count": data.get("count", len(apps))  # Total count
                 }
             else:
                 return {
