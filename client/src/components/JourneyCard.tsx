@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import html2canvas from 'html2canvas';
 import { ApplicationRecord, isSavedStatus } from '../types/pro';
 import './JourneyCard.css';
 
@@ -121,7 +122,8 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
   };
 
   const handleShare = async (platform: 'twitter' | 'linkedin' | 'copy') => {
-    const text = `My job search journey:\n\n📊 ${stats.totalApplications} applications\n❌ ${stats.totalRejections} rejections\n👻 ${stats.ghosted} ghosted\n🎯 ${stats.interviews} interviews\n${stats.offers > 0 ? `✅ ${stats.offers} offer${stats.offers > 1 ? 's' : ''}` : ''}\n\n${getMotivationalQuote()}\n\nTrack your own journey at tryreject.co.uk`;
+    const reframeText = `${stats.totalRejections} rejections. Most weren't about you.`;
+    const text = `${reframeText}\n\n📊 ${stats.totalApplications} applications\n❌ ${stats.totalRejections} rejections\n👻 ${stats.ghosted} ghosted\n🎯 ${stats.interviews} interviews\n${stats.offers > 0 ? `✅ ${stats.offers} offer${stats.offers > 1 ? 's' : ''}\n` : ''}\n${getMotivationalQuote()}\n\nTrack your journey: tryreject.co.uk`;
 
     if (platform === 'copy') {
       try {
@@ -136,11 +138,47 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
     }
 
     const encodedText = encodeURIComponent(text);
+    const url = encodeURIComponent('https://tryreject.co.uk');
 
     if (platform === 'twitter') {
       window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank');
     } else if (platform === 'linkedin') {
-      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=https://tryreject.co.uk&summary=${encodedText}`, '_blank');
+      // LinkedIn only allows URL sharing - copy text first, then open share dialog
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 3000);
+      } catch {
+        // Continue anyway
+      }
+      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
+    }
+  };
+
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const handleDownload = async () => {
+    if (!cardRef.current || isDownloading) return;
+
+    setIsDownloading(true);
+    try {
+      const canvas = await html2canvas(cardRef.current, {
+        backgroundColor: '#1a1a2e',
+        scale: 2, // Higher quality
+        logging: false,
+        useCORS: true
+      });
+
+      const link = document.createElement('a');
+      link.download = `my-job-search-journey.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (error) {
+      console.error('Failed to download:', error);
+      setShareError('Failed to create image');
+      setTimeout(() => setShareError(null), 2000);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -159,6 +197,10 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
             <span className="journey-subtitle">Museum of Failures</span>
           </div>
           {userName && <span className="journey-user">{userName}'s Journey</span>}
+        </div>
+
+        <div className="journey-reframe">
+          <span className="reframe-number">{stats.totalRejections}</span> rejections. Most weren't about you.
         </div>
 
         <div className="journey-stats-grid">
@@ -224,6 +266,14 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
       </div>
 
       <div className="journey-share-buttons">
+        <button
+          className="share-btn share-download"
+          onClick={handleDownload}
+          disabled={isDownloading}
+          title="Download as image"
+        >
+          {isDownloading ? '...' : '📥 Save'}
+        </button>
         <button
           className="share-btn share-twitter"
           onClick={() => handleShare('twitter')}
