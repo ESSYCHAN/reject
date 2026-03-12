@@ -375,20 +375,34 @@ router.post('/upload-cv', upload.single('file'), async (req: Request, res: Respo
 
     // Extract text based on file type
     if (file.mimetype === 'application/pdf') {
-      // Dynamic import for pdf-parse
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pdfParseModule = await import('pdf-parse') as any;
-      const pdfParse = pdfParseModule.default || pdfParseModule;
-      const pdfData = await pdfParse(file.buffer);
-      extractedText = pdfData.text;
+      // pdf-parse has ESM issues - use require-style import
+      try {
+        const { createRequire } = await import('module');
+        const require = createRequire(import.meta.url);
+        const pdfParse = require('pdf-parse');
+        const pdfData = await pdfParse(file.buffer);
+        extractedText = pdfData.text;
+      } catch (pdfError) {
+        console.error('PDF parse error:', pdfError);
+        return res.status(400).json({
+          error: 'Failed to parse PDF. Try uploading a DOCX or TXT file instead.'
+        });
+      }
     } else if (
       file.mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       file.mimetype === 'application/msword'
     ) {
       // Use mammoth for DOCX
-      const mammoth = await import('mammoth');
-      const result = await mammoth.extractRawText({ buffer: file.buffer });
-      extractedText = result.value;
+      try {
+        const mammoth = await import('mammoth');
+        const result = await mammoth.extractRawText({ buffer: file.buffer });
+        extractedText = result.value;
+      } catch (docxError) {
+        console.error('DOCX parse error:', docxError);
+        return res.status(400).json({
+          error: 'Failed to parse document. Try uploading a PDF or TXT file instead.'
+        });
+      }
     } else if (file.mimetype === 'text/plain') {
       // Plain text - just decode the buffer
       extractedText = file.buffer.toString('utf-8');
