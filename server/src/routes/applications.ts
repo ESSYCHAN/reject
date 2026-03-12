@@ -249,13 +249,15 @@ router.get('/maya', async (req: Request, res: Response) => {
   try {
     // Get stats first (counts all applications)
     // Outcome values: saved, applied, pending, interviewing, offer, rejected_ats, rejected_recruiter, rejected_hm, rejected_final, ghosted
+    // Note: "interviews" = anyone who got past ATS (rejected_recruiter, rejected_hm, rejected_final, interviewing, offer)
+    // This matches JourneyCard.tsx logic for consistency
     const statsResult = await db.query(
       `SELECT
          COUNT(*) as total,
          COUNT(*) FILTER (WHERE outcome = 'saved') as saved,
          COUNT(*) FILTER (WHERE outcome IN ('applied', 'pending')) as applied,
          COUNT(*) FILTER (WHERE outcome LIKE 'rejected%') as rejected,
-         COUNT(*) FILTER (WHERE outcome = 'interviewing') as interviewing,
+         COUNT(*) FILTER (WHERE outcome IN ('rejected_recruiter', 'rejected_hm', 'rejected_final', 'interviewing', 'offer')) as interviews,
          COUNT(*) FILTER (WHERE outcome = 'offer') as offers,
          COUNT(*) FILTER (WHERE outcome = 'ghosted') as ghosted
        FROM applications
@@ -293,7 +295,7 @@ router.get('/maya', async (req: Request, res: Response) => {
         saved: parseInt(stats.saved) || 0,
         applied: parseInt(stats.applied) || 0,
         rejected: parseInt(stats.rejected) || 0,
-        interviewing: parseInt(stats.interviewing) || 0,
+        interviews: parseInt(stats.interviews) || 0,  // Anyone who got past ATS
         offers: parseInt(stats.offers) || 0,
         ghosted: parseInt(stats.ghosted) || 0
       },

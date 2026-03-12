@@ -50,7 +50,7 @@ async def _get_applications_impl(user_id: str) -> dict:
                         "saved": stats.get("saved", 0),
                         "applied": stats.get("applied", 0),
                         "rejected": stats.get("rejected", 0),
-                        "interviewing": stats.get("interviewing", 0),
+                        "interviews": stats.get("interviews", 0),  # Anyone who got past ATS
                         "offers": stats.get("offers", 0),
                         "ghosted": stats.get("ghosted", 0)
                     },
