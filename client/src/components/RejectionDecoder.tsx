@@ -942,8 +942,9 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
             </div>
           )}
 
-          {/* TRACK THIS REJECTION - At bottom after full analysis */}
-          {(onAddToTracker || onLinkToApplication) && !addedToTracker && !linkResult && (
+          {/* TRACK THIS REJECTION - Only show for actual rejections */}
+          {(onAddToTracker || onLinkToApplication) && !addedToTracker && !linkResult &&
+           (!result.email_type || result.email_type === 'rejection') && (
             <div className="result-section tracker-cta-section">
               <div className="tracker-cta-header">
                 <h3>Track this rejection</h3>
