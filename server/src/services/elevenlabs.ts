@@ -42,7 +42,14 @@ export async function textToSpeech(text: string): Promise<ArrayBuffer> {
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('ElevenLabs error:', response.status, errorText);
+    console.error('ElevenLabs API failed:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorText,
+      keyPresent: !!ELEVENLABS_API_KEY,
+      keyPrefix: ELEVENLABS_API_KEY?.substring(0, 8) + '...',
+      voiceId: MAYA_VOICE_ID
+    });
     throw new Error(`ElevenLabs error: ${response.status} - ${errorText}`);
   }
   // Return the audio as bytes
