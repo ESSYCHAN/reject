@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+export const EmailTypeSchema = z.enum([
+  'rejection',           // Actual rejection - proceed with full analysis
+  'holding',             // "We'll get back to you" - not a rejection yet
+  'acknowledgment',      // Application received confirmation
+  'interview_invite',    // Not a rejection at all
+  'other'                // Unclear/unrelated
+]);
+
+export type EmailType = z.infer<typeof EmailTypeSchema>;
+
 export const RejectionCategorySchema = z.enum([
   'Template',
   'Soft No',
@@ -22,6 +32,8 @@ export const ATSAssessmentSchema = z.object({
 export type ATSAssessment = z.infer<typeof ATSAssessmentSchema>;
 
 export const DecodeResponseSchema = z.object({
+  // Email classification - is this actually a rejection?
+  email_type: EmailTypeSchema.optional().default('rejection'),
   category: RejectionCategorySchema,
   confidence: z.number().min(0).max(1),
   signals: z.array(z.string()),

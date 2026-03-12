@@ -15,10 +15,32 @@ function getOpenAIClient(): OpenAI {
   return openai;
 }
 
-const SYSTEM_PROMPT = `You are an expert at analyzing job rejection emails with a focus on ACCURACY over optimism. Your goal is to help job seekers understand the truth and avoid embarrassing follow-up mistakes.
+const SYSTEM_PROMPT = `You are an expert at analyzing job application emails with a focus on ACCURACY over optimism. Your goal is to help job seekers understand the truth and avoid embarrassing follow-up mistakes.
+
+=== FIRST: DETERMINE EMAIL TYPE ===
+
+Before analyzing as a rejection, FIRST determine what type of email this is:
+
+"rejection" - An actual rejection. Contains language like "unfortunately", "we've decided to move forward with other candidates", "not able to offer you a position", "will not be moving forward"
+
+"holding" - A "we'll get back to you" message. NOT a rejection yet. Contains language like:
+  - "high volume of applications"
+  - "carefully reviewing each application"
+  - "will get back to you as soon as possible"
+  - "appreciate your patience"
+  - "under review"
+  - "will be in touch if your qualifications match"
+  These are SOFT REJECTIONS AT BEST - the candidate is in limbo, not rejected.
+
+"acknowledgment" - Just confirming application received. "Thank you for applying", "We received your application"
+
+"interview_invite" - Inviting to interview or next steps. Obviously not a rejection!
+
+"other" - Doesn't fit any category
 
 Return a JSON response with this structure:
 {
+  "email_type": "rejection" | "holding" | "acknowledgment" | "interview_invite" | "other",
   "category": "Template" | "Soft No" | "Hard No" | "Door Open" | "Polite Pass",
   "confidence": 0.0-1.0,
   "signals": ["list of specific phrases with interpretation"],
@@ -39,6 +61,33 @@ Return a JSON response with this structure:
   "extracted_company": "Company name from email",
   "extracted_role": "Full role title from email"
 }
+
+=== HANDLING NON-REJECTION EMAILS ===
+
+If email_type is NOT "rejection", adjust your response accordingly:
+
+FOR "holding" EMAILS:
+- category: "Soft No" (it's a soft rejection signal, but not definitive)
+- confidence: 0.4-0.6 (uncertain outcome)
+- what_it_means: Explain this is NOT a rejection yet, but "high volume" language often signals low priority. Be honest about typical outcomes.
+- keep_on_file_truth: "This is a holding response, not a rejection. However, 'high volume' language often means your application is low priority. Most holding responses lead to eventual ghosting or rejection."
+- reply_worth_it: "Low" (wait for their response)
+- next_actions: ["Wait 2-3 weeks for a real response", "Continue applying elsewhere - don't wait on one company", "If no response after 3 weeks, treat as ghosted"]
+- silver_lining: "You're still in consideration, technically. Use this time to keep applying elsewhere."
+- ats_assessment.stage_reached: "unknown" (they haven't decided yet)
+
+FOR "acknowledgment" EMAILS:
+- category: "Template"
+- confidence: 0.9
+- what_it_means: "This is just confirming your application was received. No decision has been made yet."
+- reply_worth_it: "Low"
+- next_actions: ["Wait for actual response", "No action needed now"]
+
+FOR "interview_invite":
+- category: "Door Open"
+- confidence: 0.95
+- what_it_means: "This is an invitation to interview - not a rejection! Respond promptly."
+- reply_worth_it: "High"
 
 === METADATA EXTRACTION (REQUIRED) ===
 
@@ -355,6 +404,7 @@ Always respond with valid JSON only.`;
 // Fallback response when AI fails
 function createFallbackResponse(): DecodeResponse {
   return {
+    email_type: 'rejection',
     category: 'Template',
     confidence: 0.5,
     signals: ['Unable to fully analyze - treating as standard template'],
@@ -460,6 +510,9 @@ export async function decodeRejectionEmail(emailText: string, interviewStage?: I
       const fallback = createFallbackResponse();
 
       return {
+        email_type: ['rejection', 'holding', 'acknowledgment', 'interview_invite', 'other'].includes(partial.email_type as string)
+          ? (partial.email_type as DecodeResponse['email_type'])
+          : fallback.email_type,
         category: ['Template', 'Soft No', 'Hard No', 'Door Open', 'Polite Pass'].includes(partial.category as string)
           ? (partial.category as DecodeResponse['category'])
           : fallback.category,
