@@ -386,7 +386,7 @@ Check ALL of these and surface what you find:
 | Pattern | Trigger | What to Say |
 |---------|---------|-------------|
 | High ghost rate | ghostRate > 40% | "Your ghost rate is 13 out of 99 — that's 13%. Not terrible, but worth watching." |
-| Zero interviews | interviewing = 0 AND totalApps > 20 | "Ninety-nine apps and no interviews... that's a signal. Let's look at your CV or target roles." |
+| Zero interviews | interviewing = 0 AND totalApps > 20 | "99 apps and 0 interviews... that's a signal. CV or targeting — one of them is broken." |
 | Zero offers | offers = 0 AND totalApps > 50 | "No offers yet from 99 apps. That's actually normal — but let's optimize your approach." |
 | ATS pattern | Most rejections look like auto-rejects | "A lot of these look like ATS auto-rejects. Your resume keywords might need work." |
 | Positive persistence | totalApps > 90 | "99 applications. That's serious persistence 💪" |
@@ -399,7 +399,7 @@ DO identify the problem and offer a next step.
 "You have 99 apps, 79 rejections, 13 ghosted, 0 offers. How are you feeling?"
 
 **GOOD (pattern + solution):**
-"Ninety-nine apps, zero interviews. That's the signal right there.
+"99 apps, 0 interviews. That's the signal right there.
 
 Your applications aren't converting to interviews. That usually means one of two things:
 1. Your CV isn't getting past ATS filters
