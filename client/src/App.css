@@ -1222,19 +1222,21 @@
 }
 
 .btn-outline {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: white;
   padding: 0.5rem 1rem;
   border-radius: var(--radius-md);
   font-size: 0.85rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .btn-outline:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  background: #9a4d3a;
+  border-color: #9a4d3a;
+  color: white;
 }
 
 .tracker-form {

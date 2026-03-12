@@ -1,26 +1,28 @@
 /* Journey Card - Light theme, two-column layout */
 .journey-card-wrapper {
-  margin: 1.5rem 0;
-  max-width: 600px;
+  margin: 2rem auto;
+  max-width: 720px;
+  padding: 0 1rem;
 }
 
 .journey-card {
   background: #ffffff;
-  border: 1px solid #e8e0d8;
-  border-radius: 14px;
+  border: 2px solid #d8cfc5;
+  border-radius: 16px;
   overflow: hidden;
   position: relative;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(179, 92, 68, 0.1);
 }
 
-/* Top accent line */
+/* Top accent line - bolder */
 .journey-card::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: var(--accent, #b35c44);
+  height: 5px;
+  background: linear-gradient(90deg, var(--accent, #b35c44), #d4725a);
 }
 
 /* Brand row */
@@ -28,15 +30,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 1.1rem 1.5rem 0.75rem;
+  padding: 1.25rem 1.75rem 1rem;
   border-bottom: 1px solid #e8e0d8;
+  background: linear-gradient(180deg, #fdfcfb 0%, #ffffff 100%);
 }
 
 .card-logo {
-  font-weight: 800;
-  font-size: 1rem;
+  font-weight: 900;
+  font-size: 1.25rem;
   color: var(--accent, #b35c44);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.15em;
 }
 
 .card-user {
@@ -52,18 +55,19 @@
 }
 
 .card-left {
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem 1.75rem;
   border-right: 1px solid #e8e0d8;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .card-right {
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem 1.75rem;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
+  background: #fdfcfb;
 }
 
 .section-label {
@@ -88,8 +92,8 @@
 }
 
 .big-num {
-  font-weight: 800;
-  font-size: 2.25rem;
+  font-weight: 900;
+  font-size: 2.75rem;
   line-height: 1;
 }
 
@@ -182,23 +186,24 @@
 
 /* Quote */
 .card-quote {
-  padding: 0.9rem 1.5rem;
+  padding: 1.1rem 1.75rem;
   border-top: 1px solid #e8e0d8;
-  background: rgba(179, 92, 68, 0.05);
-  border-left: 3px solid var(--accent, #b35c44);
+  background: linear-gradient(90deg, rgba(179, 92, 68, 0.08), rgba(179, 92, 68, 0.03));
+  border-left: 4px solid var(--accent, #b35c44);
 }
 
 .card-quote p {
-  font-size: 0.82rem;
-  color: #8a7e74;
+  font-size: 0.9rem;
+  color: #6b5f55;
   font-style: italic;
-  line-height: 1.5;
+  line-height: 1.6;
   margin: 0;
 }
 
 .card-quote p strong {
   color: #1a1512;
   font-style: normal;
+  font-weight: 700;
 }
 
 /* Footer */
@@ -221,7 +226,7 @@
 .share-row {
   display: flex;
   gap: 0.75rem;
-  margin-top: 1rem;
+  margin-top: 1.25rem;
 }
 
 .share-btn {
@@ -229,21 +234,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.4rem;
-  padding: 0.6rem 1rem;
-  border-radius: 8px;
-  border: 1px solid #e0d8d0;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  border: 2px solid #d8cfc5;
   background: white;
   font-family: monospace;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
+  font-weight: 600;
   color: #1a1512;
   cursor: pointer;
   transition: all 0.15s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .share-btn:hover {
   border-color: var(--accent, #b35c44);
   color: var(--accent, #b35c44);
+  box-shadow: 0 4px 8px rgba(179, 92, 68, 0.15);
+  transform: translateY(-1px);
 }
 
 .share-btn:disabled {
