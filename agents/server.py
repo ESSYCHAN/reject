@@ -76,6 +76,37 @@ AGENT_MAP = {
     "maya": maya_coach,
 }
 
+# =============================================================================
+# CRISIS DETECTION GUARDRAIL
+# Server-side check BEFORE LLM processes message - no AI involved
+# =============================================================================
+CRISIS_KEYWORDS = [
+    "kill myself", "end it all", "don't want to be here",
+    "suicide", "suicidal", "self harm", "self-harm",
+    "can't go on", "no point anymore", "want to die",
+    "end my life", "not worth living", "better off dead",
+    "hurt myself", "cutting myself", "take my life"
+]
+
+CRISIS_RESPONSE = """Hey — I heard that. Are you okay? Not job-search okay. Actually okay.
+
+If things feel really dark right now, please reach out:
+
+**UK:** Samaritans - 116 123 (free, 24/7)
+**UK Text:** Text SHOUT to 85258
+**US:** 988 Suicide & Crisis Lifeline
+**International:** findahelpline.com
+
+The job search is hard. Really hard. But you matter more than any application.
+
+I'm here too. Talk to me about what's going on."""
+
+
+def check_for_crisis(message: str) -> bool:
+    """Check if message contains crisis-related language."""
+    message_lower = message.lower()
+    return any(keyword in message_lower for keyword in CRISIS_KEYWORDS)
+
 # Lifespan handler to initialize ADK Runner at startup
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -124,7 +155,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS for React frontend
+# CORS for React frontend - hardened config
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -137,9 +168,30 @@ app.add_middleware(
         os.getenv("FRONTEND_URL", ""),
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],  # Only methods we actually use
+    allow_headers=["Content-Type", "Authorization", "X-User-Id"],  # Specific headers
 )
+
+
+# =============================================================================
+# INPUT VALIDATION LIMITS
+# =============================================================================
+MAX_MESSAGE_LENGTH = 10000        # 10KB - reasonable message size
+MAX_CONTEXT_FIELD_LENGTH = 20000  # 20KB - CV text, job descriptions
+
+
+def validate_input(message: str, context: dict = None) -> tuple[bool, str]:
+    """Validate input sizes to prevent abuse."""
+    if len(message) > MAX_MESSAGE_LENGTH:
+        return False, f"Message too long ({len(message)} chars). Max: {MAX_MESSAGE_LENGTH}"
+
+    if context:
+        if context.get("cvText") and len(context["cvText"]) > MAX_CONTEXT_FIELD_LENGTH:
+            return False, "CV text too long"
+        if context.get("jobDescription") and len(context["jobDescription"]) > MAX_CONTEXT_FIELD_LENGTH:
+            return False, "Job description too long"
+
+    return True, ""
 
 
 # Request/Response Models
@@ -155,6 +207,8 @@ class ChatResponse(BaseModel):
     response: str
     agent_used: str
     conversation_id: str
+    tools_called: Optional[List[str]] = None
+    crisis_detected: Optional[bool] = False
 
 
 class JobSearchRequest(BaseModel):
@@ -474,6 +528,27 @@ Summary:"""
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     """Chat with an agent using ADK Runner for real agent routing and tool execution."""
+
+    # =================================================================
+    # CRISIS GUARDRAIL - Check BEFORE LLM processes anything
+    # =================================================================
+    if check_for_crisis(request.message):
+        print(f"[CRISIS DETECTED] User message triggered crisis guardrail")
+        return ChatResponse(
+            response=CRISIS_RESPONSE,
+            conversation_id=request.conversation_id or str(uuid.uuid4()),
+            agent_used="crisis_support",
+            tools_called=[],
+            crisis_detected=True
+        )
+
+    # =================================================================
+    # INPUT VALIDATION - Prevent oversized inputs
+    # =================================================================
+    is_valid, error_msg = validate_input(request.message, request.context)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
     agent_id = request.agent or "career_coach"
 
     if agent_id not in AGENT_MAP:
