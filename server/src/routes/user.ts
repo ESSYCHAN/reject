@@ -386,17 +386,19 @@ router.post('/upload-cv', (req: Request, res: Response, next) => {
 
     // Extract text based on file type
     if (file.mimetype === 'application/pdf') {
-      // pdf-parse has ESM issues - use require-style import
       try {
-        const { createRequire } = await import('module');
-        const require = createRequire(import.meta.url);
-        const pdfParse = require('pdf-parse');
+        // Try dynamic import first (works in most ESM environments)
+        const pdfParseModule = await import('pdf-parse');
+        const pdfParse = pdfParseModule.default || pdfParseModule;
         const pdfData = await pdfParse(file.buffer);
         extractedText = pdfData.text;
+        console.log(`[upload-cv] PDF parsed successfully, ${extractedText.length} chars`);
       } catch (pdfError) {
         console.error('PDF parse error:', pdfError);
+        // Return specific error message
+        const errMsg = pdfError instanceof Error ? pdfError.message : 'Unknown error';
         return res.status(400).json({
-          error: 'Failed to parse PDF. Try uploading a DOCX or TXT file instead.'
+          error: `Failed to parse PDF: ${errMsg}. Try uploading a DOCX or TXT file instead.`
         });
       }
     } else if (
