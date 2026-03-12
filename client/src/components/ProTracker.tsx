@@ -460,7 +460,7 @@ export function ProTracker() {
         </div>
         <div className="stat-card">
           <span className="stat-value">{stats.ghostRate}%</span>
-          <span className="stat-label">Ghosted</span>
+          <span className="stat-label">Ghost Rate</span>
         </div>
       </div>
 
