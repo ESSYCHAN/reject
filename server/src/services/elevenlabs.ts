@@ -3,8 +3,8 @@
 
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
-// Rachel - warm, professional female voice (ElevenLabs default voice, always available)
-const MAYA_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+// Natasha - professional, articulate, supportive (like an HR career coach)
+const MAYA_VOICE_ID = 'oWAxZDx7w5VEj9dCyTzz';
 
 
 export async function textToSpeech(text: string): Promise<ArrayBuffer> {
