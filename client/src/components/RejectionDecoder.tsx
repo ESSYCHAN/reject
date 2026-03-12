@@ -749,6 +749,36 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
             </div>
           )}
 
+          {/* Non-rejection email banner */}
+          {result.email_type && result.email_type !== 'rejection' && (
+            <div className={`email-type-banner email-type-${result.email_type}`}>
+              {result.email_type === 'holding' && (
+                <>
+                  <strong>This isn't a rejection yet</strong>
+                  <p>This is a "we'll get back to you" holding response. You're in limbo, not rejected. Keep applying elsewhere - about 70% of these turn into ghosts or eventual rejections.</p>
+                </>
+              )}
+              {result.email_type === 'acknowledgment' && (
+                <>
+                  <strong>Application received</strong>
+                  <p>This is just confirming they got your application. No decision has been made yet. Keep applying elsewhere!</p>
+                </>
+              )}
+              {result.email_type === 'interview_invite' && (
+                <>
+                  <strong>Good news! This is an interview invitation</strong>
+                  <p>This isn't a rejection - they want to talk to you! Respond promptly and prepare well.</p>
+                </>
+              )}
+              {result.email_type === 'other' && (
+                <>
+                  <strong>Not a standard rejection</strong>
+                  <p>This doesn't appear to be a typical rejection email. Review the analysis below carefully.</p>
+                </>
+              )}
+            </div>
+          )}
+
           <div className="result-header">
             <span className={`category-badge ${getCategoryColor(result.category)}`}>
               {result.category}

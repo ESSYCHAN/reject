@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+export type EmailType = 'rejection' | 'holding' | 'acknowledgment' | 'interview_invite' | 'other';
 export type RejectionCategory = 'Template' | 'Soft No' | 'Hard No' | 'Door Open' | 'Polite Pass';
 export type ReplyWorth = 'Low' | 'Medium' | 'High';
 export type ATSStage = 'ats_filter' | 'recruiter_screen' | 'hiring_manager' | 'final_round' | 'unknown';
@@ -24,6 +25,7 @@ export const ATSAssessmentSchema = z.object({
 });
 
 export const DecodeResponseSchema = z.object({
+  email_type: z.enum(['rejection', 'holding', 'acknowledgment', 'interview_invite', 'other']).optional().default('rejection'),
   category: z.enum(['Template', 'Soft No', 'Hard No', 'Door Open', 'Polite Pass']),
   confidence: z.number().min(0).max(1),
   signals: z.array(z.string()),
@@ -39,6 +41,7 @@ export const DecodeResponseSchema = z.object({
 });
 
 export interface DecodeResponse {
+  email_type?: EmailType;
   category: RejectionCategory;
   confidence: number;
   signals: string[];

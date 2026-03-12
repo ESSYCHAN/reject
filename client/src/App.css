@@ -517,6 +517,50 @@
   color: #5a5080;
 }
 
+/* Email type banners - for non-rejection emails */
+.email-type-banner {
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+  border-left: 4px solid;
+}
+
+.email-type-banner strong {
+  display: block;
+  font-size: 1rem;
+  margin-bottom: var(--space-xs);
+}
+
+.email-type-banner p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.email-type-holding {
+  background: #fff8e6;
+  border-color: #e6a817;
+  color: #8a6914;
+}
+
+.email-type-acknowledgment {
+  background: #e6f4ff;
+  border-color: #4a90d9;
+  color: #2c5282;
+}
+
+.email-type-interview_invite {
+  background: #e6f7ed;
+  border-color: #38a169;
+  color: #276749;
+}
+
+.email-type-other {
+  background: #f5f5f5;
+  border-color: #a0a0a0;
+  color: #555;
+}
+
 .category-hard-no {
   background: #f5e1de;
   color: #8b3a2f;
