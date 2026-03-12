@@ -512,60 +512,41 @@ def analyze_cv(
 ) -> dict:
     """Analyze a CV for quality, ATS-friendliness, and improvement opportunities.
 
+    IMPORTANT: This tool returns the CV text for YOU to analyze.
+    You must analyze it yourself and respond with scores and feedback.
+    Do NOT say "processing" or "I'll get back to you" — analyze it NOW.
+
     USE THIS TOOL WHEN:
     - User shares their CV
     - User asks "review my CV"
     - User wants to improve their resume
-    - Checking CV fit for a specific role
 
     Args:
         cv_text: The CV/resume text content
-        target_role: Role they're targeting (optional, for tailored advice)
+        target_role: Role they're targeting (optional)
         target_company: Company they're applying to (optional)
 
-    Returns:
-        - overall_score: 0-100 CV quality score
-        - ats_score: How likely to pass ATS filters
-        - section_scores: Per-section breakdown
-        - strengths: What's working well
-        - improvements: Specific fixes needed
-        - missing_elements: Important sections missing
-        - keyword_suggestions: For the target role
+    After calling this tool, YOU must provide:
+    - Overall Score (0-100)
+    - ATS Score (0-100)
+    - Strengths (2-3 bullet points)
+    - Critical Improvements (prioritized list)
+    - Keyword suggestions for their target role
     """
     return {
-        "status": "analyze",
+        "status": "ready_to_analyze",
+        "instruction": "ANALYZE THIS CV NOW. Do not say 'processing' or 'I'll get back to you'. Give scores and feedback immediately.",
         "cv_text": cv_text,
-        "target_role": target_role,
-        "target_company": target_company,
-        "analysis_prompt": """Analyze this CV and provide:
-
-1. **Overall Score (0-100)**: Quality and effectiveness
-
-2. **ATS Score (0-100)**: Likelihood of passing automated filters
-   - Check for: clean formatting, standard sections, keyword density
-
-3. **Section Breakdown**:
-   - Contact Info: Present and complete?
-   - Summary: Strong hook or generic?
-   - Experience: Metrics, action verbs, relevance
-   - Skills: Specific and relevant?
-   - Education: Properly formatted?
-
-4. **Strengths**: What's working well (2-3 points)
-
-5. **Critical Improvements** (prioritized):
-   - What to fix FIRST
-   - What to add
-   - What to remove
-
-6. **Missing Elements**: Important things not present
-
-7. **Keyword Suggestions**: For their target role/industry
-
-8. **Verdict**:
-   - Score >= 80: "Strong CV, minor tweaks needed"
-   - Score 60-79: "Good foundation, key improvements needed"
-   - Score < 60: "Needs significant work - consider rebuild" """
+        "target_role": target_role or "not specified",
+        "target_company": target_company or "not specified",
+        "analysis_checklist": [
+            "Overall Score (0-100): Quality and effectiveness",
+            "ATS Score (0-100): Will it pass automated filters?",
+            "Strengths: What's working well (2-3 points)",
+            "Critical Improvements: What to fix FIRST",
+            "Missing Elements: Important things not present",
+            "Keyword Suggestions: For their target role"
+        ]
     }
 
 
