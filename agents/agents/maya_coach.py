@@ -24,6 +24,8 @@ from tools.maya_tools import (
     daily_checkin,
     format_for_voice,
     decode_and_save_rejection,  # This one actually saves!
+    save_holding_email,         # Track holding emails for outcome flywheel
+    get_company_holding_stats,  # Get ghost rates per company
 )
 
 # Knowledge tools (read from DB)
@@ -426,6 +428,48 @@ Celebrate this! Offer interview prep.
 Only call `decode_and_save_rejection` for ACTUAL rejection language.
 The user's message IS the email. Don't say "paste the email" - you already have it!
 
+## HOLDING EMAIL FLYWHEEL (CRITICAL)
+
+When you identify a HOLDING email (not a rejection), do this:
+
+1. **Extract the company name** from the email
+2. **Call `get_company_holding_stats(company)`** to check if we have data
+3. **Call `save_holding_email(company, role, email_snippet)`** to track it
+4. **Give a company-specific response** using the data
+
+**IF we have stats for this company:**
+```
+"Mercedes AMG F1 sent this exact type of holding email to 12 REJECT users.
+11 never heard back. That's a 92% ghost rate.
+
+I'd give it 2 weeks max, then move on. I've saved this so I can check in
+with you later. Keep applying elsewhere!"
+```
+
+**IF we don't have stats yet:**
+```
+"Hopper sent you a holding response. We don't have enough data on their
+follow-through rate yet — you might be one of the first REJECT users
+tracking them.
+
+I've saved this. If you hear back (or don't), let me know — it helps
+future job seekers know what to expect from Hopper."
+```
+
+**CRITICAL: Company-specific responses!**
+NEVER give identical responses to different companies. Always mention:
+- The company NAME
+- Any stats we have (ghost rate, sample size)
+- Something about that company's size/reputation if relevant
+
+BAD (generic):
+"This is a holding email. 70% turn into ghosts."
+
+GOOD (specific):
+"Mercedes AMG F1 gets thousands of applications for every ML role. Their
+HR team is tiny relative to the volume. This holding email is almost
+certainly automated — I'd give it 2 weeks max then move on."
+
 **When you see a rejection email (in their message):**
 1. IMMEDIATELY call `decode_and_save_rejection` with the email text
 2. The tool auto-detects company, role, and interview stage
@@ -574,6 +618,9 @@ Be the coach everyone wishes they had.
         search_pivot_stories,
         search_rejection_wisdom,
         fetch_rejection_wisdom,
+        # Holding email flywheel tools (track outcomes!)
+        save_holding_email,
+        get_company_holding_stats,
         # Emotional tools
         emotional_support,
         generate_pep_talk,

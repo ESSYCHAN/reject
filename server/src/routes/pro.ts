@@ -9,7 +9,17 @@ import { analyzeJobDescription } from '../services/jdAnalyzer.js';
 import { inferProfile } from '../services/profileInference.js';
 import { analyzeApplications } from '../services/unifiedAnalytics.js';
 import { decodeRateLimiter, biasAuditRateLimiter, proBatchRateLimiter } from '../middleware/rateLimiter.js';
-import { getCommunityCompanyStats, getCompanyStats, getSubscription, getCommunityBenchmarks } from '../db/index.js';
+import {
+  getCommunityCompanyStats,
+  getCompanyStats,
+  getSubscription,
+  getCommunityBenchmarks,
+  saveHoldingEmail,
+  updateHoldingOutcome,
+  getCompanyHoldingStats,
+  getAllCompanyHoldingStats,
+  getPendingHoldingEmails
+} from '../db/index.js';
 import { analyzeBias } from '../services/biasAudit.js';
 import { BiasAuditRequestSchema, BatchDecodeRequestSchema } from '../types/bias.js';
 import { decodeRejectionEmail } from '../services/openai.js';
@@ -363,6 +373,154 @@ router.post(
       });
     } catch (error) {
       console.error('[batch-decode] Error:', error);
+      next(error);
+    }
+  }
+);
+
+// ============ HOLDING EMAIL FLYWHEEL ============
+
+/**
+ * POST /api/pro/holding-email
+ * Save a holding email for outcome tracking
+ */
+router.post(
+  '/holding-email',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const auth = getAuth(req);
+      const { companyName, role, emailSnippet } = req.body;
+
+      if (!companyName) {
+        res.status(400).json({ error: 'Company name required' });
+        return;
+      }
+
+      console.log(`[holding-email] Saving holding email for ${companyName}`);
+
+      const id = await saveHoldingEmail({
+        userId: auth?.userId || undefined,
+        companyName,
+        role,
+        emailSnippet,
+        heldAt: new Date()
+      });
+
+      // Check if we have stats for this company
+      const stats = await getCompanyHoldingStats(companyName);
+
+      res.json({
+        data: {
+          id,
+          saved: true,
+          companyStats: stats // null if not enough data yet
+        }
+      });
+    } catch (error) {
+      console.error('[holding-email] Error:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * PATCH /api/pro/holding-email/:id/outcome
+ * Update a holding email with its outcome
+ */
+router.patch(
+  '/holding-email/:id/outcome',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const { outcome } = req.body;
+
+      if (!['ghosted', 'rejected', 'interview', 'offer'].includes(outcome)) {
+        res.status(400).json({ error: 'Invalid outcome. Must be: ghosted, rejected, interview, or offer' });
+        return;
+      }
+
+      console.log(`[holding-email] Updating outcome for ${id}: ${outcome}`);
+
+      await updateHoldingOutcome(parseInt(id), outcome);
+
+      res.json({ data: { updated: true, outcome } });
+    } catch (error) {
+      console.error('[holding-email] Error:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/pro/holding-stats/:company
+ * Get holding email stats for a specific company
+ */
+router.get(
+  '/holding-stats/:company',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { company } = req.params;
+      console.log(`[holding-stats] Getting stats for ${company}`);
+
+      const stats = await getCompanyHoldingStats(company);
+
+      if (!stats) {
+        res.json({
+          data: null,
+          message: 'Not enough data yet for this company'
+        });
+        return;
+      }
+
+      res.json({ data: stats });
+    } catch (error) {
+      console.error('[holding-stats] Error:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/pro/holding-stats
+ * Get all company holding stats (ghost rate leaderboard)
+ */
+router.get(
+  '/holding-stats',
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      console.log('[holding-stats] Getting all company stats');
+
+      const stats = await getAllCompanyHoldingStats(3); // Min 3 samples
+
+      res.json({ data: stats });
+    } catch (error) {
+      console.error('[holding-stats] Error:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/pro/pending-holding-emails
+ * Get user's pending holding emails that need follow-up
+ */
+router.get(
+  '/pending-holding-emails',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const auth = getAuth(req);
+      if (!auth?.userId) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+
+      console.log(`[pending-holding] Getting pending for user ${auth.userId.slice(0, 8)}...`);
+
+      const pending = await getPendingHoldingEmails(auth.userId, 14);
+
+      res.json({ data: pending });
+    } catch (error) {
+      console.error('[pending-holding] Error:', error);
       next(error);
     }
   }

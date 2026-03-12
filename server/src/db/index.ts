@@ -182,7 +182,26 @@ export async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Holding email outcomes (the holding flywheel!)
+      CREATE TABLE IF NOT EXISTS holding_email_outcomes (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT REFERENCES users(id),
+        company_name TEXT NOT NULL,
+        company_normalized TEXT NOT NULL,
+        role TEXT,
+        email_snippet TEXT,              -- First 200 chars for context
+        held_at TIMESTAMP NOT NULL,      -- When we received the holding email
+        reminder_sent_at TIMESTAMP,      -- When we asked for follow-up
+        outcome TEXT,                    -- 'ghosted', 'rejected', 'interview', 'offer', 'pending'
+        outcome_at TIMESTAMP,
+        days_to_outcome INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       -- Create indexes
+      CREATE INDEX IF NOT EXISTS idx_holding_outcomes_company ON holding_email_outcomes(company_normalized);
+      CREATE INDEX IF NOT EXISTS idx_holding_outcomes_user ON holding_email_outcomes(user_id);
+      CREATE INDEX IF NOT EXISTS idx_holding_outcomes_pending ON holding_email_outcomes(outcome) WHERE outcome = 'pending';
       CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
       CREATE INDEX IF NOT EXISTS idx_usage_user_month ON usage(user_id, month_key);
       CREATE INDEX IF NOT EXISTS idx_rejection_company ON rejection_data(company_name);
@@ -1092,6 +1111,194 @@ export async function getInterviewIntel(companyName: string, role?: string) {
     successTips,
     commonInterviewerTitles: titlesResult.rows.map(r => r.title)
   };
+}
+
+// ============ HOLDING EMAIL FLYWHEEL ============
+
+export interface HoldingEmailRecord {
+  id?: number;
+  userId?: string;
+  companyName: string;
+  role?: string;
+  emailSnippet?: string;
+  heldAt: Date;
+  outcome?: 'ghosted' | 'rejected' | 'interview' | 'offer' | 'pending';
+  outcomeAt?: Date;
+  daysToOutcome?: number;
+}
+
+export interface CompanyHoldingStats {
+  company: string;
+  totalTracked: number;
+  ghostedCount: number;
+  ghostedRate: number;
+  rejectedCount: number;
+  rejectedRate: number;
+  interviewCount: number;
+  interviewRate: number;
+  offerCount: number;
+  avgDaysToOutcome: number | null;
+}
+
+/**
+ * Save a holding email for outcome tracking
+ */
+export async function saveHoldingEmail(record: HoldingEmailRecord): Promise<number> {
+  const companyNormalized = normalizeCompanyName(record.companyName);
+
+  const result = await query(
+    `INSERT INTO holding_email_outcomes
+     (user_id, company_name, company_normalized, role, email_snippet, held_at, outcome)
+     VALUES ($1, $2, $3, $4, $5, $6, 'pending')
+     RETURNING id`,
+    [
+      record.userId || null,
+      record.companyName,
+      companyNormalized,
+      record.role || null,
+      record.emailSnippet?.slice(0, 200) || null,
+      record.heldAt
+    ]
+  );
+
+  return result.rows[0].id;
+}
+
+/**
+ * Update a holding email with its outcome
+ */
+export async function updateHoldingOutcome(
+  id: number,
+  outcome: 'ghosted' | 'rejected' | 'interview' | 'offer',
+  outcomeAt?: Date
+): Promise<void> {
+  const outcomeDate = outcomeAt || new Date();
+
+  await query(
+    `UPDATE holding_email_outcomes
+     SET outcome = $1,
+         outcome_at = $2,
+         days_to_outcome = EXTRACT(DAY FROM ($2 - held_at))::INTEGER
+     WHERE id = $3`,
+    [outcome, outcomeDate, id]
+  );
+}
+
+/**
+ * Get pending holding emails that need follow-up (older than 14 days)
+ */
+export async function getPendingHoldingEmails(userId?: string, daysOld: number = 14): Promise<HoldingEmailRecord[]> {
+  const whereClause = userId
+    ? 'WHERE user_id = $1 AND outcome = $2 AND held_at < NOW() - INTERVAL \'1 day\' * $3'
+    : 'WHERE outcome = $1 AND held_at < NOW() - INTERVAL \'1 day\' * $2';
+
+  const params = userId
+    ? [userId, 'pending', daysOld]
+    : ['pending', daysOld];
+
+  const result = await query(
+    `SELECT id, user_id, company_name, role, held_at, reminder_sent_at
+     FROM holding_email_outcomes
+     ${whereClause}
+     ORDER BY held_at ASC`,
+    params
+  );
+
+  return result.rows.map(r => ({
+    id: r.id,
+    userId: r.user_id,
+    companyName: r.company_name,
+    role: r.role,
+    heldAt: r.held_at,
+    outcome: 'pending' as const
+  }));
+}
+
+/**
+ * Mark reminder as sent for a holding email
+ */
+export async function markReminderSent(id: number): Promise<void> {
+  await query(
+    `UPDATE holding_email_outcomes SET reminder_sent_at = NOW() WHERE id = $1`,
+    [id]
+  );
+}
+
+/**
+ * Get company holding stats - THE FLYWHEEL DATA
+ */
+export async function getCompanyHoldingStats(companyName: string): Promise<CompanyHoldingStats | null> {
+  const companyNormalized = normalizeCompanyName(companyName);
+
+  const result = await query(
+    `SELECT
+       COUNT(*) as total,
+       COUNT(*) FILTER (WHERE outcome = 'ghosted') as ghosted,
+       COUNT(*) FILTER (WHERE outcome = 'rejected') as rejected,
+       COUNT(*) FILTER (WHERE outcome = 'interview') as interview,
+       COUNT(*) FILTER (WHERE outcome = 'offer') as offer,
+       AVG(days_to_outcome) FILTER (WHERE days_to_outcome IS NOT NULL) as avg_days
+     FROM holding_email_outcomes
+     WHERE company_normalized = $1 AND outcome != 'pending'`,
+    [companyNormalized]
+  );
+
+  const stats = result.rows[0];
+  const total = parseInt(stats.total);
+
+  if (total < 3) return null; // Need at least 3 data points
+
+  return {
+    company: companyName,
+    totalTracked: total,
+    ghostedCount: parseInt(stats.ghosted),
+    ghostedRate: Math.round((parseInt(stats.ghosted) / total) * 100),
+    rejectedCount: parseInt(stats.rejected),
+    rejectedRate: Math.round((parseInt(stats.rejected) / total) * 100),
+    interviewCount: parseInt(stats.interview),
+    interviewRate: Math.round((parseInt(stats.interview) / total) * 100),
+    offerCount: parseInt(stats.offer),
+    avgDaysToOutcome: stats.avg_days ? Math.round(parseFloat(stats.avg_days)) : null
+  };
+}
+
+/**
+ * Get all companies with holding stats (for leaderboard/insights)
+ */
+export async function getAllCompanyHoldingStats(minSamples: number = 5): Promise<CompanyHoldingStats[]> {
+  const result = await query(
+    `SELECT
+       company_name,
+       COUNT(*) as total,
+       COUNT(*) FILTER (WHERE outcome = 'ghosted') as ghosted,
+       COUNT(*) FILTER (WHERE outcome = 'rejected') as rejected,
+       COUNT(*) FILTER (WHERE outcome = 'interview') as interview,
+       COUNT(*) FILTER (WHERE outcome = 'offer') as offer,
+       AVG(days_to_outcome) FILTER (WHERE days_to_outcome IS NOT NULL) as avg_days
+     FROM holding_email_outcomes
+     WHERE outcome != 'pending'
+     GROUP BY company_name, company_normalized
+     HAVING COUNT(*) >= $1
+     ORDER BY COUNT(*) DESC
+     LIMIT 50`,
+    [minSamples]
+  );
+
+  return result.rows.map(r => {
+    const total = parseInt(r.total);
+    return {
+      company: r.company_name,
+      totalTracked: total,
+      ghostedCount: parseInt(r.ghosted),
+      ghostedRate: Math.round((parseInt(r.ghosted) / total) * 100),
+      rejectedCount: parseInt(r.rejected),
+      rejectedRate: Math.round((parseInt(r.rejected) / total) * 100),
+      interviewCount: parseInt(r.interview),
+      interviewRate: Math.round((parseInt(r.interview) / total) * 100),
+      offerCount: parseInt(r.offer),
+      avgDaysToOutcome: r.avg_days ? Math.round(parseFloat(r.avg_days)) : null
+    };
+  });
 }
 
 // ============ COMMUNITY BENCHMARKS (for Journey Card) ============

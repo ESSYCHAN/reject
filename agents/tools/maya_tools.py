@@ -129,6 +129,128 @@ def decode_and_save_rejection(
     return _decode_and_save_sync(email_text, company, role, interview_stage)
 
 
+# ============================================================================
+# HOLDING EMAIL FLYWHEEL TOOLS
+# ============================================================================
+
+async def _save_holding_email_impl(company: str, role: str = "", email_snippet: str = "") -> dict:
+    """Call backend to save a holding email for outcome tracking."""
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8787")
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            response = await client.post(
+                f"{backend_url}/api/pro/holding-email",
+                json={
+                    "companyName": company,
+                    "role": role,
+                    "emailSnippet": email_snippet
+                }
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                result = data.get("data", {})
+                return {
+                    "status": "success",
+                    "saved": True,
+                    "id": result.get("id"),
+                    "company_stats": result.get("companyStats")
+                }
+            else:
+                return {"status": "error", "saved": False, "message": response.text[:200]}
+    except Exception as e:
+        return {"status": "error", "saved": False, "message": str(e)}
+
+
+async def _get_company_holding_stats_impl(company: str) -> dict:
+    """Get holding email stats for a company."""
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8787")
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{backend_url}/api/pro/holding-stats/{company}"
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                return {
+                    "status": "success",
+                    "stats": data.get("data"),
+                    "has_data": data.get("data") is not None
+                }
+            else:
+                return {"status": "error", "stats": None, "has_data": False}
+    except Exception as e:
+        return {"status": "error", "stats": None, "has_data": False, "message": str(e)}
+
+
+def _sync_wrapper(coro):
+    """Generic sync wrapper for async functions."""
+    import asyncio
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(asyncio.run, coro)
+                return future.result(timeout=20)
+        else:
+            return loop.run_until_complete(coro)
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+
+@FunctionTool
+def save_holding_email(company: str, role: str = "", email_snippet: str = "") -> dict:
+    """Save a holding email for outcome tracking (the holding flywheel).
+
+    Use this when a user receives a "we'll get back to you" email (NOT a rejection).
+    This tracks holding emails so we can:
+    1. Remind users to follow up after 2 weeks
+    2. Learn actual ghost rates per company
+    3. Give data-driven advice like "Mercedes F1 holding emails → 85% ghost rate"
+
+    Args:
+        company: Company name (required)
+        role: Role they applied for
+        email_snippet: First 200 chars of email for context
+
+    Returns:
+        - saved: True if saved
+        - id: ID for later updating with outcome
+        - company_stats: Ghost/rejection stats if we have data for this company
+    """
+    return _sync_wrapper(_save_holding_email_impl(company, role, email_snippet))
+
+
+@FunctionTool
+def get_company_holding_stats(company: str) -> dict:
+    """Get holding email outcome stats for a company.
+
+    Use this to give data-driven responses about holding emails.
+    Returns ghost rate, rejection rate, interview rate based on REJECT community data.
+
+    Example response when we have data:
+    "Mercedes AMG F1 sent this exact email to 12 REJECT users. 11 never heard back."
+
+    Args:
+        company: Company name to look up
+
+    Returns:
+        - has_data: True if we have stats
+        - stats: {
+            totalTracked: number of holding emails tracked,
+            ghostedRate: % that never heard back,
+            rejectedRate: % that got rejected,
+            interviewRate: % that got interviews,
+            avgDaysToOutcome: average days to hear back
+          }
+    """
+    return _sync_wrapper(_get_company_holding_stats_impl(company))
+
+
 # Tool: Emotional check-in and support
 @FunctionTool
 def emotional_support(emotional_state: str, rejection_count: int = 0, context: str = "") -> dict:
