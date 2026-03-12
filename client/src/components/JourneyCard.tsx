@@ -16,16 +16,16 @@ interface JourneyStats {
   offers: number;
   daysInSearch: number;
   ghostRate: number;
-  rejectionRate: number;
   avgDaysToReject: number;
   topRejectionStage: string;
-  mostAppliedSource: string;
+  interviewRate: number;
 }
 
 export function JourneyCard({ applications, userName }: JourneyCardProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const stats: JourneyStats = useMemo(() => {
     const appliedApps = applications.filter(a => !isSavedStatus(a.outcome));
@@ -38,7 +38,7 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
     ).length;
     const offers = appliedApps.filter(a => a.outcome === 'offer').length;
 
-    // Calculate days in search (from first to last application)
+    // Calculate days in search
     const dates = appliedApps
       .map(a => a.dateApplied ? new Date(a.dateApplied).getTime() : 0)
       .filter(d => d > 0);
@@ -64,15 +64,8 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
     const topStage = Object.entries(stages).sort((a, b) => b[1] - a[1])[0];
     const topRejectionStage = topStage ? formatStage(topStage[0]) : 'ATS';
 
-    // Most used source
-    const sources: Record<string, number> = {};
-    appliedApps.forEach(a => {
-      if (a.source) {
-        sources[a.source] = (sources[a.source] || 0) + 1;
-      }
-    });
-    const topSource = Object.entries(sources).sort((a, b) => b[1] - a[1])[0];
-    const mostAppliedSource = topSource ? formatSource(topSource[0]) : 'Unknown';
+    // Interview rate
+    const interviewRate = totalApplications > 0 ? Math.round((interviews / totalApplications) * 100) : 0;
 
     return {
       totalApplications,
@@ -82,32 +75,28 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
       offers,
       daysInSearch,
       ghostRate: totalApplications > 0 ? Math.round((ghosted / totalApplications) * 100) : 0,
-      rejectionRate: totalApplications > 0 ? Math.round((rejections.length / totalApplications) * 100) : 0,
       avgDaysToReject,
       topRejectionStage,
-      mostAppliedSource
+      interviewRate
     };
   }, [applications]);
 
-  const getMilestones = (): string[] => {
-    const milestones: string[] = [];
+  const getMilestones = (): { label: string; type: 'accent' | 'warn' | 'good' }[] => {
+    const milestones: { label: string; type: 'accent' | 'warn' | 'good' }[] = [];
 
-    if (stats.totalApplications >= 100) milestones.push('Century Club');
-    else if (stats.totalApplications >= 50) milestones.push('Persistent');
-    else if (stats.totalApplications >= 25) milestones.push('Getting Started');
+    if (stats.totalApplications >= 100) milestones.push({ label: 'Century Club', type: 'accent' });
+    else if (stats.totalApplications >= 50) milestones.push({ label: 'Persistent', type: 'accent' });
 
-    if (stats.totalRejections >= 50) milestones.push('Rejection Veteran');
-    if (stats.ghosted >= 20) milestones.push('Ghost Hunter');
-    if (stats.interviews >= 10) milestones.push('Interview Ready');
-    if (stats.offers >= 1) milestones.push('Winner');
-    if (stats.daysInSearch >= 90) milestones.push('Marathon Runner');
+    if (stats.totalRejections >= 50) milestones.push({ label: 'Rejection Veteran', type: 'warn' });
+    if (stats.interviews >= 10) milestones.push({ label: 'Interview Ready', type: 'good' });
+    if (stats.offers >= 1) milestones.push({ label: 'Got The Offer', type: 'good' });
 
-    return milestones.slice(0, 3); // Max 3 badges
+    return milestones.slice(0, 3);
   };
 
-  const getMotivationalQuote = (): string => {
+  const getQuote = (): string => {
     if (stats.offers > 0) {
-      return "From rejection to offer. The grind pays off.";
+      return "From rejection to offer. The grind paid off.";
     }
     if (stats.interviews >= 5) {
       return "Breaking through the ATS wall. Keep pushing.";
@@ -115,15 +104,12 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
     if (stats.totalRejections >= 50) {
       return "50+ rejections. Still standing. Still applying.";
     }
-    if (stats.ghosted >= stats.totalRejections / 2) {
-      return "Half ghosted. The silence is loud, but so is resilience.";
-    }
-    return "Every rejection is data. Every 'no' gets you closer to 'yes'.";
+    return "Every rejection is data. Every 'no' gets you closer.";
   };
 
   const handleShare = async (platform: 'twitter' | 'linkedin' | 'copy') => {
-    const reframeText = `${stats.totalRejections} rejections. Most weren't about you.`;
-    const text = `${reframeText}\n\n📊 ${stats.totalApplications} applications\n❌ ${stats.totalRejections} rejections\n👻 ${stats.ghosted} ghosted\n🎯 ${stats.interviews} interviews\n${stats.offers > 0 ? `✅ ${stats.offers} offer${stats.offers > 1 ? 's' : ''}\n` : ''}\n${getMotivationalQuote()}\n\nTrack your journey: tryreject.co.uk`;
+    const reframeText = `${stats.totalRejections} rejections. Most weren't about me.`;
+    const text = `${reframeText}\n\n📊 ${stats.totalApplications} applications\n❌ ${stats.totalRejections} rejections\n👻 ${stats.ghosted} ghosted\n🎯 ${stats.interviews} interviews\n${stats.offers > 0 ? `✅ ${stats.offers} offer${stats.offers > 1 ? 's' : ''}\n` : ''}\n${getQuote()}\n\nTrack your journey: tryreject.co.uk`;
 
     if (platform === 'copy') {
       try {
@@ -143,7 +129,6 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
     if (platform === 'twitter') {
       window.open(`https://twitter.com/intent/tweet?text=${encodedText}`, '_blank');
     } else if (platform === 'linkedin') {
-      // LinkedIn only allows URL sharing - copy text first, then open share dialog
       try {
         await navigator.clipboard.writeText(text);
         setCopied(true);
@@ -155,22 +140,20 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
     }
   };
 
-  const [isDownloading, setIsDownloading] = useState(false);
-
   const handleDownload = async () => {
     if (!cardRef.current || isDownloading) return;
 
     setIsDownloading(true);
     try {
       const canvas = await html2canvas(cardRef.current, {
-        backgroundColor: '#1a1a2e',
-        scale: 2, // Higher quality
+        backgroundColor: '#1a1512',
+        scale: 2,
         logging: false,
         useCORS: true
       });
 
       const link = document.createElement('a');
-      link.download = `my-job-search-journey.png`;
+      link.download = `reject-journey-${userName || 'my'}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     } catch (error) {
@@ -189,113 +172,98 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
   }
 
   return (
-    <div className="journey-card-container">
+    <div className="journey-card-wrapper">
+      {/* The actual card for download/share */}
       <div className="journey-card" ref={cardRef}>
-        <div className="journey-card-header">
-          <div className="journey-brand">
-            <span className="journey-logo">REJECT</span>
-            <span className="journey-subtitle">Museum of Failures</span>
-          </div>
-          {userName && <span className="journey-user">{userName}'s Journey</span>}
+        <div className="card-brand-bar">
+          <span className="card-logo">REJECT</span>
+          <span className="card-username">{userName ? `${userName}'s numbers` : 'my numbers'}</span>
         </div>
 
-        <div className="journey-reframe">
-          <span className="reframe-number">{stats.totalRejections}</span> rejections. Most weren't about you.
+        <div className="card-headline">
+          <h2>The Real Numbers</h2>
+          <p>// {stats.daysInSearch > 0 ? `${stats.daysInSearch} days in the search` : 'tracking the journey'}</p>
         </div>
 
-        <div className="journey-stats-grid">
-          <div className="journey-stat main-stat">
-            <span className="stat-number">{stats.totalApplications}</span>
-            <span className="stat-label">Applications</span>
+        <div className="card-stats">
+          <div className="card-stat">
+            <div className="card-stat-val cs-applications">{stats.totalApplications}</div>
+            <div className="card-stat-lbl">Applications</div>
           </div>
-          <div className="journey-stat rejection-stat">
-            <span className="stat-number">{stats.totalRejections}</span>
-            <span className="stat-label">Rejections</span>
+          <div className="card-stat">
+            <div className="card-stat-val cs-rejections">{stats.totalRejections}</div>
+            <div className="card-stat-lbl">Rejections</div>
           </div>
-          <div className="journey-stat ghost-stat">
-            <span className="stat-number">{stats.ghosted}</span>
-            <span className="stat-label">Ghosted</span>
+          <div className="card-stat">
+            <div className="card-stat-val cs-ghosted">{stats.ghosted}</div>
+            <div className="card-stat-lbl">Ghosted</div>
           </div>
-          <div className="journey-stat interview-stat">
-            <span className="stat-number">{stats.interviews}</span>
-            <span className="stat-label">Interviews</span>
+          <div className="card-stat">
+            <div className="card-stat-val cs-interviews">{stats.interviews}</div>
+            <div className="card-stat-lbl">Interviews</div>
           </div>
         </div>
 
-        {stats.offers > 0 && (
-          <div className="journey-offer-banner">
-            <span className="offer-icon">🎉</span>
-            <span className="offer-text">{stats.offers} Offer{stats.offers > 1 ? 's' : ''} Secured</span>
+        <div className="card-data">
+          <div className="data-row">
+            <span className="data-key">Avg response time</span>
+            <span className={`data-val ${stats.avgDaysToReject > 14 ? 'warn' : ''}`}>
+              {stats.avgDaysToReject > 0 ? `${stats.avgDaysToReject} days` : '—'}
+            </span>
           </div>
-        )}
-
-        <div className="journey-insights">
-          <div className="insight-row">
-            <span className="insight-label">Days in search</span>
-            <span className="insight-value">{stats.daysInSearch}</span>
+          <div className="data-row">
+            <span className="data-key">Ghost rate</span>
+            <span className="data-val">{stats.ghostRate}%</span>
           </div>
-          <div className="insight-row">
-            <span className="insight-label">Avg response time</span>
-            <span className="insight-value">{stats.avgDaysToReject > 0 ? `${stats.avgDaysToReject}d` : '—'}</span>
+          <div className="data-row">
+            <span className="data-key">Most filtered at</span>
+            <span className="data-val accent">{stats.topRejectionStage}</span>
           </div>
-          <div className="insight-row">
-            <span className="insight-label">Ghost rate</span>
-            <span className="insight-value">{stats.ghostRate}%</span>
-          </div>
-          <div className="insight-row">
-            <span className="insight-label">Most filtered at</span>
-            <span className="insight-value">{stats.topRejectionStage}</span>
+          <div className="data-row">
+            <span className="data-key">Interview conversion</span>
+            <span className={`data-val ${stats.interviewRate > 20 ? 'good' : ''}`}>{stats.interviewRate}%</span>
           </div>
         </div>
 
         {milestones.length > 0 && (
-          <div className="journey-milestones">
-            {milestones.map((milestone, i) => (
-              <span key={i} className="milestone-badge">{milestone}</span>
+          <div className="card-badges">
+            {milestones.map((m, i) => (
+              <span key={i} className={`badge badge-${m.type}`}>{m.label}</span>
             ))}
           </div>
         )}
 
-        <div className="journey-quote">
-          "{getMotivationalQuote()}"
+        <div className="card-quote">
+          <p><em>{stats.totalRejections} rejections. Most weren't about you.</em> {getQuote()}</p>
         </div>
 
-        <div className="journey-footer">
-          <span className="journey-cta">tryreject.co.uk</span>
+        <div className="card-footer">
+          <span className="card-url">tryreject.co.uk</span>
+          <span className="card-cta">decode your rejections →</span>
         </div>
       </div>
 
-      <div className="journey-share-buttons">
+      {/* Share buttons - outside the card so they don't appear in download */}
+      <div className="share-row">
         <button
-          className="share-btn share-download"
+          className="share-btn"
           onClick={handleDownload}
           disabled={isDownloading}
-          title="Download as image"
         >
           {isDownloading ? '...' : '📥 Save'}
         </button>
-        <button
-          className="share-btn share-twitter"
-          onClick={() => handleShare('twitter')}
-          title="Share on Twitter/X"
-        >
+        <button className="share-btn" onClick={() => handleShare('twitter')}>
           𝕏 Share
         </button>
-        <button
-          className="share-btn share-linkedin"
-          onClick={() => handleShare('linkedin')}
-          title="Share on LinkedIn"
-        >
+        <button className="share-btn" onClick={() => handleShare('linkedin')}>
           in Share
         </button>
-        <button
-          className="share-btn share-copy"
-          onClick={() => handleShare('copy')}
-          title="Copy to clipboard"
-        >
-          {copied ? '✓ Copied!' : '📋 Copy'}
+        <button className="share-btn" onClick={() => handleShare('copy')}>
+          {copied ? '✓ Copied' : '📋 Copy'}
         </button>
       </div>
+
+      <p className="share-note">sharing your journey helps other job seekers feel less alone</p>
       {shareError && <p className="share-error">{shareError}</p>}
     </div>
   );
@@ -303,22 +271,11 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
 
 function formatStage(stage: string): string {
   switch (stage) {
-    case 'ats_filter': return 'ATS';
+    case 'ats_filter': return 'ATS stage';
     case 'recruiter_screen': return 'Recruiter';
     case 'hiring_manager': return 'Hiring Manager';
     case 'final_round': return 'Final Round';
-    default: return 'ATS';
-  }
-}
-
-function formatSource(source: string): string {
-  switch (source) {
-    case 'linkedin': return 'LinkedIn';
-    case 'indeed': return 'Indeed';
-    case 'company_site': return 'Company Site';
-    case 'referral': return 'Referral';
-    case 'recruiter': return 'Recruiter';
-    default: return source;
+    default: return 'ATS stage';
   }
 }
 

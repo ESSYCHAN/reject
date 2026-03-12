@@ -338,9 +338,19 @@ export function ProTracker() {
           Tracker
           {(isLoading || isSyncing) && <span className="sync-status"> (syncing...)</span>}
         </h2>
-        <button className="btn btn-secondary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? 'Cancel' : '+ Log Past Application'}
-        </button>
+        <div className="tracker-header-actions">
+          {stats.appliedCount >= 3 && (
+            <button
+              className="btn btn-outline"
+              onClick={() => setShowJourneyCard(!showJourneyCard)}
+            >
+              {showJourneyCard ? 'Hide Journey' : 'Share My Journey'}
+            </button>
+          )}
+          <button className="btn btn-secondary" onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Cancel' : '+ Log Past Application'}
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -454,22 +464,12 @@ export function ProTracker() {
         </div>
       </div>
 
-      {/* Museum of Failures - Shareable Journey Card */}
-      {stats.appliedCount >= 3 && (
-        <div className="journey-section">
-          <button
-            className="btn btn-journey"
-            onClick={() => setShowJourneyCard(!showJourneyCard)}
-          >
-            {showJourneyCard ? 'Hide' : 'Share'} My Journey
-          </button>
-          {showJourneyCard && (
-            <JourneyCard
-              applications={applications}
-              userName={email?.split('@')[0]}
-            />
-          )}
-        </div>
+      {/* Shareable Journey Card - toggle from header */}
+      {showJourneyCard && stats.appliedCount >= 3 && (
+        <JourneyCard
+          applications={applications}
+          userName={email?.split('@')[0]}
+        />
       )}
 
       <div className="applications-list">
