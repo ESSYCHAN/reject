@@ -339,7 +339,7 @@ export function ProTracker() {
           {(isLoading || isSyncing) && <span className="sync-status"> (syncing...)</span>}
         </h2>
         <div className="tracker-header-actions">
-          {stats.appliedCount >= 3 && (
+          {stats.appliedCount >= 1 && (
             <button
               className="btn btn-outline"
               onClick={() => setShowJourneyCard(!showJourneyCard)}
@@ -465,7 +465,7 @@ export function ProTracker() {
       </div>
 
       {/* Shareable Journey Card - toggle from header */}
-      {showJourneyCard && stats.appliedCount >= 3 && (
+      {showJourneyCard && stats.appliedCount >= 1 && (
         <JourneyCard
           applications={applications}
           userName={email?.split('@')[0]}
