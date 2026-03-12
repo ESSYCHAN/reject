@@ -1,7 +1,22 @@
-import { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState, useEffect } from 'react';
 import html2canvas from 'html2canvas';
 import { ApplicationRecord, isSavedStatus } from '../types/pro';
 import './JourneyCard.css';
+
+interface CommunityBenchmarks {
+  totalJobSeekers: number;
+  avgApplications: number;
+  avgRejections: number;
+  avgInterviewRate: number;
+  avgGhostRate: number;
+  avgDaysToResponse: number | null;
+  avgDaysInSearch: number | null;
+  percentiles: {
+    applications: { p25: number; p50: number; p75: number };
+    interviewRate: { p25: number; p50: number; p75: number };
+  };
+  encouragement: string[];
+}
 
 interface JourneyCardProps {
   applications: ApplicationRecord[];
@@ -26,6 +41,23 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
   const [copied, setCopied] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [benchmarks, setBenchmarks] = useState<CommunityBenchmarks | null>(null);
+
+  // Fetch community benchmarks
+  useEffect(() => {
+    const fetchBenchmarks = async () => {
+      try {
+        const response = await fetch('/api/pro/journey-benchmarks');
+        const data = await response.json();
+        if (data.data) {
+          setBenchmarks(data.data);
+        }
+      } catch (error) {
+        console.log('Could not fetch benchmarks:', error);
+      }
+    };
+    fetchBenchmarks();
+  }, []);
 
   const stats: JourneyStats = useMemo(() => {
     const appliedApps = applications.filter(a => !isSavedStatus(a.outcome));
@@ -77,6 +109,21 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
     };
   }, [applications]);
 
+  // Get comparison with community benchmarks
+  const getComparison = (userValue: number, benchmarkValue: number, higherIsBetter: boolean): 'above' | 'below' | 'average' => {
+    const diff = ((userValue - benchmarkValue) / benchmarkValue) * 100;
+    if (Math.abs(diff) < 10) return 'average';
+    if (higherIsBetter) return diff > 0 ? 'above' : 'below';
+    return diff < 0 ? 'above' : 'below';
+  };
+
+  const getPercentileLabel = (userValue: number, percentiles: { p25: number; p50: number; p75: number }): string => {
+    if (userValue >= percentiles.p75) return 'Top 25%';
+    if (userValue >= percentiles.p50) return 'Top 50%';
+    if (userValue >= percentiles.p25) return 'Top 75%';
+    return 'Building momentum';
+  };
+
   const getMilestones = (): { label: string; type: 'accent' | 'warn' | 'good' }[] => {
     const milestones: { label: string; type: 'accent' | 'warn' | 'good' }[] = [];
     if (stats.totalApplications >= 100) milestones.push({ label: 'Century Club', type: 'accent' });
@@ -88,6 +135,15 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
   };
 
   const getQuote = (): string => {
+    // Use KB encouragement if available
+    if (benchmarks?.encouragement && benchmarks.encouragement.length > 0) {
+      // Pick one based on stats
+      if (stats.offers > 0) return "From rejection to offer. The grind paid off.";
+      if (stats.interviews >= 5) return benchmarks.encouragement[0] || "Breaking through the ATS wall. Keep pushing.";
+      if (stats.totalRejections >= 50) return benchmarks.encouragement[1] || "50+ rejections. Still standing. Still applying.";
+      return benchmarks.encouragement[2] || "Every rejection is data. Every 'no' gets you closer.";
+    }
+    // Fallback quotes
     if (stats.offers > 0) return "From rejection to offer. The grind paid off.";
     if (stats.interviews >= 5) return "Breaking through the ATS wall. Keep pushing.";
     if (stats.totalRejections >= 50) return "50+ rejections. Still standing. Still applying.";
@@ -195,23 +251,40 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
             )}
           </div>
 
-          {/* Right - breakdown */}
+          {/* Right - breakdown with benchmarks */}
           <div className="card-right">
-            <div className="section-label">// Breakdown</div>
+            <div className="section-label">// Breakdown {benchmarks ? '+ community avg' : ''}</div>
             <div className="detail-rows">
               <div className="detail-row">
                 <span className="d-key">Days searching</span>
-                <span className="d-val">{stats.daysInSearch || '—'}</span>
+                <span className="d-val">
+                  {stats.daysInSearch || '—'}
+                  {benchmarks?.avgDaysInSearch && stats.daysInSearch > 0 && (
+                    <span className="d-benchmark">
+                      {getComparison(stats.daysInSearch, benchmarks.avgDaysInSearch, false) === 'above' ? ' ✓' : ''}
+                    </span>
+                  )}
+                </span>
               </div>
               <div className="detail-row">
                 <span className="d-key">Avg response</span>
                 <span className={`d-val ${stats.avgDaysToReject > 14 ? 'd-warn' : ''}`}>
                   {stats.avgDaysToReject > 0 ? `${stats.avgDaysToReject} days` : '—'}
+                  {benchmarks?.avgDaysToResponse && stats.avgDaysToReject > 0 && (
+                    <span className="d-benchmark-sub"> (avg: {benchmarks.avgDaysToResponse}d)</span>
+                  )}
                 </span>
               </div>
               <div className="detail-row">
                 <span className="d-key">Ghost rate</span>
-                <span className="d-val">{stats.ghostRate}%</span>
+                <span className="d-val">
+                  {stats.ghostRate}%
+                  {benchmarks && (
+                    <span className={`d-benchmark-sub ${getComparison(stats.ghostRate, benchmarks.avgGhostRate, false) === 'above' ? 'd-good' : ''}`}>
+                      {' '}(avg: {benchmarks.avgGhostRate}%)
+                    </span>
+                  )}
+                </span>
               </div>
               <div className="detail-row">
                 <span className="d-key">Filtered at</span>
@@ -219,7 +292,14 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
               </div>
               <div className="detail-row">
                 <span className="d-key">Interview rate</span>
-                <span className={`d-val ${stats.interviewRate > 20 ? 'd-good' : ''}`}>{stats.interviewRate}%</span>
+                <span className={`d-val ${stats.interviewRate > 20 ? 'd-good' : ''}`}>
+                  {stats.interviewRate}%
+                  {benchmarks && (
+                    <span className={`d-benchmark-sub ${getComparison(stats.interviewRate, benchmarks.avgInterviewRate, true) === 'above' ? 'd-good' : ''}`}>
+                      {' '}({getPercentileLabel(stats.interviewRate, benchmarks.percentiles.interviewRate)})
+                    </span>
+                  )}
+                </span>
               </div>
             </div>
           </div>

@@ -148,6 +148,22 @@
 .d-warn { color: #92680a; }
 .d-good { color: #2d6a4f; }
 
+/* Benchmark comparison styles */
+.d-benchmark {
+  color: #2d6a4f;
+  font-weight: 600;
+}
+
+.d-benchmark-sub {
+  font-size: 0.58rem;
+  color: #8a7e74;
+  font-weight: 400;
+}
+
+.d-benchmark-sub.d-good {
+  color: #2d6a4f;
+}
+
 /* Badges */
 .card-badges {
   display: flex;

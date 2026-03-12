@@ -1094,4 +1094,126 @@ export async function getInterviewIntel(companyName: string, role?: string) {
   };
 }
 
+// ============ COMMUNITY BENCHMARKS (for Journey Card) ============
+
+export interface CommunityBenchmarks {
+  totalJobSeekers: number;
+  avgApplications: number;
+  avgRejections: number;
+  avgInterviewRate: number;
+  avgGhostRate: number;
+  avgDaysToResponse: number | null;
+  avgDaysInSearch: number | null;
+  percentiles: {
+    applications: { p25: number; p50: number; p75: number };
+    interviewRate: { p25: number; p50: number; p75: number };
+  };
+  encouragement: string[];
+}
+
+/**
+ * Get community-wide benchmarks for Journey Card comparison
+ * Privacy: Only aggregate stats, no individual user data
+ */
+export async function getCommunityBenchmarks(): Promise<CommunityBenchmarks | null> {
+  // Get aggregate stats per user
+  const userStatsResult = await query(`
+    SELECT
+      user_id,
+      COUNT(*) as total_apps,
+      COUNT(*) FILTER (WHERE outcome LIKE 'rejected%') as rejections,
+      COUNT(*) FILTER (WHERE outcome = 'ghosted') as ghosted,
+      COUNT(*) FILTER (WHERE outcome IN ('rejected_recruiter', 'rejected_hm', 'rejected_final', 'interviewing', 'offer')) as interviews,
+      AVG(days_to_response) FILTER (WHERE days_to_response > 0) as avg_response_days,
+      MAX(date_applied) - MIN(date_applied) as days_searching
+    FROM applications
+    WHERE outcome IS NOT NULL AND outcome != 'pending' AND outcome NOT LIKE 'saved%'
+    GROUP BY user_id
+    HAVING COUNT(*) >= 3
+  `);
+
+  if (userStatsResult.rows.length < 5) {
+    // Not enough data for meaningful benchmarks
+    return null;
+  }
+
+  const users = userStatsResult.rows.map(r => ({
+    totalApps: parseInt(r.total_apps),
+    rejections: parseInt(r.rejections),
+    ghosted: parseInt(r.ghosted),
+    interviews: parseInt(r.interviews),
+    avgResponseDays: r.avg_response_days ? parseFloat(r.avg_response_days) : null,
+    daysSearching: r.days_searching ? parseInt(r.days_searching) : null,
+    interviewRate: parseInt(r.total_apps) > 0 ? (parseInt(r.interviews) / parseInt(r.total_apps)) * 100 : 0,
+    ghostRate: parseInt(r.total_apps) > 0 ? (parseInt(r.ghosted) / parseInt(r.total_apps)) * 100 : 0
+  }));
+
+  // Calculate averages
+  const avgApplications = Math.round(users.reduce((sum, u) => sum + u.totalApps, 0) / users.length);
+  const avgRejections = Math.round(users.reduce((sum, u) => sum + u.rejections, 0) / users.length);
+  const avgInterviewRate = Math.round(users.reduce((sum, u) => sum + u.interviewRate, 0) / users.length);
+  const avgGhostRate = Math.round(users.reduce((sum, u) => sum + u.ghostRate, 0) / users.length);
+
+  const responseDays = users.filter(u => u.avgResponseDays !== null).map(u => u.avgResponseDays!);
+  const avgDaysToResponse = responseDays.length > 0
+    ? Math.round(responseDays.reduce((a, b) => a + b, 0) / responseDays.length)
+    : null;
+
+  const searchDays = users.filter(u => u.daysSearching !== null && u.daysSearching > 0).map(u => u.daysSearching!);
+  const avgDaysInSearch = searchDays.length > 0
+    ? Math.round(searchDays.reduce((a, b) => a + b, 0) / searchDays.length)
+    : null;
+
+  // Calculate percentiles
+  const sortedApps = [...users].sort((a, b) => a.totalApps - b.totalApps);
+  const sortedInterviewRates = [...users].sort((a, b) => a.interviewRate - b.interviewRate);
+
+  const getPercentile = (arr: number[], p: number) => {
+    const index = Math.ceil((p / 100) * arr.length) - 1;
+    return arr[Math.max(0, index)];
+  };
+
+  const appValues = sortedApps.map(u => u.totalApps);
+  const interviewValues = sortedInterviewRates.map(u => Math.round(u.interviewRate));
+
+  // Get encouragement from knowledge base
+  const encouragementResult = await query(`
+    SELECT DISTINCT ON (rejection_category) signal
+    FROM rejection_knowledge_base
+    WHERE signal LIKE '%not about you%' OR signal LIKE '%timing%' OR signal LIKE '%normal%'
+    LIMIT 3
+  `);
+
+  const defaultEncouragement = [
+    "The average job seeker faces dozens of rejections before landing their role.",
+    "Your persistence puts you ahead of most candidates who give up early.",
+    "Every application is practice. Every rejection is data."
+  ];
+
+  return {
+    totalJobSeekers: users.length,
+    avgApplications,
+    avgRejections,
+    avgInterviewRate,
+    avgGhostRate,
+    avgDaysToResponse,
+    avgDaysInSearch,
+    percentiles: {
+      applications: {
+        p25: getPercentile(appValues, 25),
+        p50: getPercentile(appValues, 50),
+        p75: getPercentile(appValues, 75)
+      },
+      interviewRate: {
+        p25: getPercentile(interviewValues, 25),
+        p50: getPercentile(interviewValues, 50),
+        p75: getPercentile(interviewValues, 75)
+      }
+    },
+    encouragement: encouragementResult.rows.length > 0
+      ? encouragementResult.rows.map(r => r.signal)
+      : defaultEncouragement
+  };
+}
+
 export default pool;

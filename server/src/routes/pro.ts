@@ -9,7 +9,7 @@ import { analyzeJobDescription } from '../services/jdAnalyzer.js';
 import { inferProfile } from '../services/profileInference.js';
 import { analyzeApplications } from '../services/unifiedAnalytics.js';
 import { decodeRateLimiter, biasAuditRateLimiter, proBatchRateLimiter } from '../middleware/rateLimiter.js';
-import { getCommunityCompanyStats, getCompanyStats, getSubscription } from '../db/index.js';
+import { getCommunityCompanyStats, getCompanyStats, getSubscription, getCommunityBenchmarks } from '../db/index.js';
 import { analyzeBias } from '../services/biasAudit.js';
 import { BiasAuditRequestSchema, BatchDecodeRequestSchema } from '../types/bias.js';
 import { decodeRejectionEmail } from '../services/openai.js';
@@ -151,6 +151,36 @@ router.post(
       res.json({ data: result });
     } catch (error) {
       console.error('[jd-analyze] Error:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/pro/journey-benchmarks
+ * Get community benchmarks for Journey Card comparison
+ * Privacy: Only aggregate stats, no individual user data
+ */
+router.get(
+  '/journey-benchmarks',
+  async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+      console.log('[journey-benchmarks] Fetching community benchmarks');
+
+      const benchmarks = await getCommunityBenchmarks();
+
+      if (!benchmarks) {
+        res.json({
+          data: null,
+          message: 'Not enough community data yet'
+        });
+        return;
+      }
+
+      console.log(`[journey-benchmarks] Returning benchmarks from ${benchmarks.totalJobSeekers} job seekers`);
+      res.json({ data: benchmarks });
+    } catch (error) {
+      console.error('[journey-benchmarks] Error:', error);
       next(error);
     }
   }
