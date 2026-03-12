@@ -239,7 +239,6 @@ export function JourneyCard({ applications, userName }: JourneyCardProps) {
 
         <div className="card-footer">
           <span className="card-url">tryreject.co.uk</span>
-          <span className="card-cta">decode your rejections →</span>
         </div>
       </div>
 
