@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { DecodeResponse, ATSAssessment, InterviewStage } from '../types';
 import { ApplicationRecord, SeniorityLevel } from '../types/pro';
@@ -308,6 +308,29 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
   const { shouldShow: shouldShowSignup, dismiss: dismissSignup } = useSignupPrompt();
   const [showSignupPrompt, setShowSignupPrompt] = useState(false);
   const [decodeCount, setDecodeCount] = useState(() => loadUsage().decodes_per_month);
+
+  // Textarea ref for the "Got another? Paste it" reset — see decodeAnother()
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Reset to a clean input so a second rejection is one paste away, not a
+  // scroll-up-clear-retype chore. The voluntary second decode is the strongest
+  // "this was worth it" signal we have (see VALIDATION_TEST.md) — make it cheap.
+  const decodeAnother = () => {
+    setEmailText('');
+    setInterviewStage('none');
+    setResult(null);
+    setExtracted(null);
+    setError(null);
+    setAddedToTracker(false);
+    setLinkResult(null);
+    setSelectedAppId('');
+    setMatchingAppIds([]);
+    setCompanyIntel(null);
+    setEditedCompany('');
+    setEditedRole('');
+    textareaRef.current?.focus();
+    textareaRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   // Filter to show applications that could receive rejections (including already rejected for re-linking)
   const linkableApps = applications.filter(app =>
@@ -701,6 +724,7 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
         </div>
         <h2>Paste your rejection email</h2>
         <textarea
+          ref={textareaRef}
           value={emailText}
           onChange={(e) => setEmailText(e.target.value)}
           placeholder="Paste the rejection email here..."
@@ -1094,6 +1118,20 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
               )}
             </div>
           )}
+
+          {/* "Got another?" — make a second decode one click away. The voluntary
+              second paste is the strongest worth-it signal in the validation
+              test (VALIDATION_TEST.md); this is the moment that lets it happen. */}
+          <div className="result-section decode-another-section">
+            <p className="decode-another-prompt">Got another rejection?</p>
+            <button
+              type="button"
+              className="btn btn-primary btn-decode-another"
+              onClick={decodeAnother}
+            >
+              Paste another →
+            </button>
+          </div>
 
         </div>
       )}

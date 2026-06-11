@@ -587,6 +587,27 @@
   letter-spacing: 1px;
 }
 
+/* "Got another? Paste it" — end-of-result invitation. The cheaper this is to
+   click, the cleaner the voluntary-second-decode signal in validation. */
+.decode-another-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding-top: var(--space-lg);
+  border-top: 1px dashed var(--line, #ece7e0);
+  text-align: center;
+}
+
+.decode-another-prompt {
+  font-weight: 600;
+  margin: 0;
+}
+
+.btn-decode-another {
+  min-width: 200px;
+}
+
 /* Crisis guardrail card — calm, high-contrast, not alarming. Distinct from
    the analytical decode layout so it reads as a person talking, not a result. */
 .crisis-section {
