@@ -587,6 +587,28 @@
   letter-spacing: 1px;
 }
 
+/* Crisis guardrail card — calm, high-contrast, not alarming. Distinct from
+   the analytical decode layout so it reads as a person talking, not a result. */
+.crisis-section {
+  padding: var(--space-lg);
+  border: 1px solid var(--accent);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  line-height: 1.6;
+}
+
+.crisis-section p {
+  margin: 0 0 var(--space-md) 0;
+}
+
+.crisis-section p:last-child {
+  margin-bottom: 0;
+}
+
+.crisis-section strong {
+  color: var(--accent);
+}
+
 .result-section p {
   color: var(--text);
   line-height: 1.7;

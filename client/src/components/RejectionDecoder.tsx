@@ -439,6 +439,10 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
 
     if (response.error) {
       setError(response.error);
+    } else if (response.data?.crisis) {
+      // Crisis guardrail tripped — show the helpline card only. Do not count it
+      // as a decode, fetch company intel, or attempt application matching.
+      setResult(response.data);
     } else if (response.data) {
       setResult(response.data);
       // Increment usage only on successful decode
@@ -717,7 +721,23 @@ export function RejectionDecoder({ onAddToTracker, onLinkToApplication, applicat
         {error && <div className="error-message">{error}</div>}
       </div>
 
-      {result && (
+      {/* Crisis guardrail: server detected distress language — show helplines,
+          not a rejection decode. Render nothing else. */}
+      {result?.crisis && (
+        <div className="decoder-results">
+          <div className="result-section crisis-section">
+            {(result.crisis_message || '').split('\n\n').map((para, i) => (
+              <p key={i}>
+                {para.split('**').map((chunk, j) =>
+                  j % 2 === 1 ? <strong key={j}>{chunk}</strong> : chunk
+                )}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {result && !result.crisis && (
         <div className="decoder-results">
           {/* Extracted info banner - editable when unknown */}
           {extracted && (

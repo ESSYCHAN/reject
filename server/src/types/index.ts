@@ -54,6 +54,14 @@ export type RejectionCategory = z.infer<typeof RejectionCategorySchema>;
 export type ReplyWorth = z.infer<typeof ReplyWorthSchema>;
 export type DecodeResponse = z.infer<typeof DecodeResponseSchema>;
 
+// Crisis guardrail response — returned instead of a decode when the pasted
+// text trips the crisis check. Distinct from DecodeResponse so the client
+// renders a helpline card, never the ATS/category layout.
+export interface CrisisResponse {
+  crisis: true;
+  crisis_message: string;
+}
+
 export const InterviewStageSchema = z.enum(['none', 'phone_screen', 'technical', 'onsite', 'final_round']);
 export type InterviewStage = z.infer<typeof InterviewStageSchema>;
 

@@ -41,6 +41,12 @@ export const DecodeResponseSchema = z.object({
 });
 
 export interface DecodeResponse {
+  // Crisis guardrail: when true, the server short-circuited the decode because
+  // the pasted text tripped the crisis check. Render crisis_message as a
+  // helpline card and skip the normal decode layout. All other fields are
+  // absent in this case.
+  crisis?: boolean;
+  crisis_message?: string;
   email_type?: EmailType;
   category: RejectionCategory;
   confidence: number;

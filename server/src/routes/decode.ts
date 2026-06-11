@@ -7,6 +7,7 @@ import { asyncHandler, createAppError } from '../middleware/errorHandler.js';
 import { decodeRateLimiter } from '../middleware/rateLimiter.js';
 import { saveToKnowledgeBase, saveToRejectionArchive, query } from '../db/index.js';
 import { storeDecodedRejection } from '../services/vectordb.js';
+import { checkForCrisis, CRISIS_MESSAGE } from '../services/crisis.js';
 
 const router = Router();
 
@@ -39,6 +40,17 @@ router.post(
     }
 
     const { emailText, interviewStage } = validation.data;
+
+    // CRISIS GUARDRAIL — runs BEFORE the LLM and before any persistence.
+    // If the pasted text contains distress/self-harm language, short-circuit to
+    // a crisis response with real helplines instead of "decoding" it as a
+    // rejection. We do NOT save this text to the knowledge base, archive, or
+    // tracker. Mirror of the Maya /chat guardrail in agents/server.py.
+    if (checkForCrisis(emailText)) {
+      console.log(`[decode] Crisis guardrail triggered — returning helpline response, skipping decode`);
+      res.json({ data: { crisis: true, crisis_message: CRISIS_MESSAGE } });
+      return;
+    }
 
     // Optional: extract company/role if provided in request for knowledge base
     const { company, role, seniorityLevel } = req.body;
