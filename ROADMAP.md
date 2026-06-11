@@ -24,6 +24,17 @@
 - [ ] No CI/CD pipeline
 - [ ] Docker not configured
 
+### ⚠️ Security liability — fix before Maya goes live to real users
+- [ ] **`/api/applications/maya` routes trust the `X-User-Id` header, no auth.**
+  `server/src/routes/applications.ts` GET/POST/PATCH `/maya` read identity
+  straight from a client-controlled header (`req.headers['x-user-id']`) with no
+  `requireAuth()`. Anyone can read/write another user's applications by setting
+  the header. Safe ONLY while the Python agents service is the sole, non-public
+  caller. The JWT routes in the same file (`getAuth(req)`) are fine — this gap
+  is specific to the Maya endpoints. NOT in the decode-quality test path (decode
+  is TS-only and uses verified tokens), so it can stay parked for round one — but
+  it must be closed before the Maya/tracker path is exposed to real users.
+
 ---
 
 ## Phase 1: Foundation (Current Sprint)
