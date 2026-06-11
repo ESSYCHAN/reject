@@ -1080,7 +1080,7 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                         <p>
                           {patternsData.templateRejectionPercentage}% of rejections are automated.
                           {proInsights.rwAnalytics.counterfactuals.length > 0
-                            ? ` Based on your data: ${proInsights.rwAnalytics.counterfactuals[0].description.toLowerCase()}.`
+                            ? ` One signal in your tracked applications: ${proInsights.rwAnalytics.counterfactuals[0].description}. Worth a look — though with this few applications it's an early pattern, not a rule.`
                             : ' Focus on referrals to bypass automated screening.'}
                         </p>
                       </div>
@@ -1108,8 +1108,8 @@ export function ProInsightsV2({ applications }: ProInsightsV2Props) {
                     <div className="takeaway-item warning">
                       <span className="takeaway-icon">&#128161;</span>
                       <div className="takeaway-content">
-                        <strong>Top change to make</strong>
-                        <p>{proInsights.rwAnalytics.counterfactuals[0].description} (+{Math.round(proInsights.rwAnalytics.counterfactuals[0].probabilityIncrease * 100)}% improvement based on your data).</p>
+                        <strong>Worth experimenting with</strong>
+                        <p>{proInsights.rwAnalytics.counterfactuals[0].description} (about +{proInsights.rwAnalytics.counterfactuals[0].probabilityIncrease}% in your tracked data so far — an early signal, not a guarantee).</p>
                       </div>
                     </div>
                   )}

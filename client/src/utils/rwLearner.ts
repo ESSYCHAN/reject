@@ -41,6 +41,10 @@ export interface Counterfactual {
   currentCue: string;
   suggestedCue: string;
   probabilityIncrease: number;
+  // Confidence of the *weaker* side of the comparison — a swap is only as
+  // trustworthy as its thinnest bucket. Carried through so the UI can frame
+  // a thin-data suggestion as a tentative signal, not a command.
+  confidence: CueInsight['confidence'];
 }
 
 export interface RWAnalytics {
@@ -304,19 +308,30 @@ function generateCounterfactuals(insights: CueInsight[]): Counterfactual[] {
     const best = sorted[0];
     const worst = sorted[sorted.length - 1];
 
-    // Only suggest if there's meaningful difference and enough confidence
-    if (best.weight - worst.weight >= 0.15 &&
-        best.confidence !== 'insufficient' &&
-        worst.confidence !== 'insufficient') {
+    // Only suggest if there's a meaningful difference AND both sides clear
+    // medium confidence (>= MIN_CUE_TRIALS_MEDIUM trials each). 'low' (n>=5)
+    // is too thin to recommend a behavior change on — a 15-point gap across
+    // two buckets of 5 is within noise. The swap is only as reliable as its
+    // weaker bucket, so gate on the minimum of the two confidences.
+    const rank = { insufficient: 0, low: 1, medium: 2, high: 3 } as const;
+    const weakerConfidence = rank[best.confidence] <= rank[worst.confidence]
+      ? best.confidence
+      : worst.confidence;
+
+    if (best.weight - worst.weight >= 0.15 && rank[weakerConfidence] >= rank.medium) {
       const increase = Math.round((best.weight - worst.weight) * 100);
 
       const categoryLabel = category === 'companySize' ? 'company size' : category;
 
+      // Phrase as a hypothesis, not a command — this is a correlation in the
+      // user's own tracked data, which may be confounded (the jobs, not the
+      // channel, may differ). "may be working better" not "switch to".
       counterfactuals.push({
-        description: `Switch ${categoryLabel} from ${formatCueName(worst.cue)} to ${formatCueName(best.cue)}`,
+        description: `${formatCueName(best.cue)} ${categoryLabel} may be working better for you than ${formatCueName(worst.cue)}`,
         currentCue: worst.cue,
         suggestedCue: best.cue,
-        probabilityIncrease: increase
+        probabilityIncrease: increase,
+        confidence: weakerConfidence
       });
     }
   }
