@@ -1,15 +1,23 @@
 # ============================================
-# REJECT Deploy Pipeline
+# REJECT Deploy Pipeline (DISABLED on push)
 # ============================================
-# Builds and pushes Docker images to registry
-# Triggers on main branch only
+# Builds and pushes Docker images (client/server/agents) to ghcr.io.
+#
+# This is NOT the active deploy path. The platform deploys via:
+#   - Client  -> Vercel  (auto-deploys from main; builds the client directly)
+#   - Server  -> Railway (auto-deploys from main; Nixpacks, server/railway.json)
+#   - Agents  -> not deployed for the current decode-quality phase
+#
+# This workflow only builds Docker images and pushes them to a registry — it
+# does not deploy anywhere. It contradicted the Vercel+Railway plan and fired
+# on every push, so the automatic trigger is removed. Kept as manual-only
+# (workflow_dispatch) in case a registry-based/container deploy is revived.
+# See DEPLOY.md for the live deploy steps.
 
-name: Deploy
+name: Deploy (manual only)
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:  # Manual trigger only — no longer runs on push
 
 env:
   REGISTRY: ghcr.io
