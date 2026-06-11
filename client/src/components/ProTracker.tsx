@@ -637,9 +637,11 @@ export function ProTracker() {
                       )}
 
                       <div className="analysis-footer">
-                        <span className="decoded-date">
-                          Decoded {formatDate(app.rejectionAnalysis.decodedAt)}
-                        </span>
+                        {app.rejectionAnalysis.decodedAt && (
+                          <span className="decoded-date">
+                            Decoded {formatDate(app.rejectionAnalysis.decodedAt)}
+                          </span>
+                        )}
                         <button
                           className="btn-see-full"
                           onClick={() => setModalApp(app)}
@@ -811,21 +813,44 @@ export function ProTracker() {
                 </div>
               )}
 
-              <div className="modal-section">
-                <h4>Key Phrases Detected</h4>
-                <ul className="modal-signals">
-                  {modalApp.rejectionAnalysis.signals.map((signal, i) => (
-                    <li key={i}>{signal}</li>
-                  ))}
-                </ul>
-              </div>
+              {/* Should you reply? — the most actionable part of a decode.
+                  Replaces the old "Key Phrases Detected" section, which just
+                  quoted the email back. Shows the reply verdict and, when the
+                  rejection is worth a reply, a ready-to-send follow-up. */}
+              {modalApp.rejectionAnalysis.replyWorthIt && (
+                <div className="modal-section">
+                  <h4>Should You Reply?</h4>
+                  <p className="modal-insight-text">
+                    {modalApp.rejectionAnalysis.replyWorthIt === 'Low'
+                      ? "Not worth it — this reads as a final, automated no. Put your energy into the next application."
+                      : modalApp.rejectionAnalysis.replyWorthIt === 'High'
+                        ? "Yes — there's a genuine opening here. A short, warm follow-up is well worth sending."
+                        : "Maybe — a brief, no-pressure thank-you can keep the door open without costing you much."}
+                  </p>
+                  {modalApp.rejectionAnalysis.followUpTemplate &&
+                   modalApp.rejectionAnalysis.replyWorthIt !== 'Low' && (
+                    <div className="modal-template">
+                      <pre className="modal-template-text">{modalApp.rejectionAnalysis.followUpTemplate}</pre>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-small"
+                        onClick={() => navigator.clipboard.writeText(modalApp.rejectionAnalysis?.followUpTemplate || '')}
+                      >
+                        Copy follow-up
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="modal-meta">
                 <span>Applied: {formatDate(modalApp.dateApplied)}</span>
                 {modalApp.daysToResponse !== null && (
                   <span>Response time: {modalApp.daysToResponse} days</span>
                 )}
-                <span>Decoded: {formatDate(modalApp.rejectionAnalysis.decodedAt)}</span>
+                {modalApp.rejectionAnalysis.decodedAt && (
+                  <span>Decoded: {formatDate(modalApp.rejectionAnalysis.decodedAt)}</span>
+                )}
               </div>
             </div>
           </div>

@@ -20,6 +20,7 @@ export interface RejectionAnalysis {
   strategicInsight?: string;
   nextActions?: string[];
   whatItMeans?: string;
+  followUpTemplate?: string;
 }
 
 // Fit analysis from JD Check (stored with saved jobs)

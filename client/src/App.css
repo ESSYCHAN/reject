@@ -587,6 +587,23 @@
   letter-spacing: 1px;
 }
 
+/* Tracker modal: follow-up template box (Should You Reply? section) */
+.modal-template {
+  margin-top: var(--space-sm);
+}
+.modal-template-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'Space Mono', monospace;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--line, #ece7e0);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: var(--space-sm);
+}
+
 /* "Got another? Paste it" — end-of-result invitation. The cheaper this is to
    click, the cleaner the voluntary-second-decode signal in validation. */
 .decode-another-section {

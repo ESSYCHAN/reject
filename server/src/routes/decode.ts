@@ -142,7 +142,11 @@ router.post(
             confidence: result.confidence,
             signals: result.signals,
             stageReached: stage,  // UI expects stageReached, not atsStage
-            whatItMeans: result.what_it_means
+            whatItMeans: result.what_it_means,
+            strategicInsight: result.ats_assessment?.strategic_insight,
+            replyWorthIt: result.reply_worth_it,
+            followUpTemplate: result.follow_up_template,
+            decodedAt: new Date().toISOString()  // else tracker shows "Decoded: Unknown date"
           });
 
           if (existing.rows.length > 0) {
