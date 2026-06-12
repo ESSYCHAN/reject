@@ -647,30 +647,22 @@ export default function MayaLanding() {
   }
 
   // Clear conversation history
-  async function handleClearConversation() {
-    if (!isSignedIn || !user?.id) return;
+  // "Start fresh" — lightweight, frontend-only reset.
+  // Clears the visible messages and drops the local conversation_id so the next
+  // message gets a brand-new server-generated one. Deliberately does NOT touch
+  // the backend: old conversation records stay, and durable profile memory
+  // (user_memories) is untouched. (A destructive "Clear memory" is a separate,
+  // future action — do not fold it in here.)
+  function handleStartFresh() {
+    // 2. Drop the local conversation_id; the next send gets a fresh one.
+    localStorage.removeItem('maya_conversation_id');
+    sessionStorage.removeItem('maya_conversation_id');
 
-    const confirmed = window.confirm('Start fresh? This will clear your conversation history with Maya.');
-    if (!confirmed) return;
-
-    try {
-      const token = await getToken();
-      const response = await fetch(`${API_URL}/api/conversations/${user.id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        // Clear local state
-        localStorage.removeItem('maya_conversation_id');
-        const greeting = getGreeting(firstName, isSignedIn, userProfile);
-        setMessages([{ role: 'maya', content: greeting, timestamp: new Date() }]);
-        setShowQuickActions(true);
-        console.log('[Maya] Conversation cleared');
-      }
-    } catch (err) {
-      console.error('[Maya] Failed to clear conversation:', err);
-    }
+    // 1. Clear visible messages and show the greeting again.
+    const greeting = getGreeting(firstName, isSignedIn, userProfile);
+    setMessages([{ role: 'maya', content: greeting, timestamp: new Date() }]);
+    setShowQuickActions(true);
+    console.log('[Maya] Started fresh (frontend-only; memory & history preserved)');
   }
 
   return (
@@ -684,13 +676,13 @@ export default function MayaLanding() {
         >
           {voiceEnabled ? '🔊' : '🔇'}
         </button>
-        {isSignedIn && messages.length > 2 && (
+        {messages.length > 1 && (
           <button
-            className="clear-chat-btn"
-            onClick={handleClearConversation}
-            title="Start fresh"
+            className="start-fresh-btn"
+            onClick={handleStartFresh}
+            title="Clear the visible chat and start a new conversation. Your saved profile is kept."
           >
-            🗑️
+            Start fresh
           </button>
         )}
         {!isSignedIn && (
