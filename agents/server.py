@@ -470,13 +470,19 @@ async def extract_and_save_memories(user_id: str, session_id: str, user_message:
         return
     try:
         extraction_prompt = (
-            "Extract durable, long-term facts or preferences about the user from "
-            "their message below. Only include things worth remembering across "
-            "sessions (e.g. favourite company, target role, location, name, "
-            "salary expectation, key constraint). Ignore transient/small-talk.\n\n"
-            "Return ONLY a JSON array of {\"key\": ..., \"value\": ...} objects, "
-            "using snake_case keys (e.g. favourite_company, target_role). "
-            "If there is nothing durable, return [].\n\n"
+            "Extract durable, long-term facts the user EXPLICITLY STATED about "
+            "themselves in the message below. Only facts they actually said — do "
+            "NOT guess or infer. Ignore transient/small-talk.\n\n"
+            "Return ONLY a JSON array of objects with these fields:\n"
+            "  - category: one of company | skill | preference | profile | interview\n"
+            "  - key: snake_case (e.g. favourite_company, target_role, location)\n"
+            "  - value: the fact value\n\n"
+            "Category guide: company = companies they like/target/applied to; "
+            "skill = skills/tools they have; preference = how they want to work "
+            "(remote, salary, company size); profile = name, current role, years "
+            "of experience; interview = interview outcomes/experiences.\n"
+            "A key may appear multiple times for multiple values (e.g. two "
+            "companies of interest). If nothing was explicitly stated, return [].\n\n"
             f"User message: {user_message}\n\nJSON:"
         )
         response = gemini_client.models.generate_content(
@@ -495,9 +501,14 @@ async def extract_and_save_memories(user_id: str, session_id: str, user_message:
         memories = json.loads(raw)
         if not isinstance(memories, list) or not memories:
             return
-        # Keep only well-formed {key, value} entries
+        # Keep only well-formed entries; carry category, mark all as stated.
         clean = [
-            {"key": str(m["key"]), "value": str(m["value"])}
+            {
+                "key": str(m["key"]),
+                "value": str(m["value"]),
+                "category": str(m.get("category") or "profile"),
+                "sourceType": "stated",
+            }
             for m in memories
             if isinstance(m, dict) and m.get("key") and m.get("value")
         ]
