@@ -90,6 +90,31 @@ export async function initDatabase() {
         source TEXT DEFAULT 'website'
       );
 
+      -- ── Company entity resolution ──────────────────────────────────────
+      -- Canonical companies: one row per real-world company. Different surface
+      -- names ("AISI", "AI Safety Institute") resolve to the SAME row so insights
+      -- aggregate correctly instead of fragmenting by string.
+      CREATE TABLE IF NOT EXISTS companies (
+        id SERIAL PRIMARY KEY,
+        canonical_name TEXT NOT NULL,          -- display form, e.g. "AI Safety Institute"
+        canonical_key  TEXT UNIQUE NOT NULL,   -- normalized key, e.g. "ai_safety_institute"
+        aliases_count  INTEGER DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Alias map: every normalized surface name → one canonical company.
+      -- Lookup here is deterministic and free; only unknown names hit the LLM.
+      CREATE TABLE IF NOT EXISTS company_aliases (
+        alias_key   TEXT PRIMARY KEY,          -- normalized surface name, e.g. "aisi"
+        company_id  INTEGER NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
+        raw_name    TEXT,                      -- what the user actually typed
+        resolved_by TEXT,                      -- 'seed' | 'exact' | 'llm' | 'manual'
+        created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_company_aliases_company ON company_aliases(company_id);
+      CREATE INDEX IF NOT EXISTS idx_companies_key ON companies(canonical_key);
+
       -- Diagnosis Report feedback (Founding User beta: does the diagnosis change behaviour?)
       CREATE TABLE IF NOT EXISTS report_feedback (
         id SERIAL PRIMARY KEY,
@@ -124,6 +149,7 @@ export async function initDatabase() {
       CREATE TABLE IF NOT EXISTS rejection_knowledge_base (
         id SERIAL PRIMARY KEY,
         company_normalized TEXT NOT NULL,  -- Lowercase, stripped of Inc/Ltd/etc
+        company_id INTEGER REFERENCES companies(id),  -- Canonical company (entity resolution)
         role_category TEXT,  -- e.g., "engineering", "product", "design"
         seniority_level TEXT,
         rejection_category TEXT,
@@ -132,6 +158,10 @@ export async function initDatabase() {
         response_days_bucket TEXT,  -- "same_day", "1-3_days", "1_week", "2_weeks", "1_month+"
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Migration for existing DBs: add the canonical company_id column.
+      ALTER TABLE rejection_knowledge_base ADD COLUMN IF NOT EXISTS company_id INTEGER REFERENCES companies(id);
+      CREATE INDEX IF NOT EXISTS idx_knowledge_base_company_id ON rejection_knowledge_base(company_id);
 
       -- User profiles (CV data, skills, preferences)
       CREATE TABLE IF NOT EXISTS user_profiles (
@@ -574,15 +604,27 @@ export async function saveToKnowledgeBase(entry: KnowledgeBaseEntry) {
   const roleCategory = entry.role ? categorizeRole(entry.role) : null;
   const responseBucket = daysToResponseBucket(entry.daysToResponse);
 
+  // Resolve to a canonical company so insights aggregate across name variants
+  // (e.g. "AISI" and "AI Safety Institute"). Best-effort: never block the write.
+  let companyId: number | null = null;
+  try {
+    const { resolveCompany } = await import('../services/companyResolver.js');
+    const resolved = await resolveCompany(entry.company);
+    companyId = resolved?.companyId ?? null;
+  } catch (err) {
+    console.error('[knowledgeBase] company resolution failed, continuing:', err);
+  }
+
   // If there are signals, create one row per signal
   if (entry.signals && entry.signals.length > 0) {
     for (const signal of entry.signals) {
       await query(
         `INSERT INTO rejection_knowledge_base
-         (company_normalized, role_category, seniority_level, rejection_category, ats_stage, signal, response_days_bucket)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+         (company_normalized, company_id, role_category, seniority_level, rejection_category, ats_stage, signal, response_days_bucket)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           companyNormalized,
+          companyId,
           roleCategory,
           entry.seniorityLevel || null,
           entry.rejectionCategory || null,
@@ -596,10 +638,11 @@ export async function saveToKnowledgeBase(entry: KnowledgeBaseEntry) {
     // Single row without signal
     await query(
       `INSERT INTO rejection_knowledge_base
-       (company_normalized, role_category, seniority_level, rejection_category, ats_stage, signal, response_days_bucket)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       (company_normalized, company_id, role_category, seniority_level, rejection_category, ats_stage, signal, response_days_bucket)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         companyNormalized,
+        companyId,
         roleCategory,
         entry.seniorityLevel || null,
         entry.rejectionCategory || null,
