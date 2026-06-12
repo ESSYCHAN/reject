@@ -23,6 +23,7 @@ TOOLS AVAILABLE:
 import os
 import httpx
 from google.adk.agents import LlmAgent
+from config import GEMINI_MODEL
 from google.adk.tools import FunctionTool
 from typing import Optional, List
 
@@ -761,7 +762,7 @@ def search_rejection_patterns(query: str) -> dict:
 
 reject_coach = LlmAgent(
     name="reject_coach",
-    model="gemini-2.0-flash",
+    model=GEMINI_MODEL,
     description="Your AI career coach with full capabilities - rejection analysis, job search, CV review, interview prep, and emotional support all in one.",
     instruction="""You are REJECT Coach - a warm, direct, data-driven career coach.
 

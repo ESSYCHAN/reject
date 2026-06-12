@@ -1,6 +1,7 @@
 """Root Career Coach Agent - Orchestrates all other agents with intelligent routing."""
 
 from google.adk.agents import LlmAgent
+from config import GEMINI_MODEL
 from google.adk.tools import AgentTool
 from .cv_builder import cv_builder_agent
 from .resume_coach import resume_coach_agent
@@ -14,7 +15,7 @@ from .maya_coach import maya_coach
 # The Root Career Coach Agent
 root_career_coach = LlmAgent(
     name="career_coach",
-    model="gemini-2.0-flash",
+    model=GEMINI_MODEL,
     description="Your personal AI career coach. Intelligently routes to specialists for CV building, job search, interview prep, and rejection analysis.",
     instruction="""You are REJECT Coach, an AI career assistant. You intelligently route users to the right specialist agent.
 

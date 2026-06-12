@@ -13,7 +13,7 @@ import httpx
 from google.adk.tools import FunctionTool
 from typing import Optional, List
 
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8787")
+from config import BACKEND_URL  # central config (single source of truth)
 
 
 # ============================================================================

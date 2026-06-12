@@ -1,6 +1,7 @@
 """Rejection Decoder Agent - IMPROVED - Auto-detects patterns, tracks user history, queries knowledge base."""
 
 from google.adk.agents import LlmAgent
+from config import GEMINI_MODEL
 from google.adk.tools import FunctionTool
 from typing import List
 from tools.knowledge_tools import query_company_intel
@@ -238,7 +239,7 @@ Best,
 # The Rejection Decoder Agent - IMPROVED
 rejection_decoder_agent = LlmAgent(
     name="rejection_decoder",
-    model="gemini-2.0-flash",
+    model=GEMINI_MODEL,
     description="Automatically decodes rejections with intelligence. No questions - just analysis and action.",
     instruction="""You are an intelligent rejection decoder. You DON'T ask questions - you ANALYZE and ADVISE.
 
