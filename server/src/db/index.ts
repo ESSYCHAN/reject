@@ -279,6 +279,23 @@ export async function initDatabase() {
         last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Durable per-user facts/preferences extracted from conversation.
+      -- One row per fact (key, value), e.g. ('favourite_company', 'Anthropic').
+      -- Unlike conversation_summaries (50-message cliff) and the 10-message
+      -- window, these are ALWAYS surfaced to Maya regardless of message count.
+      CREATE TABLE IF NOT EXISTS user_memories (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        key TEXT NOT NULL,                  -- normalized fact key, e.g. 'favourite_company'
+        value TEXT NOT NULL,                -- fact value, e.g. 'Anthropic'
+        source_session TEXT,               -- session_id where it was learned
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, key)               -- one current value per key; newer wins
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_user_memories_user ON user_memories(user_id);
+
     `);
     console.log('Database schema initialized');
   } finally {
@@ -1668,22 +1685,78 @@ export async function getConversationSummary(userId: string): Promise<string | n
   return result.rows[0]?.summary || null;
 }
 
+export interface UserMemory {
+  key: string;
+  value: string;
+}
+
 /**
- * Build Maya's memory context from recent conversations + summary
+ * Upsert durable user facts/preferences (e.g. favourite_company -> Anthropic).
+ * Newer values overwrite older ones for the same key. Empty values are ignored.
+ */
+export async function upsertUserMemories(
+  userId: string,
+  memories: UserMemory[],
+  sourceSession?: string
+): Promise<number> {
+  let written = 0;
+  for (const m of memories) {
+    const key = (m.key || '').trim().toLowerCase().replace(/\s+/g, '_');
+    const value = (m.value || '').trim();
+    if (!key || !value) continue;
+    await query(
+      `INSERT INTO user_memories (user_id, key, value, source_session, updated_at)
+       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+       ON CONFLICT (user_id, key) DO UPDATE SET
+         value = $3,
+         source_session = $4,
+         updated_at = CURRENT_TIMESTAMP`,
+      [userId, key, value, sourceSession || null]
+    );
+    written++;
+  }
+  return written;
+}
+
+/**
+ * Get all durable facts for a user.
+ */
+export async function getUserMemories(userId: string): Promise<UserMemory[]> {
+  const result = await query(
+    `SELECT key, value FROM user_memories WHERE user_id = $1 ORDER BY updated_at DESC`,
+    [userId]
+  );
+  return result.rows.map(r => ({ key: r.key, value: r.value }));
+}
+
+/**
+ * Build Maya's memory context from durable facts + recent conversations + summary
  * This creates the "silent context" that Maya uses naturally
  */
 export async function buildMayaMemory(userId: string): Promise<string | null> {
+  // Durable facts — ALWAYS surfaced, independent of message count / summary cliff
+  const facts = await getUserMemories(userId);
+
   // Get existing summary
   const summary = await getConversationSummary(userId);
 
   // Get recent messages (last 20 for context window efficiency)
   const recentMessages = await getRecentMessages(userId, 20);
 
-  if (!summary && recentMessages.length === 0) {
+  if (facts.length === 0 && !summary && recentMessages.length === 0) {
     return null;
   }
 
   let memoryContext = `[SILENT CONTEXT — never reference this directly, never say "last time" or "I remember". Just use this to inform how you respond.]\n\n`;
+
+  if (facts.length > 0) {
+    memoryContext += `What you know about this user:\n`;
+    for (const f of facts) {
+      const label = f.key.replace(/_/g, ' ');
+      memoryContext += `- ${label}: ${f.value}\n`;
+    }
+    memoryContext += `\n`;
+  }
 
   if (summary) {
     memoryContext += `${summary}\n\n`;
@@ -1714,6 +1787,7 @@ export async function buildMayaMemory(userId: string): Promise<string | null> {
 export async function clearConversationHistory(userId: string): Promise<void> {
   await query('DELETE FROM conversations WHERE user_id = $1', [userId]);
   await query('DELETE FROM conversation_summaries WHERE user_id = $1', [userId]);
+  await query('DELETE FROM user_memories WHERE user_id = $1', [userId]);
 }
 
 /**
