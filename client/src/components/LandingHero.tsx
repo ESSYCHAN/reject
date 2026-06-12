@@ -13,6 +13,16 @@ export function LandingHero({ onGetStarted, onTrackApp, onAICoach, onDiagnose }:
 
   return (
     <div className="landing">
+      <nav className="landing-nav">
+        <button className="landing-logo" onClick={diagnose}>
+          REJECT <span className="logo-stamp">diagnosed</span>
+        </button>
+
+        <button className="nav-cta" onClick={diagnose}>
+          Try free
+        </button>
+      </nav>
+
       {/* ── HERO ── */}
       <section className="landing-hero">
         <div className="hero-content">

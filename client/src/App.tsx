@@ -13,24 +13,21 @@ import { LandingHero, PromoStrip } from './components/LandingHero';
 import MayaLanding from './components/MayaLanding';
 import { DecodeResponse } from './types';
 import { ApplicationRecord } from './types/pro';
-import { setProStatus, syncProStatusFromServer, loadUsage } from './utils/usage';
+import { setProStatus, syncProStatusFromServer } from './utils/usage';
 import { useApplicationsSync } from './hooks/useApplicationsSync';
 import './App.css';
 
 type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'report' | 'jd-check' | 'maya' | 'faq' | 'account';
 
-// Check if user has used the app before
-function hasUsedAppBefore(): boolean {
-  const usage = loadUsage();
-  // User has interacted if they've decoded anything or have applications
-  return usage.decodes_per_month > 0 || usage.applications > 0;
-}
-
 function App() {
   const { isSignedIn, email } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>('maya');
+  // Diagnosis is the product, so the workspace defaults to the report tab.
+  const [activeTab, setActiveTab] = useState<Tab>('report');
   const [showProWelcome, setShowProWelcome] = useState(false);
-  const [showLanding, setShowLanding] = useState(() => !hasUsedAppBefore());
+  // The marketing landing is the front door for logged-out visitors. Signed-in
+  // users skip it and go straight to their diagnosis workspace. Clicking any CTA
+  // dismisses it for the session, so it's one tap out of the way.
+  const [showLanding, setShowLanding] = useState(true);
 
   // Use cloud-synced applications
   const {
@@ -195,6 +192,35 @@ function App() {
     setActiveTab('pro-tracker');
   };
 
+  // Front door: logged-out, first-time visitors see the diagnosis landing —
+  // not the app shell, and not Maya's chat. Maya is reachable from the landing.
+  const showLandingPage = showLanding && !isSignedIn;
+
+  if (showLandingPage) {
+    return (
+      <div className="app app-landing">
+        <header className="header">
+          <div className="header-content">
+            <h1 className="logo">REJECT</h1>
+            <AuthButtons onAccountClick={() => setActiveTab('account')} />
+          </div>
+        </header>
+        <main className="main">
+          <div className="container">
+            <LandingHero
+              onGetStarted={() => { setShowLanding(false); setActiveTab('decoder'); }}
+              onCheckFit={() => { setShowLanding(false); setActiveTab('jd-check'); }}
+              onTrackApp={() => { setShowLanding(false); setActiveTab('pro-tracker'); }}
+              onAICoach={() => { setShowLanding(false); setActiveTab('maya'); }}
+              onDiagnose={() => { setShowLanding(false); setActiveTab('report'); }}
+            />
+            <PromoStrip />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <header className="header">
@@ -254,20 +280,6 @@ function App() {
             </div>
           )}
 
-          {/* Show landing hero for first-time visitors on decoder tab (not when signed in) */}
-          {showLanding && activeTab === 'decoder' && !isSignedIn && (
-            <>
-              <LandingHero
-                onGetStarted={() => setShowLanding(false)}
-                onCheckFit={() => { setShowLanding(false); setActiveTab('jd-check'); }}
-                onTrackApp={() => { setShowLanding(false); setActiveTab('pro-tracker'); }}
-                onAICoach={() => { setShowLanding(false); setActiveTab('maya'); }}
-                onDiagnose={() => { setShowLanding(false); setActiveTab('report'); }}
-              />
-              <PromoStrip />
-            </>
-          )}
-
           {activeTab === 'decoder' && (
             <RejectionDecoder
               onAddToTracker={handleAddToTracker}
@@ -287,7 +299,7 @@ function App() {
         </div>
       </main>
 
-      {/* Only show newsletter signup for non-authenticated visitors */}
+      {/* Only show founding user signup for non-authenticated visitors */}
       {!isSignedIn && <EmailCapture />}
 
       <footer className="footer">

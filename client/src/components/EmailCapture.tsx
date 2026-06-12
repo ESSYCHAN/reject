@@ -13,14 +13,14 @@ export function EmailCapture() {
     setStatus('loading');
     setMessage('');
 
-    const response = await subscribe(email);
+    const response = await subscribe(email, 'founding_user');
 
     if (response.error) {
       setStatus('error');
       setMessage(response.error);
     } else {
       setStatus('success');
-      setMessage('Thanks for subscribing!');
+      setMessage("You're in. We'll be in touch with early access and updates.");
       setEmail('');
     }
   };
@@ -28,8 +28,13 @@ export function EmailCapture() {
   return (
     <section className="email-capture">
       <div className="email-capture-content">
-        <h2>Get rejection insights</h2>
-        <p>Weekly tips on turning no's into opportunities.</p>
+        <h2>Join Founding Users</h2>
+        <ul className="email-capture-benefits">
+          <li>Free Diagnosis Reports during beta</li>
+          <li>Early access to new features</li>
+          <li>Company intelligence launch access</li>
+          <li>Founding-user pricing</li>
+        </ul>
 
         {status === 'success' ? (
           <div className="success-message">{message}</div>
@@ -48,7 +53,7 @@ export function EmailCapture() {
               className="btn btn-primary"
               disabled={status === 'loading'}
             >
-              {status === 'loading' ? 'Subscribing...' : 'Subscribe'}
+              {status === 'loading' ? 'Joining...' : 'Join'}
             </button>
           </form>
         )}

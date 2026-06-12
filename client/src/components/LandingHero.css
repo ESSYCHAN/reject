@@ -460,3 +460,48 @@
   .promo-content { flex-direction: column; gap: 0.25rem; font-size: 0.8rem; }
   .promo-divider { display: none; }
 }
+
+.landing-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 1.25rem;
+}
+
+.landing-logo {
+  background: none;
+  border: none;
+  font-family: var(--font-heading);
+  font-weight: 800;
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.logo-stamp {
+  display: inline-block;
+  margin-left: 0.45rem;
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  padding: 1px 7px;
+  transform: rotate(-4deg);
+  font-family: var(--font-body);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.nav-cta {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: var(--text);
+  color: #fff;
+  border: none;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}

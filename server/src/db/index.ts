@@ -295,6 +295,17 @@ export async function upsertUser(userId: string, email: string) {
     [userId, emailValue]
   );
 
+  // Keep the subscribers list in sync: anyone who signs up for the app is also an
+  // emailable contact. Tag the source as 'app_signup' so newsletter-only signups
+  // (source 'website') stay distinguishable. Never downgrades an existing source.
+  if (emailValue) {
+    await query(
+      `INSERT INTO subscribers (email, source) VALUES ($1, 'app_signup')
+       ON CONFLICT (email) DO NOTHING`,
+      [emailValue]
+    );
+  }
+
   // Now migrate data from old user if needed
   if (oldUserId) {
 

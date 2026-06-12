@@ -1613,6 +1613,30 @@
   margin-bottom: var(--space-lg);
 }
 
+.email-capture-benefits {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto var(--space-lg);
+  max-width: 360px;
+  text-align: left;
+  display: grid;
+  gap: var(--space-sm);
+}
+
+.email-capture-benefits li {
+  position: relative;
+  padding-left: 1.6rem;
+  color: var(--muted);
+}
+
+.email-capture-benefits li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--accent, #2e7d32);
+  font-weight: 700;
+}
+
 .email-form {
   display: flex;
   gap: var(--space-sm);
