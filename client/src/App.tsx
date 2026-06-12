@@ -199,12 +199,9 @@ function App() {
   if (showLandingPage) {
     return (
       <div className="app app-landing">
-        <header className="header">
-          <div className="header-content">
-            <h1 className="logo">REJECT</h1>
-            <AuthButtons onAccountClick={() => setActiveTab('account')} />
-          </div>
-        </header>
+        {/* No global header on the public landing page — LandingHero's own
+            landing-nav (REJECT [diagnosed] + Try free) is the single header.
+            The global REJECT + Sign In header is kept for product views below. */}
         <main className="main">
           <div className="container">
             <LandingHero
