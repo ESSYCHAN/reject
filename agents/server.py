@@ -8,6 +8,7 @@ Version 3.0.0 - Hybrid Architecture
 
 import os
 import io
+import json
 import uuid
 import asyncio
 import random
@@ -457,6 +458,61 @@ async def save_conversation_message(
         print(f"[Memory] Failed to save message: {e}")
 
 
+async def extract_and_save_memories(user_id: str, session_id: str, user_message: str):
+    """Extract durable facts/preferences from a user message and persist them.
+
+    Runs per-turn (independent of the 50-message summarization cliff) so facts
+    like "favourite company = Anthropic" are captured immediately and surfaced
+    on every future session via buildMayaMemory. Best-effort: any failure is
+    logged and swallowed so it never blocks the chat response.
+    """
+    if not gemini_client:
+        return
+    try:
+        extraction_prompt = (
+            "Extract durable, long-term facts or preferences about the user from "
+            "their message below. Only include things worth remembering across "
+            "sessions (e.g. favourite company, target role, location, name, "
+            "salary expectation, key constraint). Ignore transient/small-talk.\n\n"
+            "Return ONLY a JSON array of {\"key\": ..., \"value\": ...} objects, "
+            "using snake_case keys (e.g. favourite_company, target_role). "
+            "If there is nothing durable, return [].\n\n"
+            f"User message: {user_message}\n\nJSON:"
+        )
+        response = gemini_client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=extraction_prompt,
+        )
+        raw = (response.text or "").strip()
+        if not raw:
+            return
+        # Strip markdown code fences if the model added them
+        if raw.startswith("```"):
+            raw = raw.strip("`")
+            if raw.lower().startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+        memories = json.loads(raw)
+        if not isinstance(memories, list) or not memories:
+            return
+        # Keep only well-formed {key, value} entries
+        clean = [
+            {"key": str(m["key"]), "value": str(m["value"])}
+            for m in memories
+            if isinstance(m, dict) and m.get("key") and m.get("value")
+        ]
+        if not clean:
+            return
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            await client.post(
+                f"{BACKEND_URL}/api/conversations/memories",
+                json={"userId": user_id, "sessionId": session_id, "memories": clean},
+            )
+        print(f"[Memory] Extracted {len(clean)} fact(s) for {user_id[:8]}...")
+    except Exception as e:
+        print(f"[Memory] Fact extraction failed: {e}")
+
+
 async def check_and_summarize_if_needed(user_id: str):
     """Check if conversation is getting long and trigger summarization."""
     try:
@@ -707,6 +763,11 @@ async def chat(request: ChatRequest):
                 role="assistant",
                 content=response_text.strip(),
                 agent_id=agent_id
+            )
+
+            # Extract durable facts from the user's message (background, non-blocking)
+            asyncio.create_task(
+                extract_and_save_memories(request.user_id, conv_id, request.message)
             )
 
             # Check if we need to summarize (runs in background, non-blocking)

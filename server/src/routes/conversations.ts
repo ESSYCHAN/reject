@@ -10,7 +10,9 @@ import {
   clearConversationHistory,
   getConversationStats,
   getMessagesForSummarization,
-  pruneOldMessages
+  pruneOldMessages,
+  upsertUserMemories,
+  getUserMemories
 } from '../db/index.js';
 
 const router = Router();
@@ -149,8 +151,55 @@ router.post(
 );
 
 /**
+ * POST /api/conversations/memories
+ * Upsert durable user facts extracted from a conversation turn.
+ * Called by the Python agent server after each Maya exchange.
+ * Body: { userId, sessionId?, memories: [{ key, value }] }
+ */
+router.post(
+  '/memories',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { userId, sessionId, memories } = req.body;
+
+      if (!userId || !Array.isArray(memories)) {
+        res.status(400).json({
+          error: 'Missing required fields',
+          details: 'userId and memories[] are required'
+        });
+        return;
+      }
+
+      const written = await upsertUserMemories(userId, memories, sessionId);
+      res.json({ data: { written } });
+    } catch (error) {
+      console.error('[conversations] Error saving memories:', error);
+      next(error);
+    }
+  }
+);
+
+/**
+ * GET /api/conversations/memories/:userId
+ * Get the durable facts for a user (for debugging / verification).
+ */
+router.get(
+  '/memories/:userId',
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { userId } = req.params;
+      const memories = await getUserMemories(userId);
+      res.json({ data: { memories } });
+    } catch (error) {
+      console.error('[conversations] Error fetching memories:', error);
+      next(error);
+    }
+  }
+);
+
+/**
  * GET /api/conversations/memory/:userId
- * Get Maya's full memory context (summary + recent messages)
+ * Get Maya's full memory context (durable facts + summary + recent messages)
  * Used by the Python agent server to inject context
  */
 router.get(
