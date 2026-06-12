@@ -90,6 +90,18 @@ export async function initDatabase() {
         source TEXT DEFAULT 'website'
       );
 
+      -- Diagnosis Report feedback (Founding User beta: does the diagnosis change behaviour?)
+      CREATE TABLE IF NOT EXISTS report_feedback (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT,
+        bottleneck TEXT,
+        confidence TEXT,
+        helpful BOOLEAN,
+        matched_experience BOOLEAN,
+        note TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       -- Rejection archive (user-specific, persists after app deletion)
       CREATE TABLE IF NOT EXISTS rejection_archive (
         id SERIAL PRIMARY KEY,
@@ -397,6 +409,25 @@ export async function saveRejectionData(
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
     [userId, data.companyName, data.industry, data.companySize, data.roleTitle,
      data.seniorityLevel, data.rejectionCategory, JSON.stringify(data.signals || []), data.source]
+  );
+}
+
+// ============ DIAGNOSIS REPORT FEEDBACK (Founding User beta) ============
+
+export async function saveReportFeedback(data: {
+  userId?: string;
+  bottleneck?: string;
+  confidence?: string;
+  helpful?: boolean;
+  matchedExperience?: boolean;
+  note?: string;
+}) {
+  await query(
+    `INSERT INTO report_feedback
+     (user_id, bottleneck, confidence, helpful, matched_experience, note)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [data.userId ?? null, data.bottleneck ?? null, data.confidence ?? null,
+     data.helpful ?? null, data.matchedExperience ?? null, data.note ?? null]
   );
 }
 

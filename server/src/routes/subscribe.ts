@@ -19,11 +19,11 @@ router.post(
       );
     }
 
-    const { email } = validation.data;
+    const { email, source } = validation.data;
 
     console.log('Subscribe request received');
 
-    const result = await subscribeToConvertKit(email);
+    const result = await subscribeToConvertKit(email, source);
 
     console.log('Subscribe complete');
 

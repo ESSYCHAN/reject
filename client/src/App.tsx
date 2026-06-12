@@ -3,6 +3,7 @@ import { RejectionDecoder, DecodedData, LinkResult, getOutcomeLabel } from './co
 import { ATSAssessment } from './types';
 import { ProTracker } from './components/ProTracker';
 import { ProInsightsV2 } from './components/ProInsightsV2';
+import { BreakdownReport } from './components/BreakdownReport';
 import { JDAnalyzer } from './components/JDAnalyzer';
 import { FAQ } from './components/FAQ';
 import { AccountPage } from './components/AccountPage';
@@ -16,7 +17,7 @@ import { setProStatus, syncProStatusFromServer, loadUsage } from './utils/usage'
 import { useApplicationsSync } from './hooks/useApplicationsSync';
 import './App.css';
 
-type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'jd-check' | 'maya' | 'faq' | 'account';
+type Tab = 'decoder' | 'pro-tracker' | 'insights' | 'report' | 'jd-check' | 'maya' | 'faq' | 'account';
 
 // Check if user has used the app before
 function hasUsedAppBefore(): boolean {
@@ -229,6 +230,12 @@ function App() {
               Patterns
             </button>
             <button
+              className={`nav-btn ${activeTab === 'report' ? 'active' : ''}`}
+              onClick={() => setActiveTab('report')}
+            >
+              Diagnosis
+            </button>
+            <button
               className={`nav-btn nav-btn-maya ${activeTab === 'maya' ? 'active' : ''}`}
               onClick={() => setActiveTab('maya')}
             >
@@ -255,6 +262,7 @@ function App() {
                 onCheckFit={() => { setShowLanding(false); setActiveTab('jd-check'); }}
                 onTrackApp={() => { setShowLanding(false); setActiveTab('pro-tracker'); }}
                 onAICoach={() => { setShowLanding(false); setActiveTab('maya'); }}
+                onDiagnose={() => { setShowLanding(false); setActiveTab('report'); }}
               />
               <PromoStrip />
             </>
@@ -271,6 +279,7 @@ function App() {
             <ProTracker />
           )}
           {activeTab === 'insights' && <ProInsightsV2 applications={proApplications} />}
+          {activeTab === 'report' && <BreakdownReport applications={proApplications} />}
           {activeTab === 'jd-check' && <JDAnalyzer onAddToTracker={handleAddFromJD} />}
           {activeTab === 'maya' && <MayaLanding />}
           {activeTab === 'faq' && <FAQ />}

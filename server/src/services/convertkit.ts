@@ -12,11 +12,15 @@ interface ConvertKitResponse {
   message?: string;
 }
 
-async function saveEmailToDb(email: string): Promise<boolean> {
+async function saveEmailToDb(email: string, source?: string): Promise<boolean> {
   try {
+    // On conflict, only overwrite the source when a NEW explicit one is passed
+    // (e.g. a newsletter subscriber who later joins the Founding User program).
+    // A plain re-subscribe (source = null) must not downgrade an existing tag.
     await db.query(
-      `INSERT INTO subscribers (email) VALUES ($1) ON CONFLICT (email) DO NOTHING`,
-      [email]
+      `INSERT INTO subscribers (email, source) VALUES ($1, COALESCE($2, 'website'))
+       ON CONFLICT (email) DO UPDATE SET source = COALESCE($2, subscribers.source)`,
+      [email, source ?? null]
     );
     return true;
   } catch (error) {
@@ -25,12 +29,12 @@ async function saveEmailToDb(email: string): Promise<boolean> {
   }
 }
 
-export async function subscribeToConvertKit(email: string): Promise<{ success: boolean; message: string }> {
+export async function subscribeToConvertKit(email: string, source?: string): Promise<{ success: boolean; message: string }> {
   const apiKey = process.env.CONVERTKIT_API_KEY;
   const formId = process.env.CONVERTKIT_FORM_ID;
 
   // Always save to database as backup
-  const savedLocally = await saveEmailToDb(email);
+  const savedLocally = await saveEmailToDb(email, source);
 
   // If ConvertKit isn't configured, we're done
   if (!apiKey || !formId || apiKey === 'your-convertkit-api-key-here') {

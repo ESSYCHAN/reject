@@ -12,6 +12,7 @@ import { initDatabase } from './db/index.js';
 import healthRouter from './routes/health.js';
 import decodeRouter from './routes/decode.js';
 import subscribeRouter from './routes/subscribe.js';
+import feedbackRouter from './routes/feedback.js';
 import proRouter from './routes/pro.js';
 import userRouter from './routes/user.js';
 import applicationsRouter from './routes/applications.js';
@@ -92,6 +93,7 @@ app.use(authMiddleware);
 // API Routes
 app.use('/api/decode', decodeRouter);
 app.use('/api/subscribe', subscribeRouter);
+app.use('/api/feedback', feedbackRouter);
 app.use('/api/pro', proRouter);
 app.use('/api/user', userRouter);
 app.use('/api/applications', applicationsRouter);

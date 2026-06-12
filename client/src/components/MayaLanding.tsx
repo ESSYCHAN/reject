@@ -8,6 +8,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useUser, useAuth, SignInButton, SignUpButton } from '@clerk/clerk-react';
 import { speakWithMaya } from '../services/ttsService';
+import { useApplicationsSync } from '../hooks/useApplicationsSync';
+import { generateBreakdownReport } from '../utils/breakdownReport';
 import './MayaLanding.css';
 
 const AGENTS_API_URL = import.meta.env.VITE_AGENTS_API_URL || '/agents';
@@ -32,6 +34,7 @@ interface UserProfile {
 export default function MayaLanding() {
   const { user, isSignedIn } = useUser();
   const { getToken } = useAuth();
+  const { applications } = useApplicationsSync();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -213,6 +216,15 @@ export default function MayaLanding() {
 
   function getGreeting(name: string, signedIn: boolean | undefined, profile: UserProfile | null): string {
     if (signedIn && name) {
+      // If we have enough tracked data, lead with the bottleneck — Maya's job is
+      // to explain the data, not be a generic coach.
+      const report = generateBreakdownReport(applications);
+      if (!report.isThin && report.bottleneck !== 'none' && report.bottleneck !== 'targeting') {
+        const stopLine = report.diagnosisMode !== 'none' && report.diagnosis.stopActivity
+          ? `\n\nIf I'm honest, you can ${report.diagnosisMode === 'stop' ? 'stop' : 'ease off'} ${report.diagnosis.stopActivity.toLowerCase()} for now — ${report.diagnosis.whyNow.charAt(0).toLowerCase()}${report.diagnosis.whyNow.slice(1)}`
+          : '';
+        return `Hey ${name} 💙\n\nI've analysed your job search. Your biggest leak right now is **${report.diagnosis.leakName}** — ${report.diagnosis.oneLiner}${stopLine}\n\nWant me to walk you through your 7-day plan to fix it?`;
+      }
       // Personalized greeting based on profile
       if (profile?.currentTitle) {
         return `Hey ${name}! Good to see you 💙\n\nI see you're a ${profile.currentTitle}. What's going on with the job search?`;

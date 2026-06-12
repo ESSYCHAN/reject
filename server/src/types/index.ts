@@ -76,7 +76,8 @@ export const DecodeRequestSchema = z.object({
 export type DecodeRequest = z.infer<typeof DecodeRequestSchema>;
 
 export const SubscribeRequestSchema = z.object({
-  email: z.string().email('Invalid email address')
+  email: z.string().email('Invalid email address'),
+  source: z.string().max(64).optional()
 });
 
 export type SubscribeRequest = z.infer<typeof SubscribeRequestSchema>;
