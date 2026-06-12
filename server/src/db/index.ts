@@ -660,10 +660,27 @@ export async function saveToKnowledgeBase(entry: KnowledgeBaseEntry) {
 export async function getKnowledgeBaseCompanyStats(companyName: string, minSamples = 5) {
   const companyNormalized = normalizeCompanyName(companyName);
 
+  // Resolve to a canonical company so all name variants ("AISI",
+  // "AI Safety Institute") aggregate together. Falls back to the legacy
+  // string match for any rows not yet stamped with a company_id.
+  let companyId: number | null = null;
+  try {
+    const { resolveCompany } = await import('../services/companyResolver.js');
+    const resolved = await resolveCompany(companyName);
+    companyId = resolved?.companyId ?? null;
+  } catch (err) {
+    console.error('[knowledgeBaseStats] company resolution failed, using name match:', err);
+  }
+
+  // A row belongs to this company if its company_id matches the resolved id,
+  // OR (legacy / unstamped rows) its normalized name matches.
+  const scope = '(company_id = $1 OR company_normalized = $2)';
+  const scopeParams = [companyId, companyNormalized];
+
   // Check if we have enough data
   const countResult = await query(
-    `SELECT COUNT(DISTINCT id) as total FROM rejection_knowledge_base WHERE company_normalized = $1`,
-    [companyNormalized]
+    `SELECT COUNT(DISTINCT id) as total FROM rejection_knowledge_base WHERE ${scope}`,
+    scopeParams
   );
   const total = parseInt(countResult.rows[0]?.total || '0');
   if (total < minSamples) return null;
@@ -672,45 +689,52 @@ export async function getKnowledgeBaseCompanyStats(companyName: string, minSampl
   const categoryResult = await query(
     `SELECT rejection_category, COUNT(*) as count
      FROM rejection_knowledge_base
-     WHERE company_normalized = $1 AND rejection_category IS NOT NULL
+     WHERE ${scope} AND rejection_category IS NOT NULL
      GROUP BY rejection_category
      ORDER BY count DESC`,
-    [companyNormalized]
+    scopeParams
   );
 
   // Get ATS stage breakdown
   const stageResult = await query(
     `SELECT ats_stage, COUNT(*) as count
      FROM rejection_knowledge_base
-     WHERE company_normalized = $1 AND ats_stage IS NOT NULL
+     WHERE ${scope} AND ats_stage IS NOT NULL
      GROUP BY ats_stage
      ORDER BY count DESC`,
-    [companyNormalized]
+    scopeParams
   );
 
   // Get top signals
   const signalResult = await query(
     `SELECT signal, COUNT(*) as count
      FROM rejection_knowledge_base
-     WHERE company_normalized = $1 AND signal IS NOT NULL
+     WHERE ${scope} AND signal IS NOT NULL
      GROUP BY signal
      ORDER BY count DESC
      LIMIT 10`,
-    [companyNormalized]
+    scopeParams
   );
 
   // Get response time breakdown
   const responseResult = await query(
     `SELECT response_days_bucket, COUNT(*) as count
      FROM rejection_knowledge_base
-     WHERE company_normalized = $1 AND response_days_bucket != 'unknown'
+     WHERE ${scope} AND response_days_bucket != 'unknown'
      GROUP BY response_days_bucket
      ORDER BY count DESC`,
-    [companyNormalized]
+    scopeParams
   );
 
+  // Prefer the canonical company name for display when we resolved one.
+  let displayName = companyName;
+  if (companyId) {
+    const nameRow = await query(`SELECT canonical_name FROM companies WHERE id = $1`, [companyId]);
+    if (nameRow.rows[0]?.canonical_name) displayName = nameRow.rows[0].canonical_name;
+  }
+
   return {
-    company: companyName,
+    company: displayName,
     totalSamples: total,
     rejectionCategories: categoryResult.rows.map(r => ({
       category: r.rejection_category,
