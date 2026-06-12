@@ -1,6 +1,7 @@
 """Career Agent - IMPROVED - Smart job search with auto-scoring, user history matching, intelligent filtering."""
 
 from google.adk.agents import LlmAgent
+from config import GEMINI_MODEL
 from tools.job_tools import search_jobs, analyze_job_description, match_cv_to_job
 from tools.knowledge_tools import query_company_intel
 
@@ -8,7 +9,7 @@ from tools.knowledge_tools import query_company_intel
 # The Career Agent - IMPROVED
 career_agent = LlmAgent(
     name="career_agent",
-    model="gemini-2.0-flash",
+    model=GEMINI_MODEL,
     description="Intelligently searches for jobs and matches them to your CV. No questions - just results with fit scores.",
     instruction="""You are an intelligent job search agent. You DON'T ask clarifying questions - you INFER and SEARCH immediately.
 

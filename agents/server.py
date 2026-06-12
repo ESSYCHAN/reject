@@ -47,6 +47,11 @@ LOCAL_ENV_PATH = os.path.join(os.path.dirname(__file__), ".env")
 if os.path.exists(LOCAL_ENV_PATH):
     load_dotenv(LOCAL_ENV_PATH, override=False)
 
+# Central config (model + backend URL). Fail fast if production is misconfigured
+# rather than degrading silently behind swallowed exceptions.
+from config import GEMINI_MODEL, BACKEND_URL, assert_production_config
+assert_production_config()
+
 # Configure Gemini client (gracefully handle missing key)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 gemini_client = None
@@ -412,8 +417,7 @@ def build_user_context_text(user_ctx: dict) -> str:
     return context_text
 
 
-# Backend URL for conversation persistence
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8787")
+# Backend URL for conversation persistence is imported from config (see top of file).
 
 
 async def fetch_maya_memory(user_id: str) -> Optional[str]:
@@ -507,7 +511,7 @@ Conversation:
 Summary:"""
 
             response = gemini_client.models.generate_content(
-                model="gemini-2.0-flash",
+                model=GEMINI_MODEL,
                 contents=summary_prompt
             )
 

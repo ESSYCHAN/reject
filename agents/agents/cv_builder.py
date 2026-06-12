@@ -1,6 +1,7 @@
 """CV Builder Agent - Creates CVs from scratch through guided conversation."""
 
 from google.adk.agents import LlmAgent
+from config import GEMINI_MODEL
 from google.adk.tools import FunctionTool
 from pydantic import BaseModel
 from typing import Optional, List
@@ -141,7 +142,7 @@ def export_cv(cv_data: dict, format: str, template: str = "professional") -> dic
 # The CV Builder Agent
 cv_builder_agent = LlmAgent(
     name="cv_builder",
-    model="gemini-2.0-flash",
+    model=GEMINI_MODEL,
     description="Creates professional CVs from scratch through guided conversation. Helps users who don't have a CV or want to build a new one.",
     instruction="""You are a professional CV/Resume builder assistant. Your job is to help users create a compelling CV from scratch through friendly conversation.
 

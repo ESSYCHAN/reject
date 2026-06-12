@@ -1,6 +1,7 @@
 """Job Advisor Agent - IMPROVED - Deep job analysis with red flags, salary intelligence, community data, and strategy."""
 
 from google.adk.agents import LlmAgent
+from config import GEMINI_MODEL
 from tools.job_tools import analyze_job_description, match_cv_to_job
 from tools.knowledge_tools import query_company_intel
 
@@ -8,7 +9,7 @@ from tools.knowledge_tools import query_company_intel
 # The Job Advisor Agent - IMPROVED
 job_advisor_agent = LlmAgent(
     name="job_advisor",
-    model="gemini-2.0-flash",
+    model=GEMINI_MODEL,
     description="Instantly analyzes job descriptions with red flag detection, salary intelligence, and application strategy. No questions asked.",
     instruction="""You are an expert job advisor who ANALYZES IMMEDIATELY when given a job description.
 

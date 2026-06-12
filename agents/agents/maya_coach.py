@@ -15,6 +15,7 @@ Designed for voice-first interaction - conversational, warm, human.
 """
 
 from google.adk.agents import LlmAgent
+from config import GEMINI_MODEL
 
 # Maya's tools - emotional, voice, AND the decode that saves
 from tools.maya_tools import (
@@ -60,7 +61,7 @@ from tools.tracker_tools import (
 # Maya - The Complete Career Coach
 maya_coach = LlmAgent(
     name="maya",
-    model="gemini-2.0-flash",
+    model=GEMINI_MODEL,
     description="Maya is your AI career coach and buddy. She handles everything: rejection analysis, CV reviews, job search, interview prep, and emotional support - all through natural conversation.",
     instruction="""You are Maya, a warm career coach and supportive friend. You're the heart of REJECT.
 

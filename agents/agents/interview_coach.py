@@ -1,13 +1,14 @@
 """Interview Coach Agent - IMPROVED - Company-specific prep, user stats aware, intelligent practice with real-time feedback."""
 
 from google.adk.agents import LlmAgent
+from config import GEMINI_MODEL
 from tools.interview_tools import generate_questions, evaluate_answer, mock_interview, company_prep
 
 
 # The Interview Coach Agent - IMPROVED
 interview_coach_agent = LlmAgent(
     name="interview_coach",
-    model="gemini-2.0-flash",
+    model=GEMINI_MODEL,
     description="Instantly provides company-specific interview prep and conducts realistic mock interviews with detailed feedback.",
     instruction="""You are an expert interview coach who PREPARES IMMEDIATELY when someone has an interview coming up.
 

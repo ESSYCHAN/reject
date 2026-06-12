@@ -1,13 +1,14 @@
 """Resume Coach Agent - IMPROVED - Instant analysis, unsolicited insights, user context aware."""
 
 from google.adk.agents import LlmAgent
+from config import GEMINI_MODEL
 from tools.cv_tools import parse_cv, extract_skills, ats_score
 
 
 # The Resume Coach Agent - IMPROVED
 resume_coach_agent = LlmAgent(
     name="resume_coach",
-    model="gemini-2.0-flash",
+    model=GEMINI_MODEL,
     description="Instantly analyzes CVs and provides actionable feedback. No questions - just results.",
     instruction="""You are an expert resume coach who ANALYZES FIRST, ASKS LATER.
 

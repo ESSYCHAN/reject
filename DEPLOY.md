@@ -1,15 +1,56 @@
 # REJECT — Deployment Guide
 
-The platform deploys as **two services**:
+The platform deploys as **three services**:
 
 | Service | Host | Build | What it serves |
 |---------|------|-------|----------------|
 | **Client** (React/Vite) | **Vercel** | `vercel.json` → builds `client/` | The web app |
-| **Server** (Express/TS) | **Railway** | `server/railway.json` → Nixpacks | The API (`/api/decode`, etc.) |
+| **Server** (Express/TS) | **Railway** | `server/railway.json` → Nixpacks | The API (`/api/...`) + Postgres bridge |
+| **Agents** (Python/FastAPI) | **Railway** | `agents/Dockerfile` | Maya + the agent tier (`/chat`, etc.) |
 
-The Python `agents/` service is **not deployed** for the current decode-quality
-phase — the decode path is TS-only (`server/src/routes/decode.ts` →
-`services/openai.ts`), so the agents service is not on its critical path.
+> **Correction (2026-06):** an earlier version of this guide said the agents
+> service was "not deployed." That is **stale** — the agents service IS live at
+> `https://agents-production-3306.up.railway.app` and powers Maya. The decode
+> path remains TS-only, but Maya/memory/tracker/knowledge all run through the
+> agents service. (The old `talented-rebirth-*` URL once committed in
+> `client/.env.production` was wrong — it now serves an unrelated app.)
+
+### Agents service → Node API bridge (CRITICAL)
+
+The agent tier calls back into the Node API for **all persistence**:
+
+```
+User → Maya (Agents/FastAPI) → BACKEND_URL → Node API → Postgres
+```
+
+`BACKEND_URL` must be set on the **agents** Railway service to the Node API's
+origin. If it is unset it defaults to `http://localhost:8787` — which inside the
+agents container points at itself, so **every** persistence call fails silently
+(swallowed exceptions). Without `BACKEND_URL`:
+
+- ❌ Maya memory never saves or loads ("REJECT has no memory")
+- ❌ Tracker sync from Maya fails
+- ❌ Knowledge base writes fail
+- ❌ Interview intelligence (flywheel) fails
+- ❌ Conversation summaries fail
+
+A startup guard (`agents/config.py:assert_production_config`) **refuses to boot**
+when `ENV=production` and `BACKEND_URL` still points at localhost — fail fast
+instead of degrading silently. Set on the agents service:
+
+| Variable | Value |
+|----------|-------|
+| `BACKEND_URL` | The Node server's Railway origin (e.g. `https://<node-service>.up.railway.app`) |
+| `GEMINI_API_KEY` | Same Google AI key as the rest of the platform |
+| `GEMINI_MODEL` | Optional. Defaults to `gemini-2.5-flash`. **Never** pin a model Google can retire — `gemini-2.0-flash` was sunset and 404'd the whole agent tier. |
+| `ENV` | `production` (enables the startup guard) |
+
+**Verify** (replace with the live agents URL):
+```bash
+curl https://agents-production-3306.up.railway.app/         # {"adk_runners_active":true,...}
+# Then round-trip memory: POST /chat with a user_id, then GET the Node API's
+# /api/conversations/memory/<that-user-id> — it should return the saved context.
+```
 
 > The `docker/`, `docker-compose.yml`, and `k8s/` files are kept for local use
 > and future container deploys but are **off the active deploy path**. The
