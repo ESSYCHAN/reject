@@ -286,15 +286,30 @@ export async function initDatabase() {
       CREATE TABLE IF NOT EXISTS user_memories (
         id SERIAL PRIMARY KEY,
         user_id TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'profile', -- namespace: company | skill | preference | profile | interview
         key TEXT NOT NULL,                  -- normalized fact key, e.g. 'favourite_company'
         value TEXT NOT NULL,                -- fact value, e.g. 'Anthropic'
+        source_type TEXT NOT NULL DEFAULT 'stated',  -- 'stated' (user said it) | 'inferred'
+        confidence REAL NOT NULL DEFAULT 1.0,        -- 0..1; stated facts default 1.0
         source_session TEXT,               -- session_id where it was learned
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE(user_id, key)               -- one current value per key; newer wins
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- Migrate the original flat (user_id, key) table to the foundation shape.
+      -- ADD COLUMN IF NOT EXISTS is a no-op once applied; safe on the live table.
+      ALTER TABLE user_memories ADD COLUMN IF NOT EXISTS category TEXT NOT NULL DEFAULT 'profile';
+      ALTER TABLE user_memories ADD COLUMN IF NOT EXISTS source_type TEXT NOT NULL DEFAULT 'stated';
+      ALTER TABLE user_memories ADD COLUMN IF NOT EXISTS confidence REAL NOT NULL DEFAULT 1.0;
+
+      -- Uniqueness is now (user_id, category, key, value): a key can hold multiple
+      -- values (e.g. several companies of interest), but an identical fact upserts
+      -- in place rather than duplicating. Drop the old single-value constraint.
+      ALTER TABLE user_memories DROP CONSTRAINT IF EXISTS user_memories_user_id_key_key;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_user_memories_unique
+        ON user_memories(user_id, category, key, value);
       CREATE INDEX IF NOT EXISTS idx_user_memories_user ON user_memories(user_id);
+      CREATE INDEX IF NOT EXISTS idx_user_memories_user_cat ON user_memories(user_id, category);
 
     `);
     console.log('Database schema initialized');
@@ -1688,11 +1703,17 @@ export async function getConversationSummary(userId: string): Promise<string | n
 export interface UserMemory {
   key: string;
   value: string;
+  category?: string;     // company | skill | preference | profile | interview
+  sourceType?: string;   // 'stated' | 'inferred'
+  confidence?: number;   // 0..1
 }
 
+const MEMORY_CATEGORIES = ['company', 'skill', 'preference', 'profile', 'interview'];
+
 /**
- * Upsert durable user facts/preferences (e.g. favourite_company -> Anthropic).
- * Newer values overwrite older ones for the same key. Empty values are ignored.
+ * Upsert durable user facts. A (category, key, value) triple is unique, so a key
+ * can hold multiple values (e.g. several companies of interest) while identical
+ * facts upsert in place. Empty values are ignored. Defaults: profile/stated/1.0.
  */
 export async function upsertUserMemories(
   userId: string,
@@ -1704,14 +1725,22 @@ export async function upsertUserMemories(
     const key = (m.key || '').trim().toLowerCase().replace(/\s+/g, '_');
     const value = (m.value || '').trim();
     if (!key || !value) continue;
+    const category = MEMORY_CATEGORIES.includes((m.category || '').trim())
+      ? (m.category as string).trim()
+      : 'profile';
+    const sourceType = m.sourceType === 'inferred' ? 'inferred' : 'stated';
+    const confidence = typeof m.confidence === 'number'
+      ? Math.max(0, Math.min(1, m.confidence))
+      : (sourceType === 'inferred' ? 0.6 : 1.0);
     await query(
-      `INSERT INTO user_memories (user_id, key, value, source_session, updated_at)
-       VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-       ON CONFLICT (user_id, key) DO UPDATE SET
-         value = $3,
-         source_session = $4,
+      `INSERT INTO user_memories (user_id, category, key, value, source_type, confidence, source_session, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
+       ON CONFLICT (user_id, category, key, value) DO UPDATE SET
+         source_type = $5,
+         confidence = $6,
+         source_session = $7,
          updated_at = CURRENT_TIMESTAMP`,
-      [userId, key, value, sourceSession || null]
+      [userId, category, key, value, sourceType, confidence, sourceSession || null]
     );
     written++;
   }
@@ -1719,14 +1748,31 @@ export async function upsertUserMemories(
 }
 
 /**
- * Get all durable facts for a user.
+ * Get durable facts for a user, optionally filtered by category.
+ * Each consumer (Maya, company intel, interview coach) can request its slice.
  */
-export async function getUserMemories(userId: string): Promise<UserMemory[]> {
-  const result = await query(
-    `SELECT key, value FROM user_memories WHERE user_id = $1 ORDER BY updated_at DESC`,
-    [userId]
-  );
-  return result.rows.map(r => ({ key: r.key, value: r.value }));
+export async function getUserMemories(
+  userId: string,
+  category?: string
+): Promise<UserMemory[]> {
+  const result = category
+    ? await query(
+        `SELECT category, key, value, source_type, confidence FROM user_memories
+         WHERE user_id = $1 AND category = $2 ORDER BY confidence DESC, updated_at DESC`,
+        [userId, category]
+      )
+    : await query(
+        `SELECT category, key, value, source_type, confidence FROM user_memories
+         WHERE user_id = $1 ORDER BY confidence DESC, updated_at DESC`,
+        [userId]
+      );
+  return result.rows.map(r => ({
+    key: r.key,
+    value: r.value,
+    category: r.category,
+    sourceType: r.source_type,
+    confidence: r.confidence,
+  }));
 }
 
 /**
